@@ -1,0 +1,2 @@
+export const API_BASE = process.env.API_BASE ?? "https://bo-chat.space";
+export const DEFAULT_APP_URL = process.env.APP_URL ?? "http://localhost:3000";
