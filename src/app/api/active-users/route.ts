@@ -1,23 +1,83 @@
-// app/api/active-users/route.ts (أو pages/api/active-users.ts في Pages Router)
-export const revalidate = 1800; // 30 دقيقة
+// app/api/active-users/route.ts
+export const runtime = "nodejs";
+export const revalidate = 1800; 
+
+const DEFAULT_ACTIVE_USERS_ID =
+  process.env.ACTIVE_USERS_ID || "6877d5497b04a3c83759f122";
 
 export async function GET() {
-  const endpoint = "http://bo-chat.space/activeusers/6877d5497b04a3c83759f122";
-  const token = process.env.ACTIVE_USERS_TOKEN!; // ضع التوكن في .env
-
-  const res = await fetch(endpoint, {
-    headers: { Authorization: `Bearer ${token}` },
-    // تمكين الكاش مع ISR
-    next: { revalidate: 1800 },
-    cache: "force-cache",
-  });
-
-  if (!res.ok) {
-    return new Response(JSON.stringify({ error: `HTTP ${res.status}` }), { status: 500 });
+  // const token = process.env.ACTIVE_USERS_TOKEN;
+  const token = process.env.ACTIVE_USERS_TOKEN;
+  if (!token) {
+    console.error("[active-users] Missing ACTIVE_USERS_TOKEN");
+    return new Response(
+      JSON.stringify({ error: "Missing ACTIVE_USERS_TOKEN" }),
+      { status: 500, headers: { "content-type": "application/json" } }
+    );
   }
 
-  const data = await res.json();
-  return new Response(JSON.stringify(data), {
-    headers: { "content-type": "application/json" },
-  });
+  const endpoint = `https://bo-chat.space/activeusers/${DEFAULT_ACTIVE_USERS_ID}`;
+
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 10_000);
+
+  try {
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: { Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzYwNTQ2OTc3LCJleHAiOjE3NjExNTE3Nzd9.lzVYadzXB6DDhbw01v5u4CEraTzDv_tK-dYuPRucbyo` },
+      signal: ctrl.signal,
+      // نسيب ISR شغال على مستوى الرد بتاعنا، بس من الأفضل من غير force-cache هنا
+      // عشان لو Upstream بيرجع Cache headers غريبة ما تلخبطش
+      cache: "no-store",
+      next: { revalidate: 1800 },
+    });
+
+    const text = await res.text(); // اقرأ دايمًا الـ body حتى في الأخطاء
+
+    if (!res.ok) {
+      // سجّل للـ dev
+      console.error(
+        "[active-users] Upstream error",
+        res.status,
+        text?.slice(0, 500)
+      );
+      // رجّع نفس الـ status مع الـ body عشان تبان الرسالة الحقيقية في الكلاينت
+      return new Response(
+        JSON.stringify({
+          error: "Upstream error",
+          status: res.status,
+          upstreamBody: safeJsonTry(text),
+        }),
+        {
+          status: res.status,
+          headers: { "content-type": "application/json" },
+        }
+      );
+    }
+
+    // لو الـ body JSON رجّعه كما هو
+    return new Response(text, {
+      headers: { "content-type": "application/json" },
+    });
+  } catch (err: any) {
+    console.error("[active-users] Request failed:", err?.message || err);
+    const isAbort = err?.name === "AbortError";
+    return new Response(
+      JSON.stringify({
+        error: isAbort ? "Upstream timeout" : "Request failed",
+        detail: err?.message || String(err),
+      }),
+      { status: 500, headers: { "content-type": "application/json" } }
+    );
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+function safeJsonTry(text: string) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }

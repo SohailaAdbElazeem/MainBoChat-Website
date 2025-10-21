@@ -213,9 +213,9 @@ const handleGoogleCredential = async (response: any) => {
 
           <p className="text-center text-xs text-white/60 leading-6">
             بالتسجيل فإنك توافق على{' '}
-            <a href="#" className="text-red-400 hover:text-red-300">معايير المجتمع</a>{' '}
+            <a href="#" className="text-red-400 hover:text-red-300 text-[16px]">معايير المجتمع</a>{' '}
             و{' '}
-            <a href="#" className="text-red-400 hover:text-red-300">شروط وأحكام معايير المجتمع</a>
+            <a href="#" className="text-red-400 hover:text-red-300 text-[16px]">شروط وأحكام معايير المجتمع</a>
           </p>
 
           <div className="flex items-center gap-3 my-2">

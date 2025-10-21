@@ -10,11 +10,11 @@ export default function LoginPage() {
             
             <section className="w-full  grid grid-cols-12 gap-6 items-center ">
                 <div className="col-span-12 md:col-span-6 text-white text-center place-items-center gap-6">
-                    <h1 className="text-5xl md:text-9xl font-semibold mb-7 text-[#D72229]">مرحباََ بعودتك</h1>
-                    <p className="text-white/70 leading-7 text-[35px] !mt-[10px] mb-20">
+                    <h1 className="text-5xl md:text-8xl font-semibold mb-7 text-[#D72229]">مرحباََ بعودتك</h1>
+                    <p className="text-white/70 leading-7 text-[30px] !mt-[10px] mb-20">
                         تسجيل الدخول للوصول إلى حسابك
                     </p>
-                    <Image src={"/logo.png"} width={258} height={300} alt={""}/>
+                    <Image src={"/logo.png"} width={230} height={200} alt={""}/>
                 </div>
                 <div className="col-span-12 md:col-span-6">
                     <LoginForm />

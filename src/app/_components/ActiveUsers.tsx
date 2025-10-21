@@ -25,8 +25,8 @@ type Props = {
 const DOT_COLOR = "#D72229";
 
 export default function ActiveUsersCarousel({
-  endpoint = "http://bo-chat.space/activeusers/680a8b19eda7ff2c948a0c49",
-  token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzYwMDMwNTAzLCJleHAiOjE3NjA2MzUzMDN9.6Epqh9alcsC5ra4IGScugiP2e9YnkETQUmRf4EGp8jk",
+  endpoint = "/api/active-users", // ← ثابت بدون ID
+  token,
   initialData,
   className = "",
 }: Props) {
@@ -68,8 +68,7 @@ export default function ActiveUsersCarousel({
         setUsers(null);
         const res = await fetch(endpoint, {
           signal: abort.signal,
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
+          cache: "no-store", // بدون كاش
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as RawUser[] | { data: RawUser[] };
@@ -80,8 +79,7 @@ export default function ActiveUsersCarousel({
       }
     })();
     return () => abort.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endpoint, token]);
+  }, [endpoint]);
 
   const scrollBy = (px: number) => scrollerRef.current?.scrollBy({ left: px, behavior: "smooth" });
 
@@ -110,16 +108,16 @@ export default function ActiveUsersCarousel({
       <div
         dir="rtl"
         ref={scrollerRef}
-        className="relative flex gap-4 overflow-x-auto  no-scrollbar py-2 scroll-smooth"
+        className="relative flex gap-4 overflow-x-auto no-scrollbar py-2 scroll-smooth"
       >
         {users.map((u) => (
           <button
             key={u.id}
             title={u.name}
-            className="relative cursor-pointer shrink-0 focus:outline-none m-r-[-20px]"
-            onClick={() => { /* TODO: افتح بروفايل */ }}
+            className="relative cursor-pointer shrink-0 focus:outline-none"
+            onClick={() => { /* TODO: افتح بروفايل المستخدم */ }}
           >
-            <div className="w-[54px] h-[54px] rounded-[23px]  shadow-md online">
+            <div className="w-[54px] h-[54px] rounded-[23px] shadow-md online">
               {u.img ? (
                 <img src={u.img} alt={u.name} className="w-full h-full object-cover rounded-[23px]" />
               ) : (
@@ -141,47 +139,40 @@ export default function ActiveUsersCarousel({
     );
   }, [users, error]);
 
-  // لو مفيش ناس نشطة أو أقل من 5 -> اخفي الأسهم
   const activeCount = (users ?? []).filter((u) => u.isActive).length;
   const showArrows = activeCount >= 5;
 
   return (
-    <section className={`relative ${className} `}>
-      <h2 className="text-2xl font-semibold mb-4 !px-4" dir="rtl">أعضاء نشطين</h2>
-        <div className="relative min-w-[350px] ">
-          {/* أسهم التنقل (تظهر فقط لو activeCount >= 5) */}
-          {showArrows && (
-            <>
-              <button
-                aria-label="السابق"
-                onClick={() => scrollBy(-240)}
-                className="absolute z-10 left-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
-              >
-                < img src={'/imgs/arrowleft.svg'} alt="arrow" className="w-5 h-5" />
-              </button>
+    <section className={`relative ${className}`}>
+      <h2 className="text-2xl font-semibold mb-2 !px-4" dir="rtl">أعضاء نشطين</h2>
+      <div className="relative min-w-[350px]">
+        {showArrows && (
+          <>
+            <button
+              aria-label="السابق"
+              onClick={() => scrollBy(-240)}
+              className="absolute z-10 left-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
+            >
+              <img src={'/imgs/arrowleft.svg'} alt="arrow" className="w-5 h-5" />
+            </button>
 
-              {/* يمين */}
-              <button
-                aria-label="التالي"
-                onClick={() => scrollBy(240)}
-                className="absolute z-10 right-4 top-1/2 -translate-y-1/2  w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
-              >
-                <img src={'/imgs/arrowright.svg'} alt="arrow" className="w-5 h-5" />
-              </button>
-            </>
-          )} 
+            <button
+              aria-label="التالي"
+              onClick={() => scrollBy(240)}
+              className="absolute z-10 right-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
+            >
+              <img src={'/imgs/arrowright.svg'} alt="arrow" className="w-5 h-5" />
+            </button>
+          </>
+        )}
 
-          {/* الإطار الخلفي + المحتوى */}
-          <div className="rounded-[21px] bg-[#F6F6F6] p-[5px]">{content}</div>
-        </div>
-
+        <div className="rounded-tl-[21px] rounded-bl-[21px] bg-[#F6F6F6] p-[5px]">{content}</div>
+      </div>
     </section>
   );
 }
 
-
-
-/* Tailwind helper (اختياري): أخفي السكروول بار */
+// لتوسيع JSX للـ dir
 declare global {
   namespace JSX {
     interface IntrinsicElements {

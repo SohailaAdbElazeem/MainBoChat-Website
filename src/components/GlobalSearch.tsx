@@ -111,7 +111,7 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
         <div className="ml-auto flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-3">
             {[{Icon: PlusIcon, title: 'New'}, {Icon: BotIcon, title: 'Assistant'}, {Icon: UsersLinkIcon, title: 'Share'}].map(({Icon, title}, i) => (
-              <button key={i} title={title} className="w-[80px] h-[60px] rounded-[27px] bg-[#F2F2F2] text-red-600 flex items-center justify-center shadow-sm hover:shadow transition shadow-neutral-200/40">
+              <button key={i} title={title} className="w-[80px] h-[50px] rounded-[20px] bg-[#F2F2F2] text-red-600 flex items-center justify-center shadow-sm hover:shadow transition shadow-neutral-200/40">
                 <Icon />
               </button>
             ))}
@@ -119,7 +119,7 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
 
           {/* Search */}
           <div className="relative" ref={panelRef} dir='rtl'>
-            <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[30px] px-4 h-[60px] w-[30vw] max-w-[500px] shadow-inner">
+            <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[30vw] max-w-[500px] shadow-inner">
               <Magnifier />
               <input
                 value={query}
