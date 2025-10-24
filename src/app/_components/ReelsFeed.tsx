@@ -1,8 +1,8 @@
+/* eslint-disable react/jsx-key */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useEffect, useState } from "react";
-// import { Play, Heart, MessageCircle, Share2, Eye } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 
 type Video = {
   _id: string;
@@ -19,6 +19,11 @@ export default function ReelsFeed() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [videoWidth, setVideoWidth] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("http://bo-chat.space/bestvideos/686695914211804ef3875338")
@@ -34,35 +39,78 @@ export default function ReelsFeed() {
   }, []);
 
   const handleScroll = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY > 0 && activeIndex < videos.length - 1) {
-      setActiveIndex((prev) => prev + 1);
-    } else if (e.deltaY < 0 && activeIndex > 0) {
-      setActiveIndex((prev) => prev - 1);
+    if (e.deltaY > 0) handleNextVideo();
+    else if (e.deltaY < 0) handlePrevVideo();
+  };
+
+  const handleNextVideo = () => {
+    setActiveIndex((prev) =>
+      prev < videos.length - 1 ? prev + 1 : prev
+    );
+  };
+
+  const handlePrevVideo = () => {
+    setActiveIndex((prev) => (prev > 0 ? prev - 1 : prev));
+  };
+
+  const handleOverlay = () => {
+    setShowOverlay(true);
+    setProgress(0);
+    setTimeout(() => {
+      if (videoRef.current) {
+        const rect = videoRef.current.getBoundingClientRect();
+        setVideoWidth(rect.width);
+      }
+    }, 300);
+  };
+
+  const handleCloseOverlay = () => {
+    setShowOverlay(false);
+    if (videoRef.current) videoRef.current.pause();
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const progressValue =
+        (videoRef.current.currentTime / videoRef.current.duration) * 100;
+      setProgress(progressValue);
     }
   };
 
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (!videoRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const seekTime =
+      ((e.clientX - rect.left) / rect.width) * videoRef.current.duration;
+    videoRef.current.currentTime = seekTime;
+  };
 
   return (
     <div
       className="relative h-[82vh] rounded-[21px] overflow-hidden bg-black"
-      onWheel={handleScroll} 
+      onWheel={handleScroll}
     >
       {videos.map((video, index) => (
         <div
           key={video._id}
           className={`absolute inset-0 transition-transform duration-700 ease-in-out ${
-            index === activeIndex ? "translate-y-0" : index < activeIndex ? "-translate-y-full" : "translate-y-full"
+            index === activeIndex
+              ? "translate-y-0"
+              : index < activeIndex
+              ? "-translate-y-full"
+              : "translate-y-full"
           }`}
         >
           <video
             src={video.video[0]?.video}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover cursor-pointer"
             autoPlay
             loop
             muted
+            onClick={handleOverlay}
           />
 
-          {/* Overlay */}
+          {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
           {/* User info */}
@@ -74,34 +122,151 @@ export default function ReelsFeed() {
             />
             <div>
               <p className="text-white font-semibold">{video.name}</p>
-              <p className="text-gray-300 text-sm">@{video.username}</p>
+              <p className="text-gray-300 text-sm">{video.username}</p>
             </div>
           </div>
 
           {/* Views */}
-          <div className="absolute top-5 left-4 flex items-center text-white gap-1">
-            {/* <Eye className="w-5 h-5" /> */}
+          <div className="absolute bg-[#FFFFFF]/30 top-5 left-4 flex items-center px-3 py-2 backdrop-blur-md text-white gap-3 rounded-[17px]">
             <span className="text-sm">{video.views || 0}</span>
+            <img src="/icons/eye.svg" className="rounded-17px" alt="" />
           </div>
 
           {/* Actions */}
-          <div className="absolute right-4 bottom-20 flex flex-col items-center gap-5">
-            <button className="text-white hover:text-red-500 transition">
-              {/* <Heart className="w-7 h-7" /> */}
-              <span className="text-sm">{video.likes.length}</span>
+          <div className="absolute right-4 bottom-20 flex flex-col items-center gap-3">
+            <button
+              onClick={handleOverlay}
+              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+            >
+              <img src="/icons/fullscreen.svg" alt="" />
             </button>
-            <button className="text-white hover:text-blue-400 transition">
-              {/* <MessageCircle className="w-7 h-7" /> */}
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+              <img src="/icons/options-white.svg" alt="" />
             </button>
-            <button className="text-white hover:text-green-400 transition">
-              {/* <Share2 className="w-7 h-7" /> */}
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+              <img src="/icons/play.svg" alt="" />
             </button>
-            <button className="text-white opacity-70">
-              {/* <Play className="w-7 h-7" /> */}
+
+            <button
+              onClick={handlePrevVideo}
+              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+            >
+              <img src="/icons/arrow-up.svg" alt="prev" />
+            </button>
+            <button
+              onClick={handleNextVideo}
+              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+            >
+              <img src="/icons/arrow-down.svg" alt="next" />
+            </button>
+
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+              <img src="/icons/like-white.svg" alt="" />
+            </button>
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+              <img src="/icons/comment-white.svg" alt="" />
+            </button>
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+              <img src="/icons/share-white.svg" alt="" />
             </button>
           </div>
         </div>
       ))}
+
+      {/* Fullscreen Overlay */}
+      {showOverlay && (
+        <div
+          ref={containerRef}
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+        >
+          <div className="relative">
+            <video
+              ref={videoRef}
+              src={videos[activeIndex].video[0]?.video}
+              className="max-h-[90vh] max-w-[90vw] rounded-[20px]"
+              autoPlay
+              onTimeUpdate={handleTimeUpdate}
+            />
+            {/* User Info Overlay */}
+            <div className="absolute top-5 right-4 flex items-center gap-3">
+              <img
+                src={videos[activeIndex].userimg}
+                alt={videos[activeIndex].name}
+                className="w-10 h-10 rounded-full border border-white/30"
+              />
+              <div>
+                <p className="text-white font-semibold">
+                  {videos[activeIndex].name}
+                </p>
+                <p className="text-gray-300 text-sm">
+                  {videos[activeIndex].username}
+                </p>
+              </div>
+            </div>
+            <div className="absolute top-1/7 right-2 gap-2" >
+              <button className="text-white rounded-full bg-[#000000]/15 mb-2 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+                <img src="/icons/options-white.svg" alt="" />
+              </button>
+              <button className="text-white rounded-full bg-[#000000]/15 mb-2 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+                <img src="/icons/play.svg" alt="" />
+              </button>
+              <button className="text-white rounded-full bg-[#000000]/15 mb-2 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+                <img src="/icons/like-white.svg" alt="" />
+              </button>
+              <button className="text-white rounded-full bg-[#000000]/15 mb-2 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+                <img src="/icons/comment-white.svg" alt="" />
+              </button>
+              <button className="text-white rounded-full bg-[#000000]/15 mb-2 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+                <img src="/icons/share-white.svg" alt="" />
+              </button>
+            </div>
+          <div className="absolute bg-[#FFFFFF]/30 top-5 left-4 flex items-center px-3 py-2 backdrop-blur-md text-white gap-3 rounded-[17px]">
+            <span className="text-sm">{videos[activeIndex].views || 0}</span>
+            <img src="/icons/eye.svg" className="rounded-17px" alt="" />
+          </div>
+          </div>
+
+          {/* Close Button */}
+          <h1  className="absolute top-15 right-8 text-white text-xl  transition"> الريلز</h1>
+          <div className="absolute top-1/2 right-8  ">
+            <button
+              onClick={handleCloseOverlay}
+              className=" w-[45px] h-[45px] rounded-full bg-[#fff]/15 mb-3 backdrop-blur-md flex items-center justify-center cursor-pointer  transition"
+            >
+              <img src="/icons/close.svg" alt="" />
+            </button>
+            <button
+              onClick={handlePrevVideo}
+              className="text-white rounded-full bg-[#fff]/15 mb-3 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+            >
+              <img src="/icons/arrow-up.svg" alt="prev" />
+            </button>
+            <button
+              onClick={handleNextVideo}
+              className="text-white rounded-full bg-[#fff]/15 mb-3 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+            >
+              <img src="/icons/arrow-down.svg" alt="next" />
+            </button>
+
+          </div>
+
+          {/* Custom progress bar */}
+          <div
+            onClick={handleSeek}
+            className="absolute bottom-[4vh] left-1/2 -translate-x-1/2 bg-gray-600 rounded-full cursor-pointer overflow-hidden"
+            style={{
+              width: videoWidth ? `${videoWidth}px` : "70%",
+              height: "6px",
+              direction: "ltr",
+            }}
+          >
+            <div
+              className="h-full bg-red-600 rounded-full transition-all"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

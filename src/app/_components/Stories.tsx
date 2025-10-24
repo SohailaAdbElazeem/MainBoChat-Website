@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 type APIStory = {
   _id: string;
   type: "image" | "text" | string;
-  content?: string | null;   // للصورة: URL داخل content | للنص: محتوى نصي
+  content?: string | null; // للصورة: URL داخل content | للنص: محتوى نصي
   title?: string | null;
   likes?: any[];
   comments?: any[];
@@ -17,8 +17,8 @@ type APIStory = {
   reported?: any[];
   subImage?: string | null;
   color?: string | number | null; // مثال: "4282339765" (ARGB)
-  expireAt?: string | null;       // ISO
-  createdAt?: string | null;      // أحيانًا "Invalid DateTime"
+  expireAt?: string | null; // ISO
+  createdAt?: string | null; // أحيانًا "Invalid DateTime"
   song?: string | null;
   safety?: [boolean, any] | null;
   isReported?: boolean;
@@ -39,12 +39,12 @@ type RawResponse = { resp?: APIUserStories[]; data?: APIUserStories[] } | any;
 
 /** ===== UI Types ===== */
 type StoryCard = {
-  id: string;               // story id (unique)
+  id: string; // story id (unique)
   userId: string;
   coverType: "image" | "text";
-  coverImage?: string;      // URL للصورة
-  text?: string;            // نص الستوري
-  bgColor?: string;         // rgba(...) للنص
+  coverImage?: string; // URL للصورة
+  text?: string; // نص الستوري
+  bgColor?: string; // rgba(...) للنص
   authorName: string;
   img: string;
   watched?: boolean;
@@ -53,16 +53,11 @@ type StoryCard = {
 };
 
 type Props = {
-  /** مفتاح التوكن داخل localStorage */
-  tokenKey?: string; // مثال: 'access_token'
-  /** تمرير توكن صراحةً (يغلب قيمة localStorage) */
+  tokenKey?: string;
   tokenOverride?: string;
   className?: string;
-  /** عرض الكارت التقريبي (يُستخدم في حساب التمرير) */
-  cardWidth?: number; // px
-  /** مدة التحديث التلقائي (ms). 0 لإيقافه */
+  cardWidth?: number;
   pollIntervalMs?: number;
-  /** هل نرتب بالأحدث حسب expireAt؟ */
   sortByExpireAtDesc?: boolean;
 };
 
@@ -102,8 +97,10 @@ function normalizeAllStories(resp: APIUserStories[] | undefined): StoryCard[] {
         id: s._id || `${u.userid}-${Math.random().toString(36).slice(2, 9)}`,
         userId: u.userid,
         coverType: isText ? "text" : "image",
-        coverImage: isImage ? (s.content || s.subImage || u.img || undefined) : undefined,
-        text: isText ? (s.content ?? "") : undefined,
+        coverImage: isImage
+          ? s.content || s.subImage || u.img || undefined
+          : undefined,
+        text: isText ? s.content ?? "" : undefined,
         bgColor: isText ? androidArgbToRgba(s.color ?? null) : undefined,
         authorName: u.name || u.username || "مستخدم",
         img: u.img,
@@ -122,7 +119,7 @@ export default function StoriesCarousel({
   tokenOverride,
   className = "",
   cardWidth = 150,
-  pollIntervalMs = 60000, // 1 دقيقة افتراضياً
+  pollIntervalMs = 60000,
   sortByExpireAtDesc = true,
 }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -145,7 +142,7 @@ export default function StoriesCarousel({
   // جلب الداتا
   const fetchStories = useCallback(async () => {
     setError(null);
-    setLoading((prev) => prev && cards === null); // اظهر السكلتون أول مرة فقط
+    setLoading((prev) => prev && cards === null);
     try {
       const res = await fetch("/api/stories", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -164,7 +161,6 @@ export default function StoriesCarousel({
         throw new Error((json as any)?.message || `HTTP ${res.status}`);
       }
 
-      // دعم {resp:[...]}, {data:[...]}, أو Array مباشرةً
       const array: APIUserStories[] = Array.isArray(json)
         ? (json as unknown as APIUserStories[])
         : json?.resp ?? json?.data ?? [];
@@ -175,7 +171,7 @@ export default function StoriesCarousel({
         norm = norm.sort((a, b) => {
           const ta = toTime(a.expireAt) ?? -Infinity;
           const tb = toTime(b.expireAt) ?? -Infinity;
-          return tb - ta; // desc
+          return tb - ta;
         });
       }
 
@@ -183,7 +179,7 @@ export default function StoriesCarousel({
       setActive(norm[0]?.id ?? null);
     } catch (e: any) {
       setError(e?.message || "Failed to load");
-      setCards([]); // لعرض حالة فاضية بدل السكلتون
+      setCards([]);
     } finally {
       setLoading(false);
     }
@@ -193,7 +189,6 @@ export default function StoriesCarousel({
     fetchStories();
   }, [fetchStories]);
 
-  // Polling تلقائي + إيقاف عند إخفاء التبويب
   useEffect(() => {
     if (!pollIntervalMs || pollIntervalMs <= 0) return;
     let timer: number | null = null;
@@ -237,30 +232,42 @@ export default function StoriesCarousel({
   const onCardFocus = (id: string) => setActive(id);
   const isEmpty = !loading && !error && Array.isArray(cards) && cards.length === 0;
 
+  // ✅ عرض أول اتنين فقط لو العدد قليل
+  const visibleCards = useMemo(() => {
+    if (!cards) return [];
+    return cards.slice(0, 2);
+  }, [cards]);
+
   return (
     <section className={`w-full ${className}`}>
       <h2 className="text-[25px] font-semibold mb-2 text-right">القصص</h2>
 
       <div className="relative">
-        {/* أزرار الاتجاه */}
-        <button
-          aria-label="السابق"
-          onClick={() => scrollBy("left")}
-          className="absolute left-0 top-2 -translate-y-0 z-20 w-12 h-12 rounded-full bg-[#000000]/15 cursor-pointer backdrop-blur flex items-center justify-center  shadow"
-        >
-          <img src={"imgs/arrowleft.svg"} alt="" />
-        </button>
-        <button
-          aria-label="التالي"
-          onClick={() => scrollBy("right")}
-          className="absolute right-3 top-2 -translate-y-0 z-20 w-12 h-12 rounded-full bg-[#000000]/15 cursor-pointer backdrop-blur flex items-center justify-center  shadow"
-        >
-          <img src={"imgs/arrowright.svg"} alt="" />
-        </button>
+        {/* الأسهم تظهر فقط لو أكتر من اتنين */}
+        {cards && cards.length > 2 && (
+          <>
+            <button
+              aria-label="السابق"
+              onClick={() => scrollBy("left")}
+              className="absolute left-0 top-[15px] -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#000000]/15 backdrop-blur flex items-center justify-center shadow"
+            >
+              <img src={"imgs/arrowleft.svg"} alt="" />
+            </button>
+            <button
+              aria-label="التالي"
+              onClick={() => scrollBy("right")}
+              className="absolute right-0 top-[15px] -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#000000]/15 backdrop-blur flex items-center justify-center shadow"
+            >
+              <img src={"imgs/arrowright.svg"} alt="" />
+            </button>
+          </>
+        )}
 
+        {/* الكاروسيل */}
         <div
           ref={scrollerRef}
-          className="flex gap-4 overflow-x-auto pr-5 pl-1 py-2 snap-x snap-mandatory scroll-smooth"
+          className="flex gap-4 overflow-x-auto  !pr-5 pl-1 py-2  scroll-smooth scrollbar-hidden"
+          dir="rtl"
         >
           {loading &&
             Array.from({ length: 2 }).map((_, i) => (
@@ -282,7 +289,7 @@ export default function StoriesCarousel({
 
           {!loading &&
             !isEmpty &&
-            cards?.map((c) => {
+            (cards.length > 2 ? cards : visibleCards)?.map((c) => {
               const isActive = active === c.id;
               return (
                 <article
@@ -291,15 +298,15 @@ export default function StoriesCarousel({
                   onFocus={() => onCardFocus(c.id)}
                   onMouseEnter={() => onCardFocus(c.id)}
                   className={[
-                    "relative shrink-1 snap-start rounded-[26px] overflow-hidden",
-                    "w-[150] h-[215px] bg-neutral-200",
+                    "relative shrink-0 snap-start rounded-[26px] overflow-hidden",
+                    "w-[150px] h-[215px] bg-neutral-200",
                     "transition-shadow",
                     isActive ? "shadow-[0_0_0_2px] shadow-red-500" : "shadow",
                   ].join(" ")}
                 >
                   {c.coverType === "image" ? (
                     <img
-                      src={c.coverImage || c.img }
+                      src={c.coverImage || c.img}
                       alt={c.authorName}
                       className="w-full h-full object-cover"
                       loading="lazy"
@@ -325,14 +332,12 @@ export default function StoriesCarousel({
                         />
                       </div>
                       <span className="text-gray-800 text-sm">
-                        {c.authorName.length > 8 ? c.authorName.slice(0, 8) + "..." : c.authorName}
+                        {c.authorName.length > 8
+                          ? c.authorName.slice(0, 8) + "..."
+                          : c.authorName}
                       </span>
                     </div>
                   </div>
-
-                  {isActive && (
-                    <div className="pointer-events-none absolute inset-0 rounded-3xl " />
-                  )}
                 </article>
               );
             })}
