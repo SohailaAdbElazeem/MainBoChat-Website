@@ -111,14 +111,13 @@ export default function ReelsFeed() {
           />
 
           {/* Overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
           {/* User info */}
-          <div className="absolute top-5 right-4 flex items-center gap-3">
+          <div className="absolute top-5 right-4 backdrop-blur-md rounded-[17px] pl-2 flex items-center gap-3">
             <img
               src={video.userimg}
               alt={video.name}
-              className="w-10 h-10 rounded-full border border-white/30"
+              className="w-10 h-10 rounded-[17px] border border-white/30"
             />
             <div>
               <p className="text-white font-semibold">{video.name}</p>
@@ -192,7 +191,7 @@ export default function ReelsFeed() {
               <img
                 src={videos[activeIndex].userimg}
                 alt={videos[activeIndex].name}
-                className="w-10 h-10 rounded-full border border-white/30"
+                className="w-10 h-10 rounded-[17px] border border-white/30"
               />
               <div>
                 <p className="text-white font-semibold">

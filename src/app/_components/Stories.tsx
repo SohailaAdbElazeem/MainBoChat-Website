@@ -6,8 +6,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 /** ===== Types coming from API ===== */
 type APIStory = {
   _id: string;
-  type: "image" | "text" | string;
-  content?: string | null; // للصورة: URL داخل content | للنص: محتوى نصي
+  type: "image" | "text" | "video" | string;
+  content?: string | null;
   title?: string | null;
   likes?: any[];
   comments?: any[];
@@ -16,9 +16,9 @@ type APIStory = {
   isScreenShot?: "true" | "false" | boolean;
   reported?: any[];
   subImage?: string | null;
-  color?: string | number | null; // مثال: "4282339765" (ARGB)
-  expireAt?: string | null; // ISO
-  createdAt?: string | null; // أحيانًا "Invalid DateTime"
+  color?: string | number | null;
+  expireAt?: string | null;
+  createdAt?: string | null;
   song?: string | null;
   safety?: [boolean, any] | null;
   isReported?: boolean;
@@ -28,7 +28,7 @@ type APIStory = {
 
 type APIUserStories = {
   userid: string;
-  img: string; // صورة البروفايل
+  img: string;
   username: string;
   name: string;
   isFollow: boolean;
@@ -37,19 +37,19 @@ type APIUserStories = {
 
 type RawResponse = { resp?: APIUserStories[]; data?: APIUserStories[] } | any;
 
-/** ===== UI Types ===== */
 type StoryCard = {
-  id: string; // story id (unique)
+  id: string;
   userId: string;
-  coverType: "image" | "text";
-  coverImage?: string; // URL للصورة
-  text?: string; // نص الستوري
-  bgColor?: string; // rgba(...) للنص
+  coverType: "image" | "text" | "video";
+  coverImage?: string;
+  text?: string;
+  bgColor?: string;
   authorName: string;
   img: string;
   watched?: boolean;
   vip?: boolean;
   expireAt?: string | null;
+  stories?: APIStory; // 👈 نضيف القصة نفسها هنا
 };
 
 type Props = {
@@ -61,7 +61,7 @@ type Props = {
   sortByExpireAtDesc?: boolean;
 };
 
-/** يحوّل Android ARGB integer (مثل "4282339765") إلى rgba(...) */
+/** يحوّل Android ARGB integer إلى rgba(...) */
 function androidArgbToRgba(input?: string | number | null): string | undefined {
   if (input == null) return undefined;
   let n: number;
@@ -85,28 +85,28 @@ function toTime(value?: string | null): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
-/** طبّع كل stories من كل users إلى كروت العرض (كل ستوري = كارت) */
+/** ✅ تعديل الدالة بحيث تقرأ النوع والمحتوى الحقيقي من الريسبونس */
 function normalizeAllStories(resp: APIUserStories[] | undefined): StoryCard[] {
   const out: StoryCard[] = [];
   (resp ?? []).forEach((u) => {
     (u.stories ?? []).forEach((s) => {
       const t = (s?.type || "").toLowerCase();
-      const isText = t === "text";
-      const isImage = t === "image";
       const card: StoryCard = {
         id: s._id || `${u.userid}-${Math.random().toString(36).slice(2, 9)}`,
         userId: u.userid,
-        coverType: isText ? "text" : "image",
-        coverImage: isImage
-          ? s.content || s.subImage || u.img || undefined
-          : undefined,
-        text: isText ? s.content ?? "" : undefined,
-        bgColor: isText ? androidArgbToRgba(s.color ?? null) : undefined,
+        coverType: t as "image" | "text" | "video",
+        coverImage:
+          t === "image" || t === "video"
+            ? s.subImage || s.content || u.img || undefined
+            : undefined,
+        text: t === "text" ? s.content ?? "" : undefined,
+        bgColor: t === "text" ? androidArgbToRgba(s.color ?? null) : undefined,
         authorName: u.name || u.username || "مستخدم",
         img: u.img,
         watched: s.watched,
         vip: s.vip,
         expireAt: s.expireAt ?? null,
+        stories: s, // 👈 نخزن القصة الأصلية هنا (للعرض داخل الـOverlay)
       };
       out.push(card);
     });
@@ -128,7 +128,12 @@ export default function StoriesCarousel({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // اقرأ التوكن
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
   const token = useMemo(() => {
     if (typeof window === "undefined") return "";
     if (tokenOverride) return tokenOverride;
@@ -139,14 +144,21 @@ export default function StoriesCarousel({
     }
   }, [tokenKey, tokenOverride]);
 
-  // جلب الداتا
+  const abortRef = useRef<AbortController | null>(null);
+  const pollRef = useRef<number | null>(null);
+
   const fetchStories = useCallback(async () => {
     setError(null);
     setLoading((prev) => prev && cards === null);
+
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+
     try {
       const res = await fetch("/api/stories", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         cache: "no-store",
+        signal: abortRef.current.signal,
       });
 
       const text = await res.text();
@@ -157,16 +169,14 @@ export default function StoriesCarousel({
         json = {};
       }
 
-      if (!res.ok) {
+      if (!res.ok)
         throw new Error((json as any)?.message || `HTTP ${res.status}`);
-      }
 
       const array: APIUserStories[] = Array.isArray(json)
         ? (json as unknown as APIUserStories[])
         : json?.resp ?? json?.data ?? [];
 
       let norm = normalizeAllStories(array);
-
       if (sortByExpireAtDesc) {
         norm = norm.sort((a, b) => {
           const ta = toTime(a.expireAt) ?? -Infinity;
@@ -178,12 +188,11 @@ export default function StoriesCarousel({
       setCards(norm);
       setActive(norm[0]?.id ?? null);
     } catch (e: any) {
-      setError(e?.message || "Failed to load");
-      setCards([]);
+      if (e.name !== "AbortError") setError(e?.message || "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token]);
 
   useEffect(() => {
     fetchStories();
@@ -191,36 +200,23 @@ export default function StoriesCarousel({
 
   useEffect(() => {
     if (!pollIntervalMs || pollIntervalMs <= 0) return;
-    let timer: number | null = null;
-
-    const start = () => {
-      if (timer) return;
-      timer = window.setInterval(() => {
-        if (document.visibilityState === "visible") fetchStories();
+    const startPoll = () => {
+      if (pollRef.current) return;
+      pollRef.current = window.setInterval(() => {
+        if (document.visibilityState === "visible" && !showOverlay) {
+          fetchStories();
+        }
       }, pollIntervalMs);
     };
-    const stop = () => {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
+    const stopPoll = () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
       }
     };
-    const onVis = () => {
-      if (document.visibilityState === "visible") {
-        fetchStories();
-        start();
-      } else {
-        stop();
-      }
-    };
-
-    start();
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      stop();
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [pollIntervalMs, fetchStories]);
+    startPoll();
+    return stopPoll;
+  }, [pollIntervalMs, fetchStories, showOverlay]);
 
   const scrollBy = (dir: "left" | "right") => {
     const el = scrollerRef.current;
@@ -230,20 +226,77 @@ export default function StoriesCarousel({
   };
 
   const onCardFocus = (id: string) => setActive(id);
-  const isEmpty = !loading && !error && Array.isArray(cards) && cards.length === 0;
+  const isEmpty =
+    !loading && !error && Array.isArray(cards) && cards.length === 0;
+  const visibleCards = useMemo(() => (!cards ? [] : cards.slice(0, 2)), [cards]);
 
-  // ✅ عرض أول اتنين فقط لو العدد قليل
-  const visibleCards = useMemo(() => {
-    if (!cards) return [];
-    return cards.slice(0, 2);
-  }, [cards]);
+  const startProgress = () => {
+    setProgress(0);
+    clearInterval(progressRef.current!);
+    const durationMs = 4000;
+    startTimedProgress(durationMs);
+  };
+
+  const startTimedProgress = (durationMs: number) => {
+    const totalSteps = 100;
+    const stepTime = durationMs / totalSteps;
+    clearInterval(progressRef.current!);
+    progressRef.current = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(progressRef.current!);
+          handleNextStory();
+          return 100;
+        }
+        return prev + 1;
+      });
+    }, stepTime);
+  };
+
+  const handleOpenStory = (index: number) => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    clearInterval(progressRef.current!);
+    setProgress(0);
+    setCurrentIndex(index);
+    setShowOverlay(true);
+    startProgress();
+  };
+
+  const handleCloseOverlay = () => {
+    clearInterval(progressRef.current!);
+    setShowOverlay(false);
+    setProgress(0);
+  };
+
+  const handleNextStory = () => {
+    if (!cards || cards.length === 0) return;
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex((p) => p + 1);
+      setProgress(0);
+      startProgress();
+    } else {
+      clearInterval(progressRef.current!);
+      setProgress(100);
+      handleCloseOverlay();
+    }
+  };
+
+  const handlePrevStory = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex((p) => p - 1);
+      setProgress(0);
+      startProgress();
+    }
+  };
 
   return (
     <section className={`w-full ${className}`}>
       <h2 className="text-[25px] font-semibold mb-2 text-right">القصص</h2>
 
       <div className="relative">
-        {/* الأسهم تظهر فقط لو أكتر من اتنين */}
         {cards && cards.length > 2 && (
           <>
             <button
@@ -263,10 +316,9 @@ export default function StoriesCarousel({
           </>
         )}
 
-        {/* الكاروسيل */}
         <div
           ref={scrollerRef}
-          className="flex gap-4 overflow-x-auto  !pr-5 pl-1 py-2  scroll-smooth scrollbar-hidden"
+          className="flex gap-4 overflow-x-auto !pr-5 pl-1 py-2 scroll-smooth scrollbar-hidden"
           dir="rtl"
         >
           {loading &&
@@ -280,7 +332,6 @@ export default function StoriesCarousel({
           {!loading && error && (
             <div className="text-red-600 font-medium">{error}</div>
           )}
-
           {isEmpty && (
             <div className="text-gray-600 font-medium bg-gray-100 rounded-2xl px-4 py-3">
               لا يوجد حالات منشورة
@@ -289,7 +340,7 @@ export default function StoriesCarousel({
 
           {!loading &&
             !isEmpty &&
-            (cards.length > 2 ? cards : visibleCards)?.map((c) => {
+            (cards.length > 2 ? cards : visibleCards)?.map((c, idx) => {
               const isActive = active === c.id;
               return (
                 <article
@@ -297,14 +348,25 @@ export default function StoriesCarousel({
                   tabIndex={0}
                   onFocus={() => onCardFocus(c.id)}
                   onMouseEnter={() => onCardFocus(c.id)}
+                  onClick={() => handleOpenStory(idx)}
                   className={[
-                    "relative shrink-0 snap-start rounded-[26px] overflow-hidden",
+                    "relative shrink-0 snap-start rounded-[26px] overflow-hidden cursor-pointer",
                     "w-[150px] h-[215px] bg-neutral-200",
                     "transition-shadow",
                     isActive ? "shadow-[0_0_0_2px] shadow-red-500" : "shadow",
                   ].join(" ")}
                 >
-                  {c.coverType === "image" ? (
+                  {/* ✅ عرض حسب نوع المحتوى */}
+                  {c.coverType === "video" ? (
+                    <video
+                      src={c.stories?.content ?? ""}
+                      poster={c.stories?.subImage ?? ""}
+                      className="w-full h-full object-cover"
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : c.coverType === "image" ? (
                     <img
                       src={c.coverImage || c.img}
                       alt={c.authorName}
@@ -322,7 +384,7 @@ export default function StoriesCarousel({
                     </div>
                   )}
 
-                  <div className="absolute w-full bottom-0 right-0 rounded-b-[26px] ">
+                  <div className="absolute w-full bottom-0 right-0 rounded-b-[26px]">
                     <div className="bg-white/70 backdrop-blur px-3 py-2 flex items-center gap-2">
                       <div className="w-[40px] h-[40px] rounded-[17px] overflow-hidden">
                         <img
@@ -343,6 +405,96 @@ export default function StoriesCarousel({
             })}
         </div>
       </div>
+
+      {/* ✅ Overlay */}
+      {showOverlay && cards && cards[currentIndex] && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center">
+          <div className="relative w-[350px] h-[550px] max-w-[400px] max-h-[85vh] w-full flex items-center justify-center rounded-[20px]">
+            <div className="absolute top-0 left-0 w-full px-3 pt-3 flex gap-[4px] z-20">
+              {cards.map((_, i) => (
+                <div
+                  key={i}
+                  className="flex-1 h-[3px] bg-white/30 rounded-full overflow-hidden"
+                >
+                  <div
+                    className="h-full bg-white transition-all duration-100"
+                    style={{
+                      width:
+                        i === currentIndex
+                          ? `${progress}%`
+                          : i < currentIndex
+                          ? "100%"
+                          : "0%",
+                    }}
+                  ></div>
+                </div>
+              ))}
+            </div>
+
+            {/* ✅ عرض المحتوى الحقيقي */}
+            {cards[currentIndex].coverType === "text" ? (
+              <div
+                className="w-full rounded-[20px] h-full flex items-center justify-center text-white text-xl font-medium p-8 text-center"
+                style={{
+                  background: cards[currentIndex].bgColor || "#222",
+                }}
+              >
+                {cards[currentIndex].text}
+              </div>
+            ) : cards[currentIndex].coverType === "video" ? (
+              <video
+                ref={videoRef}
+                src={cards[currentIndex].stories?.content ?? ""}
+                className="w-full h-full object-cover rounded-[20px]"
+                autoPlay
+                muted
+              />
+            ) : (
+              <img
+                src={
+                  cards[currentIndex].stories?.content ??
+                  cards[currentIndex].coverImage ??
+                  cards[currentIndex].img
+                }
+                alt=""
+                className="w-full h-full object-cover rounded-[20px]"
+              />
+            )}
+
+            <div className="absolute top-10 right-5 flex items-center gap-3">
+              <img
+                src={cards[currentIndex].img}
+                className="w-10 h-10 rounded-full border border-white/30"
+                alt={cards[currentIndex].authorName}
+              />
+              <div>
+                <p className="text-white font-semibold">
+                  {cards[currentIndex].authorName}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handlePrevStory}
+              className="absolute left-[50px] -top-12 bg-[#fff]/15 w-[40px] h-[40px] flex items-center justify-center cursor-pointer backdrop-blur-md rounded-full text-white text-3xl opacity-50 hover:opacity-100"
+            >
+              <img src="/imgs/arrowright.svg" alt="" />
+            </button>
+            <button
+              onClick={handleNextStory}
+              className="absolute left-0 -top-12 bg-[#fff]/15 w-[40px] h-[40px] flex items-center justify-center cursor-pointer backdrop-blur-md rounded-full text-white text-3xl opacity-50 hover:opacity-100"
+            >
+              <img src="/imgs/arrowleft.svg" alt="" />
+            </button>
+            <button
+              onClick={handleCloseOverlay}
+              className="absolute -top-12 z-[99999] cursor-pointer right-0 rounded-full w-[40px] h-[40px] flex items-center justify-center bg-[#FFFFFF]/15 backdrop-blur-md hover:bg-[#fff]/25 transition"
+            >
+              <img src="/icons/close.svg" alt="" />
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
