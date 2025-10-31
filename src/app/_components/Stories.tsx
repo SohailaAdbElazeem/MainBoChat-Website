@@ -49,7 +49,7 @@ type StoryCard = {
   watched?: boolean;
   vip?: boolean;
   expireAt?: string | null;
-  stories?: APIStory; // 👈 نضيف القصة نفسها هنا
+  stories?: APIStory;
 };
 
 type Props = {
@@ -85,7 +85,7 @@ function toTime(value?: string | null): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
-/** ✅ تعديل الدالة بحيث تقرأ النوع والمحتوى الحقيقي من الريسبونس */
+/** ✅ قراءة كل الاستوريز بدون تقطيع */
 function normalizeAllStories(resp: APIUserStories[] | undefined): StoryCard[] {
   const out: StoryCard[] = [];
   (resp ?? []).forEach((u) => {
@@ -106,7 +106,7 @@ function normalizeAllStories(resp: APIUserStories[] | undefined): StoryCard[] {
         watched: s.watched,
         vip: s.vip,
         expireAt: s.expireAt ?? null,
-        stories: s, // 👈 نخزن القصة الأصلية هنا (للعرض داخل الـOverlay)
+        stories: s,
       };
       out.push(card);
     });
@@ -228,19 +228,12 @@ export default function StoriesCarousel({
   const onCardFocus = (id: string) => setActive(id);
   const isEmpty =
     !loading && !error && Array.isArray(cards) && cards.length === 0;
-  const visibleCards = useMemo(() => (!cards ? [] : cards.slice(0, 2)), [cards]);
 
-  const startProgress = () => {
+  const startProgress = (durationMs = 4000) => {
     setProgress(0);
     clearInterval(progressRef.current!);
-    const durationMs = 4000;
-    startTimedProgress(durationMs);
-  };
-
-  const startTimedProgress = (durationMs: number) => {
     const totalSteps = 100;
     const stepTime = durationMs / totalSteps;
-    clearInterval(progressRef.current!);
     progressRef.current = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
@@ -262,7 +255,15 @@ export default function StoriesCarousel({
     setProgress(0);
     setCurrentIndex(index);
     setShowOverlay(true);
-    startProgress();
+    const currentCard = cards?.[index];
+    if (currentCard?.coverType === "video") {
+      const vid = videoRef.current;
+      if (vid && vid.readyState >= 2) {
+        startProgress(vid.duration * 1000 || 4000);
+      }
+    } else {
+      startProgress();
+    }
   };
 
   const handleCloseOverlay = () => {
@@ -276,7 +277,15 @@ export default function StoriesCarousel({
     if (currentIndex < cards.length - 1) {
       setCurrentIndex((p) => p + 1);
       setProgress(0);
-      startProgress();
+      const next = cards[currentIndex + 1];
+      if (next?.coverType === "video") {
+        const vid = videoRef.current;
+        if (vid && vid.readyState >= 2) {
+          startProgress(vid.duration * 1000 || 4000);
+        }
+      } else {
+        startProgress();
+      }
     } else {
       clearInterval(progressRef.current!);
       setProgress(100);
@@ -340,7 +349,7 @@ export default function StoriesCarousel({
 
           {!loading &&
             !isEmpty &&
-            (cards.length > 2 ? cards : visibleCards)?.map((c, idx) => {
+            cards?.map((c, idx) => {
               const isActive = active === c.id;
               return (
                 <article
@@ -356,7 +365,6 @@ export default function StoriesCarousel({
                     isActive ? "shadow-[0_0_0_2px] shadow-red-500" : "shadow",
                   ].join(" ")}
                 >
-                  {/* ✅ عرض حسب نوع المحتوى */}
                   {c.coverType === "video" ? (
                     <video
                       src={c.stories?.content ?? ""}
@@ -431,7 +439,6 @@ export default function StoriesCarousel({
               ))}
             </div>
 
-            {/* ✅ عرض المحتوى الحقيقي */}
             {cards[currentIndex].coverType === "text" ? (
               <div
                 className="w-full rounded-[20px] h-full flex items-center justify-center text-white text-xl font-medium p-8 text-center"
@@ -447,7 +454,21 @@ export default function StoriesCarousel({
                 src={cards[currentIndex].stories?.content ?? ""}
                 className="w-full h-full object-cover rounded-[20px]"
                 autoPlay
-                muted
+                
+                playsInline
+                onPlay={(e) => {
+                  const vid = e.currentTarget;
+                  vid.muted = false;
+                  clearInterval(progressRef.current!);
+                  startProgress(vid.duration * 1000 || 4000);
+                }}
+                onPause={() => clearInterval(progressRef.current!)}
+                onWaiting={() => clearInterval(progressRef.current!)}
+                onPlaying={(e) => {
+                  const vid = e.currentTarget;
+                  clearInterval(progressRef.current!);
+                  startProgress(vid.duration * 1000 || 4000);
+                }}
               />
             ) : (
               <img
