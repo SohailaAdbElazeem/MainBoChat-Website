@@ -3,6 +3,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState, useRef, useEffect } from "react";
 
 export type Post = {
   _id: string;
@@ -24,110 +25,45 @@ export type Post = {
   shareCount?: number;
 };
 
-// ✅ دالة آمنة لتحليل التاريخ
 function parseDateFlexible(dateStr?: string | null): Date | null {
   if (!dateStr) return null;
   const s = String(dateStr).trim();
   if (!s || s.toLowerCase().includes("invalid")) return null;
-
-  // timestamp رقمي
   if (/^\d+$/.test(s)) {
     const d = new Date(Number(s));
     if (!isNaN(d.getTime())) return d;
   }
-
-  // فورمات: YYYY-MM-DD HH:mm(:ss)?
-  const m = s.match(
-    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/
-  );
-  if (m) {
-    const [, Y, M, D, h, i, sec] = m;
-    const iso = `${Y}-${M}-${D}T${h}:${i}:${sec ?? "00"}`;
-    const d = new Date(iso);
-    if (!isNaN(d.getTime())) return d;
-  }
-
-  // fallback: صيغة ISO أو أي حاجة المتصفح يفهمها
   const d = new Date(s.replace(" ", "T"));
   if (!isNaN(d.getTime())) return d;
-
   return null;
 }
 
-// ✅ دالة عرض الوقت بالعربية
 export function timeAgoAr(dateStr?: string) {
   const d = parseDateFlexible(dateStr);
   if (!d) return "منذ لحظات";
-
   const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-
+  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
   if (diffSec < 60) return "منذ لحظات";
-
   const mins = Math.floor(diffSec / 60);
   const hours = Math.floor(mins / 60);
   const days = Math.floor(hours / 24);
-  const months = Math.floor(days / 30);
-  const years = Math.floor(days / 365);
-
-  if (mins < 60) {
-    if (mins === 1) return "منذ دقيقة";
-    if (mins === 2) return "منذ دقيقتين";
-    if (mins < 11) return `منذ ${mins} دقائق`;
-    return `منذ ${mins} دقيقة`;
-  }
-
-  if (hours < 24) {
-    if (hours === 1) return "منذ ساعة";
-    if (hours === 2) return "منذ ساعتين";
-    if (hours < 11) return `منذ ${hours} ساعات`;
-    return `منذ ${hours} ساعة`;
-  }
-
-  if (days < 30) {
-    if (days === 1) return "منذ يوم";
-    if (days === 2) return "منذ يومين";
-    if (days < 11) return `منذ ${days} أيام`;
-    return `منذ ${days} يوم`;
-  }
-
-  if (months < 12) {
-    if (months === 1) return "منذ شهر";
-    if (months === 2) return "منذ شهرين";
-    if (months < 11) return `منذ ${months} أشهر`;
-    return `منذ ${months} شهر`;
-  }
-
-  if (years === 1) return "منذ سنة";
-  if (years === 2) return "منذ سنتين";
-  if (years < 11) return `منذ ${years} سنوات`;
-  return `منذ ${years} سنة`;
-}
-
-// 🔎 استخراج لينك الفيديو
-function extractVideoUrl(video: any): string | null {
-  if (!video) return null;
-  if (typeof video === "string") return video.trim() || null;
-  if (Array.isArray(video)) {
-    for (const v of video) {
-      const u = extractVideoUrl(v);
-      if (u) return u;
-    }
-    return null;
-  }
-  if (typeof video === "object") {
-    const keys = ["video", "url", "src", "link", "file"];
-    for (const k of keys) {
-      const val = video?.[k];
-      if (typeof val === "string" && val.trim()) return val.trim();
-    }
-  }
-  return null;
+  if (mins < 60) return `منذ ${mins} دقيقة`;
+  if (hours < 24) return `منذ ${hours} ساعة`;
+  if (days < 30) return `منذ ${days} يوم`;
+  return `منذ ${Math.floor(days / 30)} شهر`;
 }
 
 export default function PostCard({ post }: { post: Post }) {
-  const likeCount = Array.isArray(post.likes) ? post.likes.length : 0;
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(
+    Array.isArray(post.likes) ? post.likes.length : 0
+  );
+   
+
+  const [expanded, setExpanded] = useState(false);
+  const [isLongText, setIsLongText] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
   const commentCount = Array.isArray(post.comments) ? post.comments.length : 0;
   const sharesCount =
     (Array.isArray(post.shares) && post.shares.length) ||
@@ -142,11 +78,13 @@ export default function PostCard({ post }: { post: Post }) {
 
   const imgW = firstImage?.width ? Number(firstImage.width) : 1080;
   const imgH = firstImage?.height ? Number(firstImage.height) : 1350;
+  const isQuestion = post.type === "question";
 
-  const videoUrl = extractVideoUrl(post.video);
-  const isMedia = post.type === "image" || post.type === "video" || Boolean(videoUrl);
-  const shouldShowVideo = Boolean(videoUrl);
-  const shouldShowImage = !shouldShowVideo && !!firstImage?.image;
+  const shouldShowImage = !!firstImage?.image;
+
+  const validImage =
+    firstImage?.image &&
+    (firstImage.image.startsWith("http") || firstImage.image.startsWith("/"));
 
   const likerAvatars: string[] = Array.isArray(post.likes)
     ? Array.from(
@@ -158,12 +96,34 @@ export default function PostCard({ post }: { post: Post }) {
       ).slice(0, 5)
     : [];
 
-  const cardClass =
-    "rounded-[26px] max-w-[400px] text-right bg-gradient-to-b from-[#EAE8E8] to-[#fff]";
+  const cardClass = isQuestion
+  ? "rounded-[26px] max-w-[400px] bg-gradient-to-b from-[#EAE8E8] to-[#fff] border border-[#D72229] bg-white"
+  : "rounded-[26px] max-w-[400px] text-right bg-gradient-to-b from-[#EAE8E8] to-[#fff]";
+
   const textInnerBorder =
-    post.type === "text" || post.type === "question"
+    post.type === "question"
       ? " shadow-[inset_0_0_0_1px_#D72229]"
       : "";
+
+  const handleLike = async () => {
+    try {
+      setLiked((prev) => !prev);
+      setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+    } catch (err) {
+      setLiked((prev) => !prev);
+    }
+  };
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (el) {
+      const computed = window.getComputedStyle(el);
+      const lineHeight = parseFloat(computed.lineHeight);
+      const height = el.scrollHeight;
+      const visibleHeight = lineHeight * 3;
+      setIsLongText(height > visibleHeight + 2);
+    }
+  }, [post.content]);
 
   return (
     <article dir="rtl" className={cardClass + textInnerBorder}>
@@ -188,44 +148,80 @@ export default function PostCard({ post }: { post: Post }) {
             )}
           </div>
           <div className="text-xs text-black/50">
-  {timeAgoAr(post.createdAt || new Date().toISOString())}
+            {timeAgoAr(post.createdAt || new Date().toISOString())}
           </div>
         </div>
       </header>
 
       {post.content ? (
-        <p className="min-h-[50px] px-4 leading-7 text-black/90 whitespace-pre-wrap break-words">
-          {post.content}
-        </p>
+        <div className="px-4">
+          <p
+            ref={textRef}
+            className={`leading-7 text-black/90 whitespace-pre-wrap break-words transition-all duration-300 ${
+              expanded ? "" : "line-clamp-3 overflow-hidden"
+            }`}
+            style={{
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
+              WebkitLineClamp: expanded ? "unset" : "3",
+            }}
+          >
+            {post.content}
+          </p>
+
+          {isLongText && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-[#D72229] text-sm mt-1 mb-2"
+            >
+              {expanded ? "إخفاء" : "المزيد"}
+            </button>
+          )}
+        </div>
       ) : null}
 
-      {shouldShowVideo ? (
-        <div className=" flex items-center justify-center overflow-hidden bg-black/5">
-          <video
-            src={videoUrl!}
-            controls
-            muted
-            playsInline
-            preload="metadata"
-            poster={firstImage?.image || undefined}
-            className="w-full h-auto"
-          />
-        </div>
-      ) : shouldShowImage ? (
+
+      {shouldShowImage && validImage ? (
         <div className="max-h-[350px] flex items-center justify-center overflow-hidden bg-black/5">
-          <Image
+          <img
             src={firstImage!.image}
             alt="post image"
             width={imgW}
             height={imgH}
+            loading="lazy"
             className="h-full w-full object-cover"
           />
         </div>
-      ) : null}
+      ) : (
+        ""
+      )}
+      {isQuestion && (
+        <>
+          <div className="flex items-center px-5 gap-4">
+            <p className="text-[#B4B4B9]">{commentCount} اجابه</p>
+            <p className="text-[#B4B4B9]">{likeCount} اعجاب</p>
+          </div>
+          <div className="w-full border-t-2 border-[#D72229] mt-3"></div>
+        </>
+      )}
+      <footer className="flex items-center justify-between p-2">
+          {isQuestion? (
+            <div className="flex justify-center items-center w-full gap-3">
+              <button
+                disabled
+                className="flex items-center px-[45px] text-center gap-2 bg-[#F2F2F2] text-[#B5B5B5]  py-2 rounded-xl cursor-default select-none"
+                >
+                أضف إجابة
+              </button>
+              <div className="bg-[#F2F2F2] p-2 rounded-[12px] flex items-center justify-center">
+                <img src="/icons/like.svg" className="opacity-50" />
+              </div>
+            </div>
 
-      {isMedia ? (
-        <footer className="flex items-center justify-between p-2">
-          <div className="flex items-center">
+          )
+        :
+        <><div className="flex items-center">
+
             {likerAvatars.length > 0 ? (
               <div className="flex items-center">
                 {likerAvatars.map((src, idx) => (
@@ -233,15 +229,12 @@ export default function PostCard({ post }: { post: Post }) {
                     key={src + idx}
                     className="relative h-7 w-7 rounded-[12px] ring-2 ring-white overflow-hidden"
                     style={{ marginInlineStart: idx === 0 ? 0 : -8 }}
-                    title="أعجب بهذا المنشور"
-                    dir="ltr"
                   >
                     <img
                       src={src}
                       alt="user like"
                       className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
+                      loading="lazy" />
                   </div>
                 ))}
                 {likeCount > likerAvatars.length && (
@@ -254,54 +247,46 @@ export default function PostCard({ post }: { post: Post }) {
               <span className="text-xs text-black/50">لا إعجابات بعد</span>
             )}
           </div>
+          <div className="flex items-center justify-center gap-4 text-sm text-black/70" dir="ltr">
+              <button
+                onClick={handleLike}
+                className="inline-flex items-center gap-1 cursor-pointer transition"
+                style={{
+                  color: liked ? "#D72229" : "inherit",
+                }}
+              >
+                <LikeIcon active={liked} />
+              </button>
 
-          <div className="flex items-center gap-4 text-sm text-black/70">
-            <span className="inline-flex items-center gap-1">
-              <LikeIcon />
-              {likeCount}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <ReplyIcon />
-              {commentCount}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <ShareIcon />
-              {sharesCount}
-            </span>
-          </div>
-        </footer>
-      ) : (
-        <>
-          <div className="text-xs text-black/50 m-3">
-            {commentCount} إجابة &nbsp;|&nbsp; {likeCount} إعجاب
-          </div>
-          <footer className="flex items-center justify-center p-4 border-t border-[#D72229] mt-3">
-            <div className="flex items-center gap-1.5">
-              <Action icon={<LikeIcon />} label="" />
-              <div className="flex h-[38px] items-center justify-center rounded-[10px] w-[100px] px-3 py-1.5 text-sm text-[#B4B4B9] bg-[#EFEFEF]">
-                <p>أضف إجابة</p>
-              </div>
-            </div>
-          </footer>
-        </>
-      )}
+              <span className="inline-flex items-center gap-1">
+                <ReplyIcon />
+                {commentCount}
+              </span>
+
+              <span className="inline-flex items-center gap-1">
+                <ShareIcon />
+                {sharesCount}
+              </span>
+            </div></>
+        }
+
+      </footer>
     </article>
   );
 }
 
-function Action({ icon, label }: { icon: JSX.Element; label: string }) {
+function LikeIcon({ active = false }: { active?: boolean }) {
   return (
-    <button className="inline-flex items-center rounded-[10px] h-[38px] px-3 py-1.5 text-sm text-black/70 bg-[#EFEFEF]" type="button">
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full">
-        {icon}
-      </span>
-      <span>{label}</span>
-    </button>
+    <img
+      src="/icons/like.svg"
+      alt=""
+      style={{
+        filter: active
+          ? "invert(27%) sepia(88%) saturate(2997%) hue-rotate(342deg) brightness(91%) contrast(96%)"
+          : "none",
+      }}
+    />
   );
-}
-
-function LikeIcon() {
-  return <img src="/icons/like.svg" alt="" />;
 }
 function ReplyIcon() {
   return <img src="/icons/comment.svg" alt="" />;

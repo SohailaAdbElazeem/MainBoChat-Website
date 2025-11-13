@@ -1,20 +1,26 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
-    // السماح بجلب الصور من الدومينات اللي في البوستات
     remotePatterns: [
       {
         protocol: "https",
         hostname: "bo-chat.space",
+        pathname: "/media/**",
+      },
+      {
+        protocol: "https",
+        hostname: "bo-chat.space",
+        pathname: "/men-jpg/**", // 👈 أضف ده
       },
       {
         protocol: "https",
         hostname: "bo-chat.cfd",
+        pathname: "/media/**",
       },
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
       },
     ],
   },
@@ -22,7 +28,6 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // لو صفحة اللوجين موجودة
         source: "/login",
         headers: [
           {
@@ -45,14 +50,10 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
-      // نخلي أي طلب محلي لـ /viaGoogle يروح لـ السيرفر الخارجي
       {
         source: "/viaGoogle",
         destination: "https://bo-chat.space/viaGoogle",
       },
-      // لو عايز مستقبلاً تعمل Proxy داخلي للبوستات بدل ما تضرب مباشرة على bo-chat
-      // ممكن تسيب السطر ده احتياطي
-      // { source: "/homeposts/null", destination: "http://bo-chat.space/homeposts/null" },
     ];
   },
 };

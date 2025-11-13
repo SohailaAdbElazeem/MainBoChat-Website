@@ -4,160 +4,171 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import PostCard, { Post } from "./PostCard";
 
-const BATCH = 20;
-
-// ✅ تحليل التاريخ (للمقارنة فقط)
-function parseDateFlexible(dateStr?: string | null): number {
-  if (!dateStr) return 0;
-  const s = String(dateStr).trim();
-  if (!s || s.toLowerCase().includes("invalid")) return 0;
-  const maybeSpaced = s.includes("T") ? s : s.replace(" ", "T");
-  const d = new Date(maybeSpaced);
-  if (!isNaN(d.getTime())) return d.getTime();
-  const n = Number(s);
-  if (!isNaN(n)) return n;
-  return 0;
-}
-
-// ✅ ترتيب البوستات
-function mixSort(posts: Post[], alpha = 0.8): Post[] {
-  if (!posts.length) return posts.slice();
-  const withTs = posts.map((p) => ({ p, ts: parseDateFlexible(p.createdAt) }));
-  const max = Math.max(...withTs.map((x) => x.ts));
-  const min = Math.min(...withTs.map((x) => x.ts));
-  const range = Math.max(1, max - min);
-  const scored = withTs.map(({ p, ts }) => {
-    const recNorm = (ts - min) / range;
-    const noise = Math.random();
-    const score = alpha * recNorm + (1 - alpha) * noise;
-    return { p, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  return scored.map((s) => s.p);
-}
-
 export default function PostsFeed() {
-  const [allMixed, setAllMixed] = useState<Post[]>([]);
-  const [visible, setVisible] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const obsRef = useRef<IntersectionObserver | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-useEffect(() => {
-  let cancelled = false;
+  const LIMIT = 20;
+  const API_BASE = "http://bo-chat.space/postsTest/686695914211804ef3875338";
 
-  async function run() {
-    try {
-      setLoading(true);
-      setError(null);
+  // --------------------------------------------------------------------
+  // ✅ تحميل البيانات - FIXED (بدون loop)
+  // --------------------------------------------------------------------
+  const loadPosts = useCallback(
+    async (newPage: number) => {
+      if (loadingMore || !hasMore) return;
 
-      const res = await fetch(`/api/bo-posts`, { cache: "no-store" });
-      if (!res.ok) {
-        const msg = `HTTP ${res.status}`;
-        if (!cancelled) setError(msg);
-        return;
+      try {
+        setLoadingMore(true);
+        setError(null);
+
+        const res = await fetch(`${API_BASE}?page=${newPage}&limit=${LIMIT}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        const newPosts = Array.isArray(data) ? data : [];
+
+        if (newPosts.length < LIMIT) setHasMore(false);
+
+        setPosts((prev) => {
+          const unique = new Map();
+          [...prev, ...newPosts].forEach((p: Post) => unique.set(p._id, p));
+          return Array.from(unique.values());
+        });
+
+        setPage(newPage);
+      } catch (err: any) {
+        setError(err.message || "تعذر تحميل البيانات");
+      } finally {
+        setLoading(false);
+        setTimeout(() => setLoadingMore(false), 250); // 🌙 smooth scroll
       }
+    },
+    [hasMore, loadingMore] // ← مش هنحط loadPosts ف dependency
+  );
 
-      const data = await res.json();
-      const arr = (Array.isArray(data) ? data : []) as Post[];
-
-      // ✅ معالجة مشكلة Invalid DateTime
-      const cleaned = arr.map((p) => {
-        const val = String(p?.createdAt || "").trim();
-        if (!val || val.toLowerCase() === "invalid datetime") {
-          // استخدم التاريخ الحالي بدل الفاسد
-          return { ...p, createdAt: new Date().toISOString() };
-        }
-        return { ...p, createdAt: val };
-      });
-
-      // ✅ إزالة التكرارات
-      const unique = Array.from(new Map(cleaned.map((p) => [p?._id, p])).values());
-
-      if (cancelled) return;
-
-      const mixed = mixSort(unique, 0.8);
-      setAllMixed(mixed);
-      setPage(1);
-      setVisible(mixed.slice(0, BATCH));
-    } catch (e: any) {
-      if (!cancelled) setError(e?.message ?? "تعذر التحميل");
-    } finally {
-      if (!cancelled) setLoading(false);
-    }
-  }
-
-  run();
-  return () => {
-    cancelled = true;
-  };
-}, []);
-
-
-  const hasMore = allMixed.length > page * BATCH;
-
-  const loadMore = useCallback(() => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    const next = page + 1;
-    setVisible(allMixed.slice(0, next * BATCH));
-    setPage(next);
-    setLoadingMore(false);
-  }, [loadingMore, hasMore, page, allMixed]);
-
+  // --------------------------------------------------------------------
+  // ✅ أول تحميل
+  // --------------------------------------------------------------------
   useEffect(() => {
-    obsRef.current?.disconnect();
-    obsRef.current = null;
+    loadPosts(1);
+  }, []);
 
-    if (scrollerRef.current && sentinelRef.current) {
-      const io = new IntersectionObserver(
-        (entries) => {
-          const first = entries[0];
-          if (first?.isIntersecting) loadMore();
-        },
-        { root: scrollerRef.current, rootMargin: "200px 0px", threshold: 0.01 }
-      );
-      io.observe(sentinelRef.current);
-      obsRef.current = io;
-    }
+  // --------------------------------------------------------------------
+  // ✅ OBSERVER — smooth + ما يحملش مرتين
+  // --------------------------------------------------------------------
+  useEffect(() => {
+    if (!sentinelRef.current) return;
 
-    return () => obsRef.current?.disconnect();
-  }, [loadMore]);
+    observerRef.current?.disconnect();
 
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+
+        if (entry.isIntersecting && hasMore && !loadingMore) {
+          loadPosts(page + 1);
+        }
+      },
+      {
+        root: scrollContainerRef.current,
+        rootMargin: "400px", // ↓ smoother
+        threshold: 0.1,
+      }
+    );
+
+    observerRef.current.observe(sentinelRef.current);
+    return () => observerRef.current?.disconnect();
+  }, [page, hasMore, loadingMore, loadPosts]);
+
+  // --------------------------------------------------------------------
+  // ✅ Manual scroll fallback - smooth
+  // --------------------------------------------------------------------
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    let timeout: any;
+
+    const onScroll = () => {
+      if (timeout) clearTimeout(timeout);
+
+      timeout = setTimeout(() => {
+        if (loadingMore || !hasMore) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = el;
+        if (scrollHeight - scrollTop - clientHeight < 600) {
+          loadPosts(page + 1);
+        }
+      }, 120); // ← smooth delay
+    };
+
+    el.addEventListener("scroll", onScroll);
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [page, hasMore, loadingMore, loadPosts]);
+
+  // --------------------------------------------------------------------
+  // ✅ تقسيم الأعمدة + حذف الفيديوهات
+  // --------------------------------------------------------------------
   const { colA, colB } = useMemo(() => {
+    const filtered = posts.filter((p) => p.type !== "video");
+
     const a: Post[] = [];
     const b: Post[] = [];
-    visible.forEach((p, i) => {
-      (i % 2 === 0 ? a : b).push(p);
-    });
-    return { colA: a, colB: b };
-  }, [visible]);
+    filtered.forEach((p, i) => ((i % 2 === 0 ? a : b).push(p)));
 
-  if (loading) return <div dir="rtl" className="p-4">جارِ التحميل…</div>;
-  if (error) return <div dir="rtl" className="p-4 text-red-600">خطأ: {error}</div>;
-  if (!visible.length) return <div dir="rtl" className="p-4">لا توجد منشورات.</div>;
+    return { colA: a, colB: b };
+  }, [posts]);
+
+  // --------------------------------------------------------------------
+  // UI
+  // --------------------------------------------------------------------
+  if (loading && posts.length === 0)
+    return (
+      <div dir="rtl" className="p-4">
+        جارِ التحميل…
+      </div>
+    );
+
+  if (error)
+    return (
+      <div dir="rtl" className="p-4 text-red-600">
+        خطأ: {error}
+      </div>
+    );
+
+  if (!posts.length)
+    return (
+      <div dir="rtl" className="p-4">
+        لا توجد منشورات.
+      </div>
+    );
 
   return (
     <div dir="rtl" className="overflow-hidden">
       <div
-        ref={scrollerRef}
+        ref={scrollContainerRef}
         className="overflow-y-auto scrollbar-hidden px-[25px]"
         style={{ height: "calc(100vh - 90px)" }}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <div className="space-y-5">
-            {colA.map((p) => (
-              <PostCard key={p._id} post={p} />
+            {colA.map((p, i) => (
+              <PostCard key={`${p._id}-${i}`} post={p} />
             ))}
           </div>
+
           <div className="space-y-4">
-            {colB.map((p) => (
-              <PostCard key={p._id} post={p} />
+            {colB.map((p, i) => (
+              <PostCard key={`${p._id}-${i}`} post={p} />
             ))}
           </div>
         </div>
@@ -168,8 +179,8 @@ useEffect(() => {
           </div>
         )}
 
-        <div ref={sentinelRef} style={{ height: 1 }} />
-        <div className="p-2" />
+        <div ref={sentinelRef} style={{ height: 2 }} />
+        <div className="p-3" />
       </div>
     </div>
   );

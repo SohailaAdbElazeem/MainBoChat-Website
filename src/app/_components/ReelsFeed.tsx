@@ -20,6 +20,8 @@ export default function ReelsFeed() {
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [progress, setProgress] = useState(0);
@@ -43,23 +45,36 @@ export default function ReelsFeed() {
     else if (e.deltaY < 0) handlePrevVideo();
   };
 
+  const stopAllVideos = () => {
+    videoRefs.current.forEach((v) => {
+      if (v) {
+        v.pause();
+        v.currentTime = 0;
+      }
+    });
+  };
+
   const handleNextVideo = () => {
-    setActiveIndex((prev) =>
-      prev < videos.length - 1 ? prev + 1 : prev
-    );
+    stopAllVideos();
+    setPlayingIndex(null);
+    setActiveIndex((prev) => (prev < videos.length - 1 ? prev + 1 : prev));
   };
 
   const handlePrevVideo = () => {
+    stopAllVideos();
+    setPlayingIndex(null);
     setActiveIndex((prev) => (prev > 0 ? prev - 1 : prev));
   };
 
   const handleOverlay = () => {
     setShowOverlay(true);
     setProgress(0);
+    stopAllVideos();
     setTimeout(() => {
       if (videoRef.current) {
         const rect = videoRef.current.getBoundingClientRect();
         setVideoWidth(rect.width);
+        videoRef.current.play().catch(() => {});
       }
     }, 300);
   };
@@ -85,6 +100,20 @@ export default function ReelsFeed() {
     videoRef.current.currentTime = seekTime;
   };
 
+  const togglePlay = (index: number) => {
+    const video = videoRefs.current[index];
+    if (!video) return;
+
+    if (playingIndex === index) {
+      video.pause();
+      setPlayingIndex(null);
+    } else {
+      stopAllVideos();
+      video.play().catch(() => {});
+      setPlayingIndex(index);
+    }
+  };
+
   return (
     <div
       className="relative h-[82vh] rounded-[21px] overflow-hidden bg-black"
@@ -102,15 +131,13 @@ export default function ReelsFeed() {
           }`}
         >
           <video
+            ref={(el) => (videoRefs.current[index] = el)}
             src={video.video[0]?.video}
             className="h-full w-full object-cover cursor-pointer"
-            autoPlay
             loop
             muted
-            onClick={handleOverlay}
+            playsInline
           />
-
-          {/* Overlay gradient */}
 
           {/* User info */}
           <div className="absolute top-5 right-4 backdrop-blur-md rounded-[17px] pl-2 flex items-center gap-3">
@@ -133,19 +160,35 @@ export default function ReelsFeed() {
 
           {/* Actions */}
           <div className="absolute right-4 bottom-20 flex flex-col items-center gap-3">
+            {/* Fullscreen */}
             <button
               onClick={handleOverlay}
               className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
             >
               <img src="/icons/fullscreen.svg" alt="" />
             </button>
+
+            {/* Options */}
             <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
               <img src="/icons/options-white.svg" alt="" />
             </button>
-            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
-              <img src="/icons/play.svg" alt="" />
+
+            {/* Play */}
+            <button
+              onClick={() => togglePlay(index)}
+              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+            >
+              <img
+                src={
+                  playingIndex === index
+                    ? "/icons/play.svg"
+                    : "/icons/play.svg"
+                }
+                alt={playingIndex === index ? "Pause" : "Play"}
+              />
             </button>
 
+            {/* Navigation */}
             <button
               onClick={handlePrevVideo}
               className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
@@ -159,14 +202,15 @@ export default function ReelsFeed() {
               <img src="/icons/arrow-down.svg" alt="next" />
             </button>
 
+            {/* Like / Comment / Share */}
             <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
-              <img src="/icons/like-white.svg" alt="" />
+              <img src="/icons/like-white.svg" alt="like" />
             </button>
             <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
-              <img src="/icons/comment-white.svg" alt="" />
+              <img src="/icons/comment-white.svg" alt="comment" />
             </button>
             <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
-              <img src="/icons/share-white.svg" alt="" />
+              <img src="/icons/share-white.svg" alt="share" />
             </button>
           </div>
         </div>
@@ -184,6 +228,7 @@ export default function ReelsFeed() {
               src={videos[activeIndex].video[0]?.video}
               className="max-h-[90vh] max-w-[90vw] rounded-[20px]"
               autoPlay
+              playsInline
               onTimeUpdate={handleTimeUpdate}
             />
             {/* User Info Overlay */}
@@ -202,7 +247,8 @@ export default function ReelsFeed() {
                 </p>
               </div>
             </div>
-            <div className="absolute top-1/7 right-2 gap-2" >
+
+            <div className="absolute top-1/7 right-2 gap-2">
               <button className="text-white rounded-full bg-[#000000]/15 mb-2 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
                 <img src="/icons/options-white.svg" alt="" />
               </button>
@@ -219,18 +265,21 @@ export default function ReelsFeed() {
                 <img src="/icons/share-white.svg" alt="" />
               </button>
             </div>
-          <div className="absolute bg-[#FFFFFF]/30 top-5 left-4 flex items-center px-3 py-2 backdrop-blur-md text-white gap-3 rounded-[17px]">
-            <span className="text-sm">{videos[activeIndex].views || 0}</span>
-            <img src="/icons/eye.svg" className="rounded-17px" alt="" />
-          </div>
+
+            <div className="absolute bg-[#FFFFFF]/30 top-5 left-4 flex items-center px-3 py-2 backdrop-blur-md text-white gap-3 rounded-[17px]">
+              <span className="text-sm">{videos[activeIndex].views || 0}</span>
+              <img src="/icons/eye.svg" className="rounded-17px" alt="" />
+            </div>
           </div>
 
           {/* Close Button */}
-          <h1  className="absolute top-15 right-8 text-white text-xl  transition"> الريلز</h1>
-          <div className="absolute top-1/2 right-8  ">
+          <h1 className="absolute top-15 right-8 text-white text-xl transition">
+            الريلز
+          </h1>
+          <div className="absolute top-1/2 right-8">
             <button
               onClick={handleCloseOverlay}
-              className=" w-[45px] h-[45px] rounded-full bg-[#fff]/15 mb-3 backdrop-blur-md flex items-center justify-center cursor-pointer  transition"
+              className="w-[45px] h-[45px] rounded-full bg-[#fff]/15 mb-3 backdrop-blur-md flex items-center justify-center cursor-pointer transition"
             >
               <img src="/icons/close.svg" alt="" />
             </button>
@@ -246,7 +295,6 @@ export default function ReelsFeed() {
             >
               <img src="/icons/arrow-down.svg" alt="next" />
             </button>
-
           </div>
 
           {/* Custom progress bar */}

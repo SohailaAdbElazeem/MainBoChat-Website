@@ -119,7 +119,7 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
 
           {/* Search */}
           <div className="relative" ref={panelRef} dir='rtl'>
-            <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[30vw] max-w-[500px] shadow-inner">
+            <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[30vw] max-w-[500px]">
               <Magnifier />
               <input
                 value={query}
