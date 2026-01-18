@@ -1,29 +1,16 @@
+/* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import { Post } from "@/types/types";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import toast from "react-hot-toast";
+import FollowButton from "../profile/_components/FollowButton";
+import Loader from "@/components/Loader";
 
-export type Post = {
-  _id: string;
-  username: string;
-  name: string;
-  userimg: string;
-  userid: string;
-  type: "image" | "text" | "video" | "question";
-  content: string;
-  image: { image: string; width?: string; height?: string }[] | null;
-  video: any;
-  createdAt: string;
-  likes: any[];
-  comments: any[];
-  liked?: number;
-  commented?: number;
-  vip?: boolean;
-  shares?: any[];
-  shareCount?: number;
-};
 
 function parseDateFlexible(dateStr?: string | null): Date | null {
   if (!dateStr) return null;
@@ -59,7 +46,6 @@ export default function PostCard({ post }: { post: Post }) {
     Array.isArray(post.likes) ? post.likes.length : 0
   );
    
-
   const [expanded, setExpanded] = useState(false);
   const [isLongText, setIsLongText] = useState(false);
   const textRef = useRef<HTMLParagraphElement>(null);
@@ -97,24 +83,62 @@ export default function PostCard({ post }: { post: Post }) {
     : [];
 
   const cardClass = isQuestion
-  ? "rounded-[26px] max-w-[400px] bg-gradient-to-b from-[#EAE8E8] to-[#fff] border border-[#D72229] bg-white"
-  : "rounded-[26px] max-w-[400px] text-right bg-gradient-to-b from-[#EAE8E8] to-[#fff]";
+  ? "rounded-[26px] min-w-[300px] bg-gradient-to-b from-[#EAE8E8] to-[#fff] border border-[#D72229] bg-white"
+  : "rounded-[26px] min-w-[300px] text-right bg-gradient-to-b from-[#EAE8E8] to-[#fff]";
 
   const textInnerBorder =
     post.type === "question"
       ? " shadow-[inset_0_0_0_1px_#D72229]"
       : "";
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
 
+  const images = Array.isArray(post.image) ? post.image : [];
+      
   const handleLike = async () => {
+    const token = localStorage.getItem("boChatToken");
+    const myUserId = localStorage.getItem("userid");
+
+    if (!token || !myUserId) return;
+
+    // 🔹 Optimistic Update
+    setLiked((prev) => {
+      setLikeCount((count) => (prev ? count - 1 : count + 1));
+      return !prev;
+    });
+
     try {
-      setLiked((prev) => !prev);
-      setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+      const res = await fetch(
+        `http://bo-chat.space/posts/${post._id}/reactions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            userid: myUserId,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Like failed");
+      }
+
+      // ✅ مفيش setState هنا — optimistic already applied
     } catch (err) {
-      setLiked((prev) => !prev);
+      console.error("LIKE ERROR:", err);
+
+      // 🔁 Rollback لو الـ API فشل
+      setLiked((prev) => {
+        setLikeCount((count) => (prev ? count - 1 : count + 1));
+        return !prev;
+      });
     }
   };
 
-  useEffect(() => {
+  useEffect(() => { 
     const el = textRef.current;
     if (el) {
       const computed = window.getComputedStyle(el);
@@ -124,21 +148,279 @@ export default function PostCard({ post }: { post: Post }) {
       setIsLongText(height > visibleHeight + 2);
     }
   }, [post.content]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const dotsRef = useRef<HTMLDivElement | null>(null);
+  const [shareText, setShareText] = useState("");
+  const [sharing, setSharing] = useState(false);
 
+  const myUserId =
+    typeof window !== "undefined"
+      ? localStorage.getItem("userid")
+      : null;
+
+  const isLikedByMe =
+    myUserId &&
+    Array.isArray(post.likes) &&
+    post.likes.some((like: any) => like.userid === myUserId);
+
+  useEffect(() => {
+    setLiked(!!isLikedByMe);
+  }, []);
+  // ---------------------------   REPORT POST   -----------------------------------------
+  const handleReport = async () => {
+    try {
+      const token = localStorage.getItem("boChatToken");
+
+      const res = await fetch(
+        `http://bo-chat.space/report${userid}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            postid: post._id,
+            email: userData?.email || "",
+          }),
+        }
+      );
+
+      const text = await res.text(); // 👈 مهم
+
+      if (!res.ok) {
+        throw new Error(text || "فشل إرسال البلاغ");
+      }
+
+      toast.success(" تم إرسال البلاغ بنجاح");
+        setShowMenu(false);
+      } catch (err) {
+        console.error("REPORT ERROR:", err);
+        toast.error(" حصل خطأ أثناء إرسال البلاغ");
+      }
+  };
+  const [showCommentOverlay, setShowCommentOverlay] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [showShareOverlay, setShowShareOverlay] = useState(false);
+
+  const fetchComments = async () => {
+    const token = localStorage.getItem("boChatToken");
+    const userid = localStorage.getItem("userid");
+
+    // 🔴 لو مش مسجل
+    if (!userid || !token) {
+      window.location.href = "/login";
+      return;
+    }
+
+    try {
+      setLoadingComments(true);
+
+      const res = await fetch(
+        `https://bo-chat.space/getcomments/${userid}?postid=${post._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to load comments");
+
+      const data = await res.json();
+      setComments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("COMMENTS ERROR:", err);
+      setComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const [commentText, setCommentText] = useState("");
+
+      
+  const userid = localStorage.getItem("userid");
+  const submitComment = async () => {
+  const token = localStorage.getItem("boChatToken");
+
+  if (!userid || !token) {
+    window.location.href = "/login";
+    return;
+  }
+
+  if (!commentText.trim()) return;
+
+  try {
+    const res = await fetch(
+      `https://bo-chat.space/posts/${post._id}/comments`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userid,
+          comment: commentText.trim(),
+        }),
+      }
+    );
+
+    if (!res.ok) throw new Error("Failed to send comment");
+
+    setCommentText("");
+
+    // 🔄 اعادة تحميل الكومنتات
+    fetchComments();
+  } catch (err) {
+    console.error("SEND COMMENT ERROR:", err);
+    alert("حصل خطأ أثناء إرسال التعليق");
+  }
+};
+  const [userData, setUserData] = useState<any>(null);
+    const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem("boChatToken");
+      const res = await fetch(`https://bo-chat.space/users/${userid}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user data");
+        const data = await res.json();
+
+        setUserData(data);
+      return;
+    } catch (err) {
+      console.error("FETCH USER DATA ERROR:", err);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+    const myUserImg = userData?.userpersonaldata?.img
+    // console.log("myUserImg", userData);
+
+  // ---------------------------   SHARE   -----------------------------------------
+  const handleShare = async () => {
+  const token = localStorage.getItem("boChatToken");
+  const userid = localStorage.getItem("userid");
+
+  if (!token || !userid) {
+    window.location.href = "/login";
+    return;
+  }
+
+  
+
+  try {
+    setSharing(true);
+    const payload = {
+      userid,
+      content: shareText.trim(),
+    };
+
+    const res = await fetch(
+      `http://bo-chat.space/posts/${post._id}/share`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+   let data;
+      try {
+        data = await res.json();
+      } catch {
+        data = await res.text();
+      }
+
+    if (!res.ok) {
+      console.error("SHARE RESPONSE:", data);
+      throw new Error(
+        typeof data === "string" ? data : data?.message || "Share failed"
+      );
+    }
+
+    toast.success("تمت مشاركة المنشور بنجاح ✅");
+    setShareText("");
+    setShowShareOverlay(false);
+  } catch (err) {
+    console.error("SHARE ERROR:", err);
+    toast.error("حصل خطأ أثناء الشير");
+  } finally {
+    setSharing(false);
+  }
+};
+
+
+
+  // ---------------------------   LIKE   -----------------------------------------
+  const [showLikesOverlay, setShowLikesOverlay] = useState(false);
+  // ---------------------------   Comment Like   -----------------------------------------
+  const handleCommentLike = async (commentId: string) => {
+    const token = localStorage.getItem("boChatToken");
+    const userid = localStorage.getItem("userid");
+
+    if (!token || !userid) {
+      window.location.href = "/login";
+      return;
+    }
+
+    try {
+      const res = await fetch("https://bo-chat.space/comment/react", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userid,
+          commentid: commentId,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to react on comment");
+      }
+
+      // ✅ لو حابب تعمل optimistic update هنا بعدين
+      console.log("COMMENT LIKE SUCCESS");
+    } catch (err) {
+      console.error("COMMENT LIKE ERROR:", err);
+    }
+  };
+  const [showCommentMenu, setShowCommentMenu] = useState<string | null>(null);
+
+  
   return (
-    <article dir="rtl" className={cardClass + textInnerBorder}>
-      <header className="p-4 flex items-start gap-3">
+
+    <article dir="rtl" className={`${cardClass + textInnerBorder} relative`}>
+      <header className="p-5 flex items-start justify-between gap-3">
+        <div className="flex gap-2">
         <div className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[21px]">
+          <Link href={`/profile/${post.userid}`}>
           <Image
             src={post.userimg || "/imgs/user.png"}
             alt={userName}
             fill
             sizes="50px"
             className="object-cover"
-          />
+            />
+            </Link>
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
+        <div className="">
+          <div className="flex flex-col ">
             <span className="font-semibold">{userName}</span>
             <span className="text-sm text-black/50">@{userHandle}</span>
             {post.vip && (
@@ -147,9 +429,29 @@ export default function PostCard({ post }: { post: Post }) {
               </span>
             )}
           </div>
-          <div className="text-xs text-black/50">
+        </div>
+        </div>
+        <div className="flex relative items-center justify-center gap-2">
+          <div className="text-xs text-[#D72229]">
             {timeAgoAr(post.createdAt || new Date().toISOString())}
           </div>
+          <div
+            ref={dotsRef}
+            onClick={() => {
+              if (dotsRef.current) {
+                const rect = dotsRef.current.getBoundingClientRect();
+                setMenuPos({
+                  top: rect.bottom + 8, 
+                  left: window.innerWidth - rect.right, 
+                });
+              }
+              setShowMenu((prev) => !prev);
+            }}
+            className="cursor-pointer"
+          >
+            <img src="/imgs/dots.svg" className="mr-1" alt="menu" />
+          </div>
+
         </div>
       </header>
 
@@ -182,7 +484,12 @@ export default function PostCard({ post }: { post: Post }) {
 
 
       {shouldShowImage && validImage ? (
-        <div className="max-h-[350px] flex items-center justify-center overflow-hidden bg-black/5">
+        <div className="max-h-[350px] flex items-center justify-center overflow-hidden bg-black/5 cursor-pointer"
+          onClick={() => {
+            setActiveIndex(0);
+            setShowOverlay(true);
+          }}
+        >
           <img
             src={firstImage!.image}
             alt="post image"
@@ -208,7 +515,11 @@ export default function PostCard({ post }: { post: Post }) {
           {isQuestion? (
             <div className="flex justify-center items-center w-full gap-3">
               <button
-                disabled
+
+                onClick={() =>{ setShowCommentOverlay(true); 
+                  fetchComments();
+                  
+                }}
                 className="flex items-center px-[45px] text-center gap-2 bg-[#F2F2F2] text-[#B5B5B5]  py-2 rounded-xl cursor-default select-none"
                 >
                 أضف إجابة
@@ -220,7 +531,7 @@ export default function PostCard({ post }: { post: Post }) {
 
           )
         :
-        <><div className="flex items-center">
+        <><div className="flex items-center"  onClick={() => setShowLikesOverlay(true)}>
 
             {likerAvatars.length > 0 ? (
               <div className="flex items-center">
@@ -255,15 +566,24 @@ export default function PostCard({ post }: { post: Post }) {
                   color: liked ? "#D72229" : "inherit",
                 }}
               >
-                <LikeIcon active={liked} />
+                <LikeIcon active={liked} white={false} />
               </button>
 
-              <span className="inline-flex items-center gap-1">
+              <span 
+                onClick={() =>
+                    {
+                      fetchComments();
+                      setShowCommentOverlay(true)
+                    }
+                  }
+                className="inline-flex items-center gap-1">
                 <ReplyIcon />
                 {commentCount}
               </span>
 
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1"
+               onClick={() => setShowShareOverlay(true)}
+               >
                 <ShareIcon />
                 {sharesCount}
               </span>
@@ -271,11 +591,581 @@ export default function PostCard({ post }: { post: Post }) {
         }
 
       </footer>
+      {showMenu && (
+        <div
+          className="absolute z-[9999]"
+          style={{
+            top: "40px",
+            left: "0px",
+          }}
+        >
+          <div className="
+            bg-[#000000]/15
+            rounded-[30px] 
+            shadow-xl 
+            backdrop-blur-xl 
+            p-4 
+            w-[260px]
+            flex flex-col 
+            gap-4
+          ">
+            <button className="
+              w-full 
+              bg-white 
+              rounded-[20px] 
+              py-3 
+              px-4 
+              text-right 
+              flex 
+              items-center 
+              gap-2
+            ">
+              <div className="h-8 w-8 bg-[#D8D8D8]  flex items-center justify-center rounded-full">
+                <img src="/icons/eye.svg" className="w-5 h-5 invert-0 transform rotate-[160deg]" style={{ filter: "brightness(0) saturate(100%)" }} />
+              </div>
+              <span className="text-black">لا اريد مشاهدة هذا</span>
+            </button>
+
+            <button 
+              onClick={() => handleReport()}
+              className="
+                w-full 
+                bg-white 
+                rounded-[20px] 
+                py-3 
+                px-4 
+                text-right 
+                flex 
+                items-center 
+                gap-2
+                cursor-pointer
+                hover:bg-[#F2F2F2]
+              ">
+              <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
+                <img src="/icons/flag.svg" className="w-4 h-4" />
+              </div>
+              <span className="text-black">إبلاغ عن المنشور</span>
+            </button>
+          </div>
+        </div>
+      )}
+      {showOverlay && (
+  <div className="fixed inset-0 z-[99999] bg-[#000000]/90 backdrop-blur-sm flex items-center justify-center flex-col">
+    <div className=" mb-[15px] mt-[-15px] flex items-center gap-4">
+    {/* Right Arrow */}
+    {images.length > 1 && (
+      <div className="flex items-center justify-center gap-2">
+
+      <button
+        onClick={() =>
+          setActiveIndex((prev) =>
+            prev === images.length - 1 ? 0 : prev + 1
+          )
+        }
+        className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
+      >
+        <img src="/imgs/arrowright.svg" alt="" />
+      </button>
+      <button
+        onClick={() =>
+          setActiveIndex((prev) =>
+            prev === 0 ? images.length - 1 : prev - 1
+          )
+        }
+        className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
+      >
+        <img src="/imgs/arrowleft.svg" alt="" />
+      </button>
+      </div>
+
+    )}
+    {/* Close */}
+    <button
+      onClick={() => setShowOverlay(false)}
+      className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
+    >
+
+      <img src="/icons/close.svg" alt="" />
+    </button>
+    </div>
+
+    {/* Image */}
+    <div >
+      <img
+        src={images[activeIndex]?.image}
+        className="max-h-[550px] max-w-[700px] rounded-[65px] object-contain"
+        />
+    </div>
+
+    {/* Left Arrow */}
+
+  </div>
+)}
+
+{/* -------------- COMMENT OVERLAY ------------ */}
+  {showCommentOverlay && (
+    <div className="
+      fixed inset-0 z-[100000]
+      bg-[#0000001A]
+      backdrop-blur-[20px]
+      flex items-center justify-center
+    ">
+      <div className="
+        w-[90%] max-w-[600px]
+        relative
+        rounded-[25px]
+        max-h-[80vh]
+        bg-[#FFFFFF]/10
+        flex flex-col
+      ">
+        {/* Close */}
+        <button
+          onClick={() => setShowCommentOverlay(false)}
+          className="absolute top-[-60px] left-1/2 transform -translate-x-1/2 cursor-pointer bg-[#000]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
+        >
+          <img src="/icons/close.svg" alt="close" />
+        </button>
+
+        <h3 className="text-lg font-semibold text-right p-3 bg-[#fff]/25 backdrop-blur-xl rounded-t-[25px]">
+          {
+            isQuestion ? "الإجابات" : "تقول ايه"
+          }
+        </h3>
+
+        {/* Content */}
+        <div className=" overflow-y-auto space-y-2 scrollbar-hidden ">
+          
+          {loadingComments && (
+            <Loader />
+          )}
+
+          {!loadingComments && comments.length === 0 && (
+
+              <div className="flex items-center justify-center w-full h-[400px] flex-col gap-4">
+                {
+                  isQuestion ? (
+                    <>
+                      <img src="/icons/answers.svg" className="w-[65px]" alt="" />
+                      <p className="text-2xl">مافيش اجابات لسه</p>
+                      <p className="text-md">ماحدش جاوب لسه… خليك أنت أول واحد يكسر الصمت</p>
+                    </>
+                  ) : (
+                    <>
+                      <img src="/icons/nocomments.svg" className="w-[65px]" alt="" />
+                    <p className="text-2xl">مافيش ردود لسه</p>
+                    <p className="text-md">ماحدش رد لسه خليك أنت أول واحد يكسر الصمت</p>
+                    </>
+                  )
+                }
+              </div>
+          )}
+
+        {!loadingComments &&
+          comments.map((comment, idx) => (
+              <div
+                key={comment._id || idx}
+                className="flex relative items-start justify-between p-3   gap-2 bg-[#000]/10"
+              >
+                <div className="flex items-start justify-between gap-3 ">
+                {/* Avatar */}
+                  <div className="w-[54px] h-[54px] shrink-0 rounded-[23px] overflow-hidden">
+                    <img
+                      src={comment.userimg || "/imgs/user.png"}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* Text */}
+                  <div className="flex-1 text-right">
+                    <div className="flex items-center">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-[15px] text-white">
+                          {comment.name || comment.username || "مستخدم"}
+                        </span>
+                        <div className="flex gap-2">
+                          <span className="text-[12px] text-black/50">
+                            @{(comment.username || "").replaceAll(" ", "")}
+                          </span>
+
+                          <span className="text-[12px] text-[#D72229]">
+                            {timeAgoAr(comment.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <p className="mt-2 text-sm text-black/80 whitespace-pre-wrap leading-6">
+                      {comment.content}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className="
+                    flex
+                    cursor-pointer
+                    gap-2
+                  "
+                >
+                  <div 
+                    onClick={() => handleCommentLike(comment._id)}
+                    className={`
+                      w-[60px]
+                      h-[34px]
+                      rounded-[15px]
+                      ${isLikedByMe ? "bg-[#D72229]" : "bg-[#B4B4B9]"}
+                      flex
+                      items-center
+                      justify-center
+                      gap-2
+                    `}>
+                    <p className="text-[#fff]">
+                      {/* {comment.likes?.length || 0} */}
+                    </p>
+                    <LikeIcon active={false} white={true} />
+                  </div>
+                  <div className=" w-[50px]
+                    h-[34px]
+                    rounded-[15px]
+                    flex
+                    bg-[##B4B4B9]/30
+                    border border-[#fff]/40
+                    items-center
+                    justify-center
+                    gap-2"
+                    
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowCommentMenu(
+                          showCommentMenu === comment._id ? null : comment._id
+                        );
+                      }}
+                    >
+                    <img src="/imgs/dots.svg" className="filter invert" alt="" />
+                  </div>
+
+                  {showCommentMenu === comment._id && (
+                    <div
+                      className="
+                        absolute
+                        bottom-0
+                        left-0
+                        z-[9999]
+                        flex
+                        gap-2
+                        ml-3
+                      "
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* رد */}
+                      <button
+                        className="
+                        w-[100px]
+                          flex items-center gap-1.5
+                          rounded-[18px]
+                          px-2 py-2
+                          text-sm
+                          bg-[#000]/30
+                          text-white
+                        "
+                      >
+                        <div className="w-[38px] h-[38px] bg-white rounded-full flex items-center justify-center">
+                          <img src="/icons/reply.svg" alt="" />
+                        </div>
+                        <span>رد</span>
+                      </button>
+
+                      {/* إعجاب */}
+                      <button
+                        className="
+                        w-[100px]
+                          flex items-center gap-3
+                          rounded-[18px]
+                          px-3 py-2
+                          text-sm
+                          bg-[#D72229]/30
+                          text-white
+                        "
+                      >
+                        <div className="w-[38px] h-[38px] bg-white rounded-full flex items-center justify-center">
+                          <img src="/icons/ban.svg" alt="" />
+                        </div>
+                        <span>حجب</span>
+                      </button>
+
+                      {/* بلاغ */}
+                      <button
+                        className="
+                        w-[100px]
+                          flex items-center gap-3
+                          rounded-[18px]
+                          px-3 py-2
+                          text-sm
+                          bg-[#D72229]/30
+                          text-white
+                        "
+                      >
+                        <div className="w-[38px] h-[38px] bg-white rounded-full flex items-center justify-center">
+                          <img src="/icons/flag.svg"
+                            style={{
+                              filter:
+                                "invert(27%) sepia(88%) saturate(2997%) hue-rotate(342deg) brightness(91%) contrast(96%)",
+                            }}
+                            alt="" 
+                            />
+                        </div>
+                        <span>بلاغ</span>
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+
+          ))}
+          {/* Add Comment */}
+          <div className="
+            flex items-center gap-3
+            bg-[#fff]/50 backdrop-blur-xl
+            p-3
+            rounded-b-[25px]
+          ">
+            {/* Avatar */}
+            <div className="w-[42px] h-[42px] rounded-full overflow-hidden shrink-0">
+              <img
+                src={myUserImg || "/imgs/user.png"}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            {/* Input */}
+
+            <div className="bg-[#000]/10 backdrop-blur-xl w-full flex rounded-[19px]">
+              <input
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="اكتب إجابتك هنا"
+                className="
+                  flex-1
+                  bg-transparent
+                  outline-none
+                  p-3
+                "
+              />
+
+              {/* Submit */}
+              <button
+                onClick={submitComment}
+                className="
+                  bg-white
+                  px-4
+                  py-3
+                  rounded-tl-[19px]
+                  rounded-b-[19px]
+                  text-[#D72229]
+                  font-semibold
+                  shrink-0
+                  cursor-pointer
+                "
+              >
+                نشر الإجابة
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* share */}
+
+  {showShareOverlay && (
+      <div
+        className="
+          fixed inset-0 z-[100000]
+          bg-[#000]/10
+          backdrop-blur-[10px]
+          flex items-center justify-center
+        "
+      >
+        <div
+          className="
+            w-[90%] max-w-[690px]
+            rounded-[25px]
+            backdrop-blur-xl
+            relative
+          "
+        >
+          {/* Close */}
+          <button
+            onClick={() => setShowShareOverlay(false)}
+            className="absolute -top-16 left-1/2 -translate-x-1/2
+            w-[55px] h-[55px] rounded-full
+            bg-black/20 hover:bg-black/40 cursor-pointer
+            flex items-center justify-center"
+          >
+            <img src="/icons/close.svg" alt="close" />
+          </button>
+
+          {/* Title */}
+          <h3 className="text-right text-lg font-semibold bg-[#fff]/25 backdrop-blur-md p-3 rounded-t-[25px]">
+            شيرها فضفضة
+          </h3>
+            
+          <div className="p-5 bg-gradient-to-l from-[#FFFFFF] bg-[##8D8D8D]">
+            {/* Textarea */}
+            <textarea
+              placeholder="اكتب هذا المحتوى الذي تريد مشاركته"
+              value={shareText}
+              onChange={(e) => setShareText(e.target.value)}
+              className="
+                w-full
+                h-[247px]
+                p-4
+                rounded-[20px]
+                bg-transparent
+                resize-none
+                outline-none
+                border border-black/10
+                placeholder:text-sm
+              "
+            />
+
+          </div>
+          <div className="px-5 pb-5 bg-gradient-to-l from-[#FFFFFF] bg-[##8D8D8D] rounded-b-[25px]">
+
+            {/* Share To */}
+            <div className="text-right mb-3 font-medium">
+              شيرها في رسالة
+            </div>
+
+            <div className="flex items-center gap-3 overflow-x-auto pb-3">
+              {userData.followers.map((follower) => (
+                <div key={follower.followerid} className="flex flex-col items-center gap-1">
+                  <div className="w-[55px] h-[55px] rounded-[23px] overflow-hidden">
+                    <img
+                      src={follower.followerdata.img || "/imgs/user.png"}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-center">
+            {/* Share Button */}
+              <button
+                onClick={handleShare}
+                className={`
+                  w-[300px]
+                  mx-auto
+                  py-4
+                  rounded-[23px]
+                  mt-4
+                  text-white
+                  transition
+                  cursor-pointer
+                  ${
+                    sharing || !shareText.trim()
+                      ? "bg-black/40 "
+                      : "bg-[#D72229] hover:bg-[#b91c22]"
+                  }
+                `}
+              >
+                {sharing ? "جاري الشير..." : "شيرها"}
+              </button>
+
+          </div>
+          </div>
+        </div>
+      </div>
+    )}
+      {/* Likes Overlay */}
+      {showLikesOverlay && (
+        <div className="
+          fixed inset-0 z-[100000]
+          bg-black/10
+          backdrop-blur-[20px]
+          flex items-center justify-center
+          
+        ">
+          <div className="
+            w-[90%] max-w-[690px]
+            rounded-[25px]
+            max-h-[660px]
+            flex flex-col
+            overflow-hidden
+            bg-gradient-to-l from-[#FFFFFF] bg-[##8D8D8D]
+          ">
+              {/* close */}
+              <button
+                onClick={() => setShowLikesOverlay(false)}
+                className="absolute top-30 left-1/2 -translate-x-1/2 w-[55px] h-[55px] rounded-full bg-black/20 hover:bg-black/40 cursor-pointer flex items-center justify-center"
+              >
+                <img src="/icons/close.svg" alt="" />
+              </button>
+
+            {/* Header */}
+            <div className="bg-[#fff]/25 backdrop-blur-md px-4 h-[55px] flex items-center">
+                <span className="font-semibold text-lg">تكات الاعجاب بالفضفضة</span>
+   
+            </div>
+            <div className="px-5 flex items-center justify-between ">
+              <p className="text-[13px]">اعجابات بواسطة</p>
+              <p className="text-[13px]">{post.likes.length}</p>
+            </div>
+            {/* List */}
+              <div className="flex-1 overflow-y-auto scrollbar-hidden">
+              {Array.isArray(post.likes) && post.likes.length > 0 ? (
+                post.likes.map((like: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between py-2 px-4 "
+                  >
+                    <div className="flex items-center gap-3">
+                      <Link href={`/profile/${like.userid}`}>
+                        <div className="w-[54px] h-[54px] rounded-[24px] overflow-hidden cursor-pointer">
+                          <img
+                            src={like.userimg || '/imgs/user.png'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </Link>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {like.name || 'مستخدم'}
+                        </span>
+                        <span className="text-sm text-black/50">
+                          @{(like.username || '').replaceAll(' ', '')}
+                        </span>
+                      </div>
+                    </div>
+                    {
+                      like.userid === myUserId ? (
+                        null
+                      ) : (
+                        <FollowButton
+                          followingId={like.userid}
+                          serverFollowerIds={like.followerIds || []}
+                          requestedFollow={like.requestedFollow || false}
+                        />
+                      )
+                    }
+                  </div>
+                ))
+              ) : (
+                <p className="text-center py-6 text-gray-400">
+                  لا يوجد إعجابات
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </article>
   );
 }
 
-function LikeIcon({ active = false }: { active?: boolean }) {
+function LikeIcon({ active = false , white = true}: { active?: boolean, white?: boolean }) {
   return (
     <img
       src="/icons/like.svg"
@@ -283,7 +1173,7 @@ function LikeIcon({ active = false }: { active?: boolean }) {
       style={{
         filter: active
           ? "invert(27%) sepia(88%) saturate(2997%) hue-rotate(342deg) brightness(91%) contrast(96%)"
-          : "none",
+          : white ? "brightness(0) invert(1)" : "none",
       }}
     />
   );

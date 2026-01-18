@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import PostCard, { Post } from "./PostCard";
+import GlobalLoader from "@/components/GlobalLoader";
 
 export default function PostsFeed() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -156,8 +157,8 @@ export default function PostsFeed() {
     <div dir="rtl" className="overflow-hidden">
       <div
         ref={scrollContainerRef}
-        className="overflow-y-auto scrollbar-hidden px-[25px]"
-        style={{ height: "calc(100vh - 90px)" }}
+        className="w-full overflow-y-auto scrollbar-hidden px-[10px]"
+        style={{ height: "calc(100vh - 95px)" }}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <div className="space-y-5">
@@ -175,7 +176,7 @@ export default function PostsFeed() {
 
         {loadingMore && (
           <div className="py-3 text-center text-sm text-black/60">
-            جارِ تحميل المزيد…
+            <GlobalLoader/>
           </div>
         )}
 

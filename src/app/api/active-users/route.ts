@@ -24,7 +24,7 @@ export async function GET() {
   try {
     const res = await fetch(endpoint, {
       method: "GET",
-      headers: { Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzYyOTg4Njk3LCJleHAiOjE3NjM1OTM0OTd9.RFsCobNdMCiPf2uxmfq92Ybu8WoKVoQ4RhgSfuOm3vo` },
+      headers: { Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzY0MDA1NTk3LCJleHAiOjE3NjQ2MTAzOTd9.wGFSnfk4ULUMG7Qbl8ksRgh6ShX9EkyXQgtPSrfNa4E` },
       signal: ctrl.signal,
       // نسيب ISR شغال على مستوى الرد بتاعنا، بس من الأفضل من غير force-cache هنا
       // عشان لو Upstream بيرجع Cache headers غريبة ما تلخبطش

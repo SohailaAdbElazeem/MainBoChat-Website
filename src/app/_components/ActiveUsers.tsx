@@ -5,6 +5,7 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import './css/style.css'
+import GlobalLoader from "@/components/GlobalLoader";
 
 type RawUser = Record<string, any>;
 
@@ -25,7 +26,7 @@ type Props = {
 const DOT_COLOR = "#D72229";
 
 export default function ActiveUsersCarousel({
-  endpoint = "/api/active-users", // ← ثابت بدون ID
+  endpoint = "/api/active-users",
   token,
   initialData,
   className = "",
@@ -93,10 +94,8 @@ export default function ActiveUsersCarousel({
     }
     if (!users) {
       return (
-        <div className="flex gap-4">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-200 animate-pulse" />
-          ))}
+        <div className="text-sm text-red-600 px-3 py-2 rounded-[21px] border border-red-200">
+          <GlobalLoader/>
         </div>
       );
     }
@@ -144,7 +143,7 @@ export default function ActiveUsersCarousel({
 
   return (
     <section className={`relative ${className}`}>
-      <h2 className="text-2xl font-semibold mb-2 !px-4" dir="rtl">أعضاء نشطين</h2>
+      <h2 className="text-2xl font-semibold mb-2 " dir="rtl">أعضاء نشطين</h2>
       <div className="relative min-w-[350px]">
         {showArrows && (
           <>
@@ -165,8 +164,7 @@ export default function ActiveUsersCarousel({
             </button>
           </>
         )}
-
-        <div className="rounded-tl-[21px] rounded-bl-[21px] bg-[#F6F6F6] p-[5px]">{content}</div>
+        <div className="rounded-tr-[21px] rounded-br-[21px] bg-[#F6F6F6]  p-[5px]">{content}</div>
       </div>
     </section>
   );

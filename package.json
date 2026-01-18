@@ -12,9 +12,15 @@
     "google-auth-library": "^10.2.1",
     "jose": "^6.0.13",
     "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.561.0",
     "next": "15.5.0",
+    "qr-code-styling": "^1.9.2",
+    "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-hot-toast": "^2.6.0",
+    "react-qr-code": "^2.0.18",
+    "wavesurfer.js": "^7.12.1",
     "zod": "^4.1.1"
   },
   "devDependencies": {

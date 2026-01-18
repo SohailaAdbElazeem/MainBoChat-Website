@@ -341,8 +341,8 @@ export default function StoriesCarousel() {
 )} */}
 
       {showOverlay && cards[userIndex] && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center">
-          <div className="relative max-h-[90vh] max-w-[90vw w-full flex items-center justify-center rounded-[20px]">
+        <div className="fixed inset-0 bg-black/90 z-[999999] flex flex-col items-center justify-center w-full h-full">
+          <div className="relative max-h-[20vh] max-w-[20vw] w-full flex items-center justify-center rounded-[20px]">
             <div className="absolute top-0 left-0 w-full px-3 pt-3 flex gap-[4px] z-20">
               {cards[userIndex].stories.map((_, i) => (
                 <div key={i} className="flex-1 h-[3px] bg-white/30 rounded-full overflow-hidden">

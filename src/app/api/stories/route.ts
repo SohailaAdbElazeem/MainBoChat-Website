@@ -8,8 +8,7 @@ const UPSTREAM_URL = "https://bo-chat.space/story/686695914211804ef3875338";
 
 // ⚠️ لو هتستخدم التوكن دايمًا كده، الأفضل تحطه في .env
 // process.env.BOCHAT_TOKEN
-const STATIC_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzYyOTg4Njk3LCJleHAiOjE3NjM1OTM0OTd9.RFsCobNdMCiPf2uxmfq92Ybu8WoKVoQ4RhgSfuOm3vo";
+const STATIC_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzY3NzI1Njg2LCJleHAiOjE3NjgzMzA0ODZ9.7_vbY4ifpv13s2aj2Du3za-YonHDg9k_DreaQesqVJs";
 
 export async function GET(req: NextRequest) {
   const controller = new AbortController();

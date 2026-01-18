@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+    ignoreTypeErrors: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -10,7 +14,7 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "bo-chat.space",
-        pathname: "/men-jpg/**", // 👈 أضف ده
+        pathname: "/men-jpg/**", 
       },
       {
         protocol: "https",

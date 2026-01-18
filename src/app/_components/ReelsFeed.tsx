@@ -18,6 +18,9 @@ type Video = {
 export default function ReelsFeed() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false); // لمنع multiple calls
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showOverlay, setShowOverlay] = useState(false);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
@@ -27,18 +30,53 @@ export default function ReelsFeed() {
   const [progress, setProgress] = useState(0);
   const [videoWidth, setVideoWidth] = useState<number | null>(null);
 
+  // دالة جلب الفيديوهات (قابلة لإعادة الاستخدام)
+  const fetchVideos = async (pageToFetch = 1, limit = 10) => {
+    // حماية: لو بنعمل loading أساسي أو تحميل إضافي أو خلصت الصفحات
+    if ((loading && pageToFetch !== 1) || loadingMore || !hasMore) return;
+
+    if (pageToFetch === 1) setLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const res = await fetch(
+        `http://bo-chat.space/bestvideosTest/null?page=${pageToFetch}&limit=${limit}`
+      );
+      const data = await res.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        // مفيش بيانات إضافية
+        setHasMore(false);
+      } else {
+        setVideos((prev) => (pageToFetch === 1 ? data : [...prev, ...data]));
+        setPage(pageToFetch + 1);
+      }
+    } catch (err) {
+      console.error("Error fetching videos:", err);
+      // اختياري: يمكنك وضع toast أو رسالة للمستخدم
+    } finally {
+      if (pageToFetch === 1) setLoading(false);
+      else setLoadingMore(false);
+    }
+  };
+
+  // جلب الصفحة الأولى عند الماونت
   useEffect(() => {
-    fetch("http://bo-chat.space/bestvideos/686695914211804ef3875338")
-      .then((res) => res.json())
-      .then((data) => {
-        setVideos(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching videos:", err);
-        setLoading(false);
-      });
+    fetchVideos(1, 10);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // لو المستخدم وصل لآخر فيديو — جلب الصفحة التالية تلقائيًا
+  useEffect(() => {
+    // لو وصلنا لنقطة النهاية
+    if (!hasMore) return;
+    // عندما يصبح activeIndex هو آخر عنصر في المصفوفة، نحمّل المزيد
+    if (activeIndex >= videos.length - 1 && videos.length > 0) {
+      // استدعي الصفحة التالية إذا لم تكن هناك عملية تحميل جارية
+      fetchVideos(page, 10);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, videos.length, hasMore]);
 
   const handleScroll = (e: React.WheelEvent<HTMLDivElement>) => {
     if (e.deltaY > 0) handleNextVideo();
@@ -85,7 +123,7 @@ export default function ReelsFeed() {
   };
 
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
+    if (videoRef.current && videoRef.current.duration) {
       const progressValue =
         (videoRef.current.currentTime / videoRef.current.duration) * 100;
       setProgress(progressValue);
@@ -114,9 +152,16 @@ export default function ReelsFeed() {
     }
   };
 
+  // تأكد أن طول المصفوفة videoRefs يساوي عدد الفيديوهات لتجنب undefined refs
+  useEffect(() => {
+    videoRefs.current = videoRefs.current.slice(0, videos.length);
+  }, [videos.length])
   return (
     <div
-      className="relative h-[82vh] rounded-[21px] overflow-hidden bg-black"
+      className="relative rounded-[21px] overflow-hidden bg-black"
+      style={{
+        height: "calc(100vh - 250px)", 
+      }}
       onWheel={handleScroll}
     >
       {videos.map((video, index) => (
@@ -137,6 +182,8 @@ export default function ReelsFeed() {
             loop
             muted
             playsInline
+            controlsList="nodownload noremoteplayback"
+            disablePictureInPicture
           />
 
           {/* User info */}
@@ -159,24 +206,24 @@ export default function ReelsFeed() {
           </div>
 
           {/* Actions */}
-          <div className="absolute right-4 bottom-20 flex flex-col items-center gap-3">
+          <div className="absolute right-4 top-1/2 transform-y -translate-y-1/2 flex flex-col items-center gap-1">
             {/* Fullscreen */}
             <button
               onClick={handleOverlay}
-              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[40px] h-[40px] hover:bg-[#fff]/20 transition"
             >
               <img src="/icons/fullscreen.svg" alt="" />
             </button>
 
             {/* Options */}
-            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[40px] h-[40px] hover:bg-[#fff]/20 transition">
               <img src="/icons/options-white.svg" alt="" />
             </button>
 
             {/* Play */}
             <button
               onClick={() => togglePlay(index)}
-              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[40px] h-[40px] hover:bg-[#fff]/20 transition"
             >
               <img
                 src={
@@ -191,25 +238,25 @@ export default function ReelsFeed() {
             {/* Navigation */}
             <button
               onClick={handlePrevVideo}
-              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[40px] h-[40px] hover:bg-[#fff]/20 transition"
             >
               <img src="/icons/arrow-up.svg" alt="prev" />
             </button>
             <button
               onClick={handleNextVideo}
-              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition"
+              className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[40px] h-[40px] hover:bg-[#fff]/20 transition"
             >
               <img src="/icons/arrow-down.svg" alt="next" />
             </button>
 
             {/* Like / Comment / Share */}
-            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[40px] h-[40px] hover:bg-[#fff]/20 transition">
               <img src="/icons/like-white.svg" alt="like" />
             </button>
-            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[40px] h-[40px] hover:bg-[#fff]/20 transition">
               <img src="/icons/comment-white.svg" alt="comment" />
             </button>
-            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[45px] h-[45px] hover:bg-[#fff]/20 transition">
+            <button className="text-white rounded-full bg-[#000000]/15 flex items-center justify-center cursor-pointer backdrop-blur-md p-3 w-[40px] h-[40px] hover:bg-[#fff]/20 transition">
               <img src="/icons/share-white.svg" alt="share" />
             </button>
           </div>
@@ -220,7 +267,7 @@ export default function ReelsFeed() {
       {showOverlay && (
         <div
           ref={containerRef}
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+          className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center"
         >
           <div className="relative">
             <video
@@ -230,6 +277,8 @@ export default function ReelsFeed() {
               autoPlay
               playsInline
               onTimeUpdate={handleTimeUpdate}
+              controlsList="nodownload noremoteplayback"
+              disablePictureInPicture
             />
             {/* User Info Overlay */}
             <div className="absolute top-5 right-4 flex items-center gap-3">

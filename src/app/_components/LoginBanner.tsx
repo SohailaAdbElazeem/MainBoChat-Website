@@ -34,7 +34,7 @@ export default function LoginBanner({
   if (!shouldShow) return null;
 
   return (
-    <div dir="rtl" className="w-full fixed bottom-0 left-0 bg-[#D72229] text-white">
+    <div dir="rtl" className="w-full fixed bottom-0 left-0 bg-[#D72229] text-white z-[999]">
       <div className="mx-auto flex  items-center justify-between gap-4 px-10 py-3">
         <p className="text-sm md:text-base">
           كن أول من يعرف الجديد… مستخدمو باندا أوراكل يعرفون الأحداث لحظة بلحظة

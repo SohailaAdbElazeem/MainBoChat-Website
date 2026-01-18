@@ -10,7 +10,7 @@
 @font-face {
   font-family: 'Cairo';
   src: url('/font/Cairo-Bold.ttf') format('truetype');
-  font-weight: 900;
+  font-weight: 800;
   font-style: normal;
 }
 
@@ -43,4 +43,57 @@ body {
 .scrollbar-hidden {
   -ms-overflow-style: none; 
   scrollbar-width: none; 
+}
+
+
+.layer-1,
+.layer-2{
+  position: absolute;
+  z-index: 0;
+  transform: rotate(320deg);
+  -webkit-transform: rotate(320deg);
+  -moz-transform: rotate(320deg);
+  -ms-transform: rotate(320deg);
+  -o-transform: rotate(320deg);
+  filter: blur(20px);
+  -webkit-filter: blur(20px);
+  opacity: 0.8;
+}
+.layer-1{
+  bottom: -221px;
+  right: -75px;
+}
+
+.layer-2{
+  top: -598px;
+  left: -254px;
+}
+.main-layer{
+  position: relative;
+}
+
+.active-chat{
+  position: relative;
+  z-index: 5;
+  padding: 10px;
+  margin-left: 5px;
+  color: white;
+}
+.active-chat div{
+  color: #fff;
+}
+.active-chat::after{
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(    90deg,    rgba(215, 34, 41, 1) 0%,    rgba(215, 34, 41, 0) 100%  );
+  z-index: -1;
+  border-radius: 30px 0 0 30px;
+  -webkit-border-radius: 30px 0 0 30px;
+  -moz-border-radius: 30px 0 0 30px;
+  -ms-border-radius: 30px 0 0 30px;
+  -o-border-radius: 30px 0 0 30px;
 }
