@@ -12,6 +12,7 @@ export default function PostsFeed() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shuffledOnce, setShuffledOnce] = useState(false);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -19,6 +20,9 @@ export default function PostsFeed() {
 
   const LIMIT = 20;
   const API_BASE = "http://bo-chat.space/postsTest/686695914211804ef3875338";
+  const STORAGE_KEY = "posts_feed_cache";
+
+
 
   // --------------------------------------------------------------------
   // ✅ تحميل البيانات - FIXED (بدون loop)
@@ -40,9 +44,23 @@ export default function PostsFeed() {
         if (newPosts.length < LIMIT) setHasMore(false);
 
         setPosts((prev) => {
-          const unique = new Map();
-          [...prev, ...newPosts].forEach((p: Post) => unique.set(p._id, p));
-          return Array.from(unique.values());
+          const existingIds = new Set(prev.map((p) => p._id));
+          const uniqueNew = newPosts.filter(
+            (post: Post) => !existingIds.has(post._id)
+          );
+
+          const combined = [...prev, ...uniqueNew];
+
+          // 👇 اعمل shuffle مرة واحدة بس بعد أول تحميل
+          if (!shuffledOnce && newPage === 1) {
+            for (let i = combined.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 5));
+              [combined[i], combined[j]] = [combined[j], combined[i]];
+            }
+            setShuffledOnce(true);
+          }
+
+          return combined;
         });
 
         setPage(newPage);
@@ -59,9 +77,19 @@ export default function PostsFeed() {
   // --------------------------------------------------------------------
   // ✅ أول تحميل
   // --------------------------------------------------------------------
-  useEffect(() => {
+useEffect(() => {
+  const cached = sessionStorage.getItem(STORAGE_KEY);
+
+  if (cached) {
+    const parsed = JSON.parse(cached);
+    setPosts(parsed.posts || []);
+    setPage(parsed.page || 1);
+    setHasMore(parsed.hasMore ?? true);
+    setLoading(false);
+  } else {
     loadPosts(1);
-  }, []);
+  }
+}, []);
 
   // --------------------------------------------------------------------
   // ✅ OBSERVER — smooth + ما يحملش مرتين
@@ -81,7 +109,7 @@ export default function PostsFeed() {
       },
       {
         root: scrollContainerRef.current,
-        rootMargin: "400px", // ↓ smoother
+        rootMargin: "400px", 
         threshold: 0.1,
       }
     );

@@ -23,6 +23,7 @@ export default function ActionMenu({ onMessage, onReport, onBlock }: ActionMenuP
     return () => document.removeEventListener("click", handle);
   }, []);
 
+
   return (
     <div className="relative z-[999]" ref={ref}>
       {/* trigger */}

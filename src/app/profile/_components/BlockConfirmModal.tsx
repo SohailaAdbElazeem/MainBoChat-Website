@@ -4,6 +4,8 @@ import React from "react";
 type Props = {
   open: boolean;
   username?: string;
+  userId?: string;
+  blockedId?: string;
   onCancel: () => void;
   onConfirm: () => void;
   loading?: boolean;
@@ -18,6 +20,7 @@ export default function BlockConfirmModal({
   username = "اسم المستخدم",
   onCancel,
   onConfirm,
+  blockedId = "456",
   loading,
 }: Props) {
   if (!open) return null;
@@ -48,7 +51,9 @@ export default function BlockConfirmModal({
                 <button
                     onClick={onConfirm}
                     disabled={loading}
-                    className=" py-3 w-[150px] rounded-[23px] bg-black text-white cursor-pointer " 
+                    className={`py-3 w-[150px] rounded-[23px] ${
+                      loading ? "opacity-50 cursor-not-allowed" : "bg-black cursor-pointer"
+                    } text-white`}
                 >
                     {loading ? "جاري الحجب..." : "حجب"}
                 </button>

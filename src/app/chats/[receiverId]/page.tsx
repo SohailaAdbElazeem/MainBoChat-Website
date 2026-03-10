@@ -14,6 +14,7 @@ import { Message } from "@/types/types";
 import WaveSurfer from "wavesurfer.js";
 import Loader from "@/components/Loader";
 import Stickers from "../_components/Stickers";
+import Link from "next/link";
 
 function emitChatUpdate(event: "message" | "typing" | "seen", metadata: any) {
   try {
@@ -361,6 +362,30 @@ bcRef.current?.postMessage({
   },
 });
 
+        // ================= REACT (LIKE) =================
+if (payload.event === "react") {
+  const { messageid, sender } = payload.metadata || {};
+
+  if (!messageid || !sender) return;
+
+  setMessages(prev =>
+    prev.map(msg => {
+      if (msg._id !== messageid) return msg;
+
+      const likes = msg.likes || [];
+
+      // 🔒 منع التكرار
+      if (likes.includes(sender)) return msg;
+
+      return {
+        ...msg,
+        likes: [...likes, sender],
+      };
+    })
+  );
+
+  return; // ⛔ مهم
+}
 
         // ② MEDIA MESSAGE (هنا بالظبط 👈)
         if (
@@ -448,6 +473,7 @@ bcRef.current?.postMessage({
             if (!res.ok) return;
             const data = await res.json();
             const msgs: Message[] = data?.resp?.messages ?? [];
+            // console.log("Polling fetched messages:", msgs);
             setMessages(prev => {
                 const ids = new Set(prev.map(m => m._id));
                 const newOnes = msgs.filter(m =>
@@ -985,7 +1011,7 @@ const handleSendSticker = async (stickerUrl: string) => {
 
   // Get user data
   const [receiverData, setReceiverData] = useState<null>(null);
-
+  // console.log(receiverData);
 const fetchReceiverData = async () => {
   if (!receiverId) return;
 
@@ -1117,40 +1143,87 @@ useEffect(() => {
   //   } catch {}
   // }, [messages.length, myId, receiverId]);
 // console.log("MEssages",messages)
+
+  const [showMenu, setShowMenu] = useState(false);
+  const handleBlockUser = async () => {
+    if (!receiverId || !myId) return;
+    try {
+      const res = await fetch(
+        `https://bo-chat.space//block${myId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${STATIC_TOKEN}`,
+        },
+          body: JSON.stringify({ blockedid: receiverId }),
+      },
+      );
+      const data = await res.json();
+      console.log("BLOCK USER RESPONSE", data);
+        if (data.success) {
+          setIBlockedHim(true); 
+        }
+
+    } catch (error) {
+      console.error("Failed to block user", error);
+    }
+    setShowMenu(false);
+  };
+  const [iBlockedHim, setIBlockedHim] = useState(false);
+  const shouldHideInput = iBlockedHim === true;
+
+
+
+     
   // --- Render ---
   return (
-    <div style={{ margin: "0 auto" }} >
+    <div className="relative" style={{ margin: "0 auto" }} >
       <header style={{ marginBottom: 16, paddingBottom: 8 }} className="flex items-center justify-between px-4">
         <div className="flex items-center justify-start gap-1.5">
-          <img src={receiverData?.img} className="w-[50px] h-[50px] rounded-[21px] object-cover" alt="avatar" />
+          <Link href={`/profile/${receiverId}`}>
+            <img src={receiverData?.img} className="w-[50px] h-[50px] rounded-[21px] object-cover" alt="avatar" />
+          </Link>
           <div className="flex flex-col text-right">
             <h3 className="text-[15px] my-0">{receiverData?.name}</h3>
             <bdi className="text-xs text-[#B4B4B9]">@{receiverData?.username}</bdi>
           </div>
         </div>
         <div className="rounded-[17px] border border-[#EBEBEB] w-[40px] h-[40px] flex items-center justify-center rotate-90 cursor-pointer">
-          <img src="/imgs/dots.svg" className="w-4 h-4" alt="dots" />
+          <img src="/imgs/dots.svg" 
+          onClick={() => setShowMenu(prev => !prev)}
+          className="w-4 h-4" alt="dots" />
         </div>
       </header>
-        {
-          receiverData?.userpersonaldata?.block.isBlocked === true &&
-          messages?.length === 1 && (
-            <div className="flex items-center justify-center h-[calc(100vh-225px)]">
-              <h3 className="text-[35px]">لا يمكنك الدراسة بسهولة</h3>
-            </div>
-          )
-        }
       {/* Error / Loading */}
       {error && <div style={{ color: "red", fontSize: 14, marginBottom: 8 }}>{error}</div>}
       {
         messages.length === 0 ?
         <div className="flex flex-col items-center justify-center h-[calc(100vh-225px)]">
-          <img src="/icons/empty.svg" className="w-[82.5px]" alt="empty" />
-          <h3 className="text-[35px]">لسه مفيش كلام</h3>
-          <p className="text-center">
-            لا يوجد رسائل في هذه المحادثة
-            <br /> حتي الان
-          </p>
+          {
+             receiverData?.private === true ? 
+             <img src="/icons/privatechat.svg" className="w-[82.5px]" alt="empty" />
+             
+             :
+             <img src="/icons/empty.svg" className="w-[82.5px]" alt="empty" />
+          }
+          {
+            receiverData?.private === true ?
+            <h3 className="text-[35px]">الدرج ده خاص</h3> : 
+            <h3 className="text-[35px]">لسه مفيش كلام</h3>
+          }
+
+          {
+            receiverData?.private === true ?
+              <p className="text-center">
+                ممكن تبعت رسالة واحدة بس وهتظهرله
+                <br /> لما يوافق
+              </p>:           
+              <p className="text-center">
+                لا يوجد رسائل في هذه المحادثة
+                <br /> حتي الان
+              </p>
+          }
         </div>
         : 
       <div
@@ -1213,6 +1286,7 @@ useEffect(() => {
       }
 
 {/* ================= INPUT AREA ================= */}
+  {!shouldHideInput  && (
       <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
 
         {/* ➤ SEND TEXT (أولوية أعلى) */}
@@ -1298,14 +1372,100 @@ useEffect(() => {
             </button>
           </div>
         </div>
-      </div>
+        
+      </div>)}
+        {showMenu && (
+        <div
+          className="absolute z-[9999]"
+          style={{
+            top: "50px",
+            left: "0px",
+          }}
+        >
+          <div className="
+            bg-[#000000]/10
+            rounded-[30px] 
+            shadow-xl 
+            backdrop-blur-[30px] 
+            p-4 
+            w-[260px]
+            flex flex-col 
+            gap-4
+          ">
+            <button
+              onClick={() => handleBlockUser()}
+            className="
+              w-full 
+              bg-[#000000]/40 
+              rounded-[20px] 
+              py-2 
+              px-4 
+              text-right 
+              flex 
+              hover:bg-[#000000]/60
+              items-center 
+              gap-2
+              cursor-pointer
+              transition
+            ">
+              <div className="h-[45px] w-[45px] bg-[#D72229]  flex items-center justify-center rounded-full">
+                <img src="/icons/block.svg" className="w-5 h-5 invert-0 transform rotate-[160deg]" />
+              </div>
+              <span className="text-white">حجب</span>
+            </button>
 
+            <button 
+              onClick={() => handleReport()}
+              className="
+                w-full 
+                bg-[#000000]/40 
+                rounded-[20px] 
+                py-2 
+                px-4 
+                text-right 
+                flex 
+                hover:bg-[#000000]/60
+                items-center 
+                gap-2
+                cursor-pointer
+                transition
+              ">
+              <div className="h-[45px] w-[45px] bg-[#D72229] flex items-center justify-center rounded-full">
+                <img src="/icons/flag.svg" className="w-4 h-4 filter invert-[1]" />
+              </div>
+              <span className="text-white">إبلاغ</span>
+            </button>
+            <button 
+              className="
+                w-full 
+                bg-[#000000]/40 
+                rounded-[20px] 
+                py-2 
+                px-4 
+                text-right 
+                flex 
+                hover:bg-[#000000]/60
+                items-center 
+                gap-2
+                cursor-pointer
+                transition
+              ">
+              <Link href={`/chats`} className="flex items-center gap-2 w-full">
+                <div className="h-[45px] w-[45px] bg-[#D72229] flex items-center justify-center rounded-full">
+                  <img src="/icons/close.svg" className="w-4 h-4 invert brightness-0" />
+                </div>
+                <span className="text-white">اقفل المحادثة</span>
+              </Link>
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
 }
 
-const STATIC_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzY3NzI1Njg2LCJleHAiOjE3NjgzMzA0ODZ9.7_vbY4ifpv13s2aj2Du3za-YonHDg9k_DreaQesqVJs";
+const STATIC_TOKEN = localStorage.getItem("boChatToken") || "";
 const REST_SEND = "https://bo-chat.space/sendmessage";
 const REST_HISTORY_BASE = "https://bo-chat.space/message";
 const TYPING_STOP_DELAY = 1500;

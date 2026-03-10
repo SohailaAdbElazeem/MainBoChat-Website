@@ -9,7 +9,7 @@ export default function Home() {
           <h1 dir="rtl" className="mb-2 mr-2 text-2xl">الفضفضات</h1>
           <PostsFeed />
         </div>
-      <LoginBanner/>
+      {/* <LoginBanner/> */}
     </div>
   );
 }

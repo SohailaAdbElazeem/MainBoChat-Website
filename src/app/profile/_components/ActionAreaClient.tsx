@@ -4,7 +4,6 @@ import ActionMenu from "./ActionMenu";
 import FollowButton from "./FollowButton";
 import BlockConfirmModal from "./BlockConfirmModal";
 import { useRouter } from "next/navigation";
-const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzY2MTg2MjE4LCJleHAiOjE3NjY3OTEwMTh9.WZvvYjlN9BlQvqtmlkdDTgjj7JCXuLXDpeplPtvD0Oo"
 
 export default function ActionAreaClient({
   followingId,
@@ -38,28 +37,38 @@ const handleBlock = async () => {
   try {
     setLoading(true);
 
-    const res = await fetch("/api/block", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        blockedid: receiverId,
-      }),
-    });
+    const token = localStorage.getItem("boChatToken");
+    const myUserId = localStorage.getItem("userid");
+
+    if (!token || !myUserId) return;
+
+    const res = await fetch(
+      `http://bo-chat.space/block${myUserId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          blockedid: receiverId,
+        }),
+      }
+    );
 
     if (!res.ok) {
-      throw new Error("Block failed");
+      console.error("Failed to block user", await res.text());
+      return;
     }
-
+    console.log("User blocked successfully", await res.json());
     setShowBlock(false);
-  } catch (e) {
-    console.error(e);
+    router.refresh();
+  } catch (err) {
+    console.error("BLOCK ERROR:", err);
   } finally {
     setLoading(false);
   }
 };
-
 
 
   return (

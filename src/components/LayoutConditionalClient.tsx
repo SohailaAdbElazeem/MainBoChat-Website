@@ -50,8 +50,6 @@ export default function LayoutRightSideClient() {
       {/* 👤 صفحة بروفايل */}
       {isProfile && (
         <div className="">
-          <p className="text-gray-700 text-lg">leftside</p>
-
           <div>
             <AllUsersGrid/>
           </div>

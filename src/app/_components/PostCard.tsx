@@ -4,7 +4,7 @@
 "use client";
 
 import { Post } from "@/types/types";
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
@@ -200,6 +200,49 @@ export default function PostCard({ post }: { post: Post }) {
         toast.error(" حصل خطأ أثناء إرسال البلاغ");
       }
   };
+
+
+  // ---------------------------   COMMENTS   -----------------------------------------
+  const handleReportComment = async (commentId: string) => {
+    try {
+      const token = localStorage.getItem("boChatToken");
+      const userid = localStorage.getItem("userid");
+
+      if (!token || !userid) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const res = await fetch(
+        `http://bo-chat.space/report/comment${commentId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            userid,
+            reporttype: "comment",
+            reportdescription: "محتوى غير لائق", // ← غيرها براحتك
+          }),
+        }
+      );
+
+      const data = await res.text();
+
+      if (!res.ok) {
+        throw new Error(data || "فشل إرسال البلاغ");
+      }
+
+      toast.success("تم إرسال البلاغ بنجاح ✅");
+      setShowCommentMenu(null);
+    } catch (err) {
+      console.error("REPORT COMMENT ERROR:", err);
+      toast.error("حصل خطأ أثناء إرسال البلاغ");
+    }
+  };
+
   const [showCommentOverlay, setShowCommentOverlay] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -241,7 +284,7 @@ export default function PostCard({ post }: { post: Post }) {
 
   const [commentText, setCommentText] = useState("");
 
-      
+  const commentId = comments.length > 0 ? comments[0]._id : null;    
   const userid = localStorage.getItem("userid");
   const submitComment = async () => {
   const token = localStorage.getItem("boChatToken");
@@ -367,67 +410,115 @@ export default function PostCard({ post }: { post: Post }) {
   // ---------------------------   LIKE   -----------------------------------------
   const [showLikesOverlay, setShowLikesOverlay] = useState(false);
   // ---------------------------   Comment Like   -----------------------------------------
+  // const handleCommentLike = async (commentId: string) => {
+  //   const token = localStorage.getItem("boChatToken");
+  //   const userid = localStorage.getItem("userid");
+  //   if (!token || !userid) {
+  //     window.location.href = "/login";
+  //     return;
+  //   }
+  //   try {
+  //     const res = await fetch("https://bo-chat.space/comment/react", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //       body: JSON.stringify({
+  //         userid,
+  //         commentid: commentId,
+  //       }),
+  //     });
+
+  //     if (!res.ok) {
+  //       const text = await res.text();
+  //       throw new Error(text || "Failed to react on comment");
+  //     }
+      
+  //     console.log("COMMENT LIKE SUCCESS");
+  //   } catch (err) {
+  //     console.error("COMMENT LIKE ERROR:", err);
+  //   }
+  // };
   const handleCommentLike = async (commentId: string) => {
-    const token = localStorage.getItem("boChatToken");
-    const userid = localStorage.getItem("userid");
+  const token = localStorage.getItem("boChatToken");
+  const userid = localStorage.getItem("userid");
 
-    if (!token || !userid) {
-      window.location.href = "/login";
-      return;
+  if (!token || !userid) {
+    window.location.href = "/login";
+    return;
+  }
+
+  // 🔥 Optimistic UI
+  setComments(prev =>
+    prev.map(comment => {
+      if (comment._id !== commentId) return comment;
+
+      const alreadyLiked =
+        Array.isArray(comment.reacts) &&
+        comment.reacts.includes(userid);
+
+      return {
+        ...comment,
+        reacts: alreadyLiked
+          ? comment.reacts.filter((id: string) => id !== userid)
+          : [...(comment.reacts || []), userid],
+      };
+    })
+  );
+
+  try {
+    const res = await fetch("https://bo-chat.space/comment/react", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userid,
+        commentid: commentId,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to react on comment");
     }
+  } catch (err) {
+    console.error("COMMENT LIKE ERROR:", err);
 
-    try {
-      const res = await fetch("https://bo-chat.space/comment/react", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userid,
-          commentid: commentId,
-        }),
-      });
+    // 🔁 Rollback لو حصل Error
+    fetchComments();
+  }
+};
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Failed to react on comment");
-      }
-
-      // ✅ لو حابب تعمل optimistic update هنا بعدين
-      console.log("COMMENT LIKE SUCCESS");
-    } catch (err) {
-      console.error("COMMENT LIKE ERROR:", err);
-    }
-  };
   const [showCommentMenu, setShowCommentMenu] = useState<string | null>(null);
-
+  console.log("PostCard Comments", comments);
   
   return (
 
     <article dir="rtl" className={`${cardClass + textInnerBorder} relative`}>
       <header className="p-5 flex items-start justify-between gap-3">
         <div className="flex gap-2">
-        <div className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[21px]">
+        <div className="relative h-[50px] w-[50px] shrink-0  rounded-[21px]">
           <Link href={`/profile/${post.userid}`}>
-          <Image
-            src={post.userimg || "/imgs/user.png"}
-            alt={userName}
-            fill
-            sizes="50px"
-            className="object-cover"
-            />
+            <img
+              src={post.userimg || "/imgs/user.png"}
+              alt={userName}
+              sizes="50px"
+              className="object-cover rounded-[21px]"
+              />
+              {post.vip && (
+                <div className="absolute bottom-[-8px] right-1/2 transform translate-x-1/2 w-5 h-5">
+                  <img src="/icons/vip.svg" alt="" />
+                </div>
+              )}
             </Link>
         </div>
         <div className="">
           <div className="flex flex-col ">
             <span className="font-semibold">{userName}</span>
             <span className="text-sm text-black/50">@{userHandle}</span>
-            {post.vip && (
-              <span className="ml-1 inline-block rounded-full border border-yellow-500 px-2 text-[10px] text-yellow-600">
-                VIP
-              </span>
-            )}
+
           </div>
         </div>
         </div>
@@ -609,7 +700,9 @@ export default function PostCard({ post }: { post: Post }) {
             flex flex-col 
             gap-4
           ">
-            <button className="
+            <button 
+              onClick={() => handleBlock()}
+            className="
               w-full 
               bg-white 
               rounded-[20px] 
@@ -650,82 +743,86 @@ export default function PostCard({ post }: { post: Post }) {
         </div>
       )}
       {showOverlay && (
-  <div className="fixed inset-0 z-[99999] bg-[#000000]/90 backdrop-blur-sm flex items-center justify-center flex-col">
-    <div className=" mb-[15px] mt-[-15px] flex items-center gap-4">
-    {/* Right Arrow */}
-    {images.length > 1 && (
-      <div className="flex items-center justify-center gap-2">
+        <div className="fixed inset-0 z-[99999] bg-[#000000]/90 backdrop-blur-sm flex items-center justify-center flex-col"
+          
+        >
+          <div className=" mb-[15px] mt-[-15px] flex items-center gap-4" >
+            <button
+              className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
+              onClick={() => setShowOverlay(false)}
+            >
+              <img src="/icons/close.svg" alt="" />
+            </button>
+          {/* Right Arrow */}
+          {images.length > 1 && (
+            <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() =>
+                setActiveIndex((prev) =>
+                  prev === images.length - 1 ? 0 : prev + 1
+                )
+              }
+              className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
+            >
+              <img src="/imgs/arrowright.svg" alt="" />
+            </button>
+            <button
+              onClick={() =>
+                setActiveIndex((prev) =>
+                  prev === 0 ? images.length - 1 : prev - 1
+                )
+              }
+              className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
+            >
+              <img src="/imgs/arrowleft.svg" alt="" />
+            </button>
+            </div>
 
-      <button
-        onClick={() =>
-          setActiveIndex((prev) =>
-            prev === images.length - 1 ? 0 : prev + 1
-          )
-        }
-        className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
-      >
-        <img src="/imgs/arrowright.svg" alt="" />
-      </button>
-      <button
-        onClick={() =>
-          setActiveIndex((prev) =>
-            prev === 0 ? images.length - 1 : prev - 1
-          )
-        }
-        className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
-      >
-        <img src="/imgs/arrowleft.svg" alt="" />
-      </button>
-      </div>
+          )}
 
-    )}
-    {/* Close */}
-    <button
-      onClick={() => setShowOverlay(false)}
-      className="cursor-pointer bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
-    >
+          </div>
 
-      <img src="/icons/close.svg" alt="" />
-    </button>
-    </div>
+          {/* Image */}
+          <div >
+            <img
+              src={images[activeIndex]?.image}
+              className="max-h-[550px] max-w-[700px] rounded-[65px] object-contain"
+              />
+          </div>
+          
+          {/* Left Arrow */}
 
-    {/* Image */}
-    <div >
-      <img
-        src={images[activeIndex]?.image}
-        className="max-h-[550px] max-w-[700px] rounded-[65px] object-contain"
-        />
-    </div>
-
-    {/* Left Arrow */}
-
-  </div>
-)}
+        </div>
+      )}
 
 {/* -------------- COMMENT OVERLAY ------------ */}
   {showCommentOverlay && (
     <div className="
-      fixed inset-0 z-[100000]
+      fixed inset-0 z-[9999]
       bg-[#0000001A]
       backdrop-blur-[20px]
       flex items-center justify-center
-    ">
-      <div className="
-        w-[90%] max-w-[600px]
-        relative
-        rounded-[25px]
-        max-h-[80vh]
-        bg-[#FFFFFF]/10
-        flex flex-col
-      ">
-        {/* Close */}
-        <button
-          onClick={() => setShowCommentOverlay(false)}
-          className="absolute top-[-60px] left-1/2 transform -translate-x-1/2 cursor-pointer bg-[#000]/15 hover:bg-[#FFFFFF]/50 transition w-[55px] h-[55px] flex items-center justify-center rounded-full"
-        >
-          <img src="/icons/close.svg" alt="close" />
-        </button>
+    "
+    >
 
+      <div 
+        className="
+        relative
+          w-[90%] max-w-[600px]
+          relative
+          rounded-[25px]
+          max-h-[80vh]
+          bg-gradient-to-l from-[#fff] to-[#8D8D8D]
+          flex flex-col
+          z-[99999]
+        "
+      >
+      <div
+        onClick={() => setShowCommentOverlay(false)}
+        className="absolute -top-16 left-1/2 w-[50px] h-[50px] bg-[#000]/15  flex items-center justify-center rounded-full hover:bg-[#fff]/10 transform -translate-x-1/2 cursor-pointer z-9999 transition"
+      >
+        <img src="/icons/close.svg" alt="close" />
+      </div>
         <h3 className="text-lg font-semibold text-right p-3 bg-[#fff]/25 backdrop-blur-xl rounded-t-[25px]">
           {
             isQuestion ? "الإجابات" : "تقول ايه"
@@ -740,31 +837,38 @@ export default function PostCard({ post }: { post: Post }) {
           )}
 
           {!loadingComments && comments.length === 0 && (
-
-              <div className="flex items-center justify-center w-full h-[400px] flex-col gap-4">
-                {
-                  isQuestion ? (
-                    <>
-                      <img src="/icons/answers.svg" className="w-[65px]" alt="" />
-                      <p className="text-2xl">مافيش اجابات لسه</p>
-                      <p className="text-md">ماحدش جاوب لسه… خليك أنت أول واحد يكسر الصمت</p>
-                    </>
-                  ) : (
-                    <>
-                      <img src="/icons/nocomments.svg" className="w-[65px]" alt="" />
-                    <p className="text-2xl">مافيش ردود لسه</p>
-                    <p className="text-md">ماحدش رد لسه خليك أنت أول واحد يكسر الصمت</p>
-                    </>
-                  )
-                }
-              </div>
+            <div className="flex items-center justify-center w-full h-[400px] flex-col gap-4">
+              {
+                isQuestion ? (
+                  <>
+                    <img src="/icons/answers.svg" className="w-[65px]" alt="" />
+                    <p className="text-2xl">مافيش اجابات لسه</p>
+                    <p className="text-md">ماحدش جاوب لسه… خليك أنت أول واحد يكسر الصمت</p>
+                  </>
+                ) : (
+                  <>
+                    <img src="/icons/nocomments.svg" className="w-[65px]" alt="" />
+                  <p className="text-2xl">مافيش ردود لسه</p>
+                  <p className="text-md">ماحدش رد لسه خليك أنت أول واحد يكسر الصمت</p>
+                  </>
+                )
+              }
+            </div>
           )}
 
         {!loadingComments &&
-          comments.map((comment, idx) => (
+        
+          comments.map((comment, idx) => {
+            const myUserId = localStorage.getItem("userid");
+            const isCommentLikedByMe =
+              myUserId &&
+              Array.isArray(comment.reacts) &&
+              comment.reacts.includes(myUserId);
+            const commentReactsCount = comment.reacts?.length || 0;
+            return (
               <div
                 key={comment._id || idx}
-                className="flex relative items-start justify-between p-3   gap-2 bg-[#000]/10"
+                className="flex relative items-start justify-between p-3   gap-2 bg-[#000]/10 h-[107px]"
               >
                 <div className="flex items-start justify-between gap-3 ">
                 {/* Avatar */}
@@ -794,7 +898,8 @@ export default function PostCard({ post }: { post: Post }) {
 
                     </div>
 
-                    <p className="mt-2 text-sm text-black/80 whitespace-pre-wrap leading-6">
+                    <p className="mt-2 text-sm text-black/80 whitespace-pre-wrap leading-6"
+                    >
                       {comment.content}
                     </p>
                   </div>
@@ -812,15 +917,17 @@ export default function PostCard({ post }: { post: Post }) {
                       w-[60px]
                       h-[34px]
                       rounded-[15px]
-                      ${isLikedByMe ? "bg-[#D72229]" : "bg-[#B4B4B9]"}
+                      ${isCommentLikedByMe  ? "bg-[#D72229]" : "bg-[#B4B4B9]"}
                       flex
                       items-center
                       justify-center
                       gap-2
                     `}>
-                    <p className="text-[#fff]">
-                      {/* {comment.likes?.length || 0} */}
-                    </p>
+                      {commentReactsCount > 0 && (
+                        <p className="text-white text-sm">
+                          {commentReactsCount}
+                        </p>
+                      )}
                     <LikeIcon active={false} white={true} />
                   </div>
                   <div className=" w-[50px]
@@ -847,7 +954,7 @@ export default function PostCard({ post }: { post: Post }) {
                     <div
                       className="
                         absolute
-                        bottom-0
+                        bottom-1
                         left-0
                         z-[9999]
                         flex
@@ -878,7 +985,7 @@ export default function PostCard({ post }: { post: Post }) {
                       <button
                         className="
                         w-[100px]
-                          flex items-center gap-3
+                          flex items-center gap-1.5
                           rounded-[18px]
                           px-3 py-2
                           text-sm
@@ -894,9 +1001,10 @@ export default function PostCard({ post }: { post: Post }) {
 
                       {/* بلاغ */}
                       <button
+                        onClick={()=> handleReportComment(comment._id)}
                         className="
                         w-[100px]
-                          flex items-center gap-3
+                          flex items-center gap-1.5
                           rounded-[18px]
                           px-3 py-2
                           text-sm
@@ -921,8 +1029,8 @@ export default function PostCard({ post }: { post: Post }) {
                 </div>
 
               </div>
-
-          ))}
+            )
+          })}
           {/* Add Comment */}
           <div className="
             flex items-center gap-3
@@ -931,7 +1039,7 @@ export default function PostCard({ post }: { post: Post }) {
             rounded-b-[25px]
           ">
             {/* Avatar */}
-            <div className="w-[42px] h-[42px] rounded-full overflow-hidden shrink-0">
+            <div className="w-[42px] h-[42px] rounded-[21px] overflow-hidden shrink-0">
               <img
                 src={myUserImg || "/imgs/user.png"}
                 className="w-full h-full object-cover"
@@ -993,19 +1101,15 @@ export default function PostCard({ post }: { post: Post }) {
             rounded-[25px]
             backdrop-blur-xl
             relative
+            bg-gradient-to-l from-[#fff] to-[#8D8D8D]
           "
         >
-          {/* Close */}
-          <button
-            onClick={() => setShowShareOverlay(false)}
-            className="absolute -top-16 left-1/2 -translate-x-1/2
-            w-[55px] h-[55px] rounded-full
-            bg-black/20 hover:bg-black/40 cursor-pointer
-            flex items-center justify-center"
+          <div
+           onClick={() => setShowShareOverlay(false)}
+            className="absolute -top-16 left-1/2 w-[50px] h-[50px] bg-[#000]/15  flex items-center justify-center rounded-full hover:bg-[#fff]/10 transform -translate-x-1/2 cursor-pointer z-9999 transition"
           >
             <img src="/icons/close.svg" alt="close" />
-          </button>
-
+          </div>
           {/* Title */}
           <h3 className="text-right text-lg font-semibold bg-[#fff]/25 backdrop-blur-md p-3 rounded-t-[25px]">
             شيرها فضفضة
@@ -1085,24 +1189,23 @@ export default function PostCard({ post }: { post: Post }) {
           bg-black/10
           backdrop-blur-[20px]
           flex items-center justify-center
-          
-        ">
+        "
+          onClick={() => setShowLikesOverlay(false)}
+        >
           <div className="
             w-[90%] max-w-[690px]
             rounded-[25px]
             max-h-[660px]
             flex flex-col
             overflow-hidden
-            bg-gradient-to-l from-[#FFFFFF] bg-[##8D8D8D]
+            bg-gradient-to-l from-[#fff] to-[#8D8D8D]
           ">
-              {/* close */}
-              <button
-                onClick={() => setShowLikesOverlay(false)}
-                className="absolute top-30 left-1/2 -translate-x-1/2 w-[55px] h-[55px] rounded-full bg-black/20 hover:bg-black/40 cursor-pointer flex items-center justify-center"
-              >
-                <img src="/icons/close.svg" alt="" />
-              </button>
-
+            <div
+              onClick={() => setShowLikesOverlay(false)}
+              className="absolute -top-16 left-1/2 w-[50px] h-[50px] bg-[#000]/15  flex items-center justify-center rounded-full hover:bg-[#fff]/10 transform -translate-x-1/2 cursor-pointer z-9999 transition"
+            >
+              <img src="/icons/close.svg" alt="close" />
+            </div>
             {/* Header */}
             <div className="bg-[#fff]/25 backdrop-blur-md px-4 h-[55px] flex items-center">
                 <span className="font-semibold text-lg">تكات الاعجاب بالفضفضة</span>

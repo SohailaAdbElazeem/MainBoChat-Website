@@ -67,7 +67,7 @@ export default function ChatList({ userId, apiBase }: Props) {
   const bcRef = useRef<BroadcastChannel | null>(null);
   const token =
     typeof window !== "undefined"
-      ? localStorage.getItem("token")
+      ? localStorage.getItem("boChatToken")
       : null;
   const pathname = usePathname();
   const activeChatId = pathname?.split("/").pop();

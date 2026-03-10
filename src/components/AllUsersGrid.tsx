@@ -12,7 +12,6 @@ type UserRaw = {
   visit?: number;
 };
 
-const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzY4MDYwOTM1LCJleHAiOjE3Njg2NjU3MzV9.HGL3pm3RIj7RnUpSDuqZT_d-DthQjWtDPvkh1FiYy2w"; // ← ضع التوكن هنا
 
 function shuffleArray<T>(arr: T[]) {
   const a = arr.slice();
@@ -34,6 +33,8 @@ export default function AllUsersSlider({
   const router = useRouter();
 
   useEffect(() => {
+const TOKEN = localStorage.getItem("boChatToken") || "";
+
     (async () => {
       try {
         const res = await fetch(endpoint, {
@@ -119,10 +120,10 @@ const truncate = (str: string | undefined, max: number) => {
         className="flex gap-3 overflow-x-auto scrollbar-hidden px-2 py-3 scroll-smooth"
         dir="ltr"
       >
-        {users.map((u) => (
+        {users.filter(u => u._id !== "697c63efd671ce6c29e6f84d").map((u) => (
           <div
             key={u._id}
-            className="bg-[#F6F6F6] rounded-tl-[127px] rounded-tr-[127px] rounded-b-[20px] pt-1 pb-2 w-[163px]  shrink-0"
+            className="bg-[#F6F6F6] rounded-tl-[127.5px] rounded-tr-[127px] rounded-b-[20px] pt-1 pb-2 w-[163px]  shrink-0"
           >
             <div
               role="button"
@@ -135,7 +136,7 @@ const truncate = (str: string | undefined, max: number) => {
               aria-label={`افتح بروفايل ${u.name ?? "المستخدم"}`}
             >
               <img
-                className="w-[145px] h-[145px] rounded-full object-cover "
+                className="w-[153px] h-[153px] rounded-full object-cover "
                 alt={u.name ?? "User"}
                 src={u?.img || "/icons/user.svg"}
                 onError={(e) => {
@@ -148,11 +149,11 @@ const truncate = (str: string | undefined, max: number) => {
               </div>
             </div>
 
-            <h3 className="mt-4 me-2 text-lg text-right font-semibold">
+            <h3 className="mt-4 me-2 text-[14px] text-right font-semibold">
                 {truncate(u.name, 10)}
             </h3>
 
-            <p className="text-gray-500 me-2 text-right text-[sm]">
+            <p className="text-gray-500 me-2 text-right text-[9px]">
                 @{truncate(u.username, 10)}
             </p>
 

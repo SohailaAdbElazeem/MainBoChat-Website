@@ -44,16 +44,6 @@ export default function LoginBanner({
           <button
             onClick={() => router.push(registerHref)}
             className="
-              rounded-[17px] border border-white/80 px-10 h-[45px]
-              text-sm font-semibold hover:bg-white/10
-              focus:outline-none focus:ring-2 focus:ring-white/60
-            "
-          >
-            إنشاء حساب
-          </button>
-            <button
-            onClick={() => router.push(registerHref)}
-            className="
               rounded-[17px]  bg-white px-10 h-[45px] text-[#D72229]
               text-sm font-semibold shadow-sm hover:opacity-90
               focus:outline-none focus:ring-2 focus:ring-white/60

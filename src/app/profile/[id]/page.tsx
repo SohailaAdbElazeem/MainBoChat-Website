@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -13,7 +14,6 @@ import { UserAPIResponse } from "@/types/types";
 import GlobalLoader from "@/components/GlobalLoader";
 
 // const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzY3NzI1Njg2LCJleHAiOjE3NjgzMzA0ODZ9.7_vbY4ifpv13s2aj2Du3za-YonHDg9k_DreaQesqVJs";
-const TOKEN = localStorage.getItem("boChatToken") || "";
 
 function safeCount<T>(val?: T[] | Record<string, unknown> | number | null) {
   if (val == null) return 0;
@@ -30,6 +30,8 @@ export default function ProfilePageClient() {
   const [data, setData] = useState<UserAPIResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRateOverlayOpen, setIsRateOverlayOpen] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
 
   // ---------- حالات للـ overlay ونسخ الرابط ----------
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
@@ -72,6 +74,7 @@ export default function ProfilePageClient() {
   }, [id]);
 
   useEffect(() => {
+    const TOKEN = localStorage.getItem("boChatToken") || "";
     if (!id) {
       setError("معرّف الملف الشخصي مفقود من الـ URL.");
       setLoading(false);
@@ -79,7 +82,7 @@ export default function ProfilePageClient() {
     }
     const ac = new AbortController();
     let mounted = true;
-
+    
     async function fetchUser() {
       setLoading(true);
       setError(null);
@@ -110,7 +113,25 @@ export default function ProfilePageClient() {
       ac.abort();
     };
   }, [id]);
+    const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem("boChatToken");
+      const userid = localStorage.getItem("userid");
+      const res = await fetch(`https://bo-chat.space/users/${userid}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user data");
+        const data = await res.json();
 
+        setUserData(data);
+      return;
+    } catch (err) {
+      console.error("FETCH USER DATA ERROR:", err);
+      return null;
+    }
+  };
   // اغلاق الاوفلاي عند الضغط على Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -119,7 +140,11 @@ export default function ProfilePageClient() {
     if (isOverlayOpen) window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isOverlayOpen, closeOverlay]);
-
+  useEffect(() => {
+    if (id) {
+      fetchUserData();
+    }
+  }, [id]);
   if (loading) {
     return (
       <div dir="rtl" className="min-h-screen flex items-center justify-center p-8">
@@ -156,6 +181,7 @@ export default function ProfilePageClient() {
   const followingCount = following.length;
   const viewsCount = user.visit ?? 0;
   const rateCount = user.rate ?? 0;
+    console.log("user rate", user.rate);
 
   return (
     <div className="min-h-screen bg-white text-gray-800" dir="rtl">
@@ -186,14 +212,40 @@ export default function ProfilePageClient() {
                   profileId={res.userpersonaldata._id}
                   profilePrivate={res.userpersonaldata.private}
                   fallback={
-                    <div className="relative w-28 z-[99] h-28 md:w-36 md:h-36 rounded-t-[60px] rounded-b-[45px] border-2 border-white overflow-hidden  transform translate-y-1/2">
-                      <Image src={avatar} alt={user.name ?? "Avatar"} width={136} height={136} unoptimized className="object-cover " />
-                      <div className="absolute bottom-0 
-                      left-0 w-full h-[42%] backdrop-blur-md flex items-center justify-center text-white
-                      bg-gradient-to-b 
-                      from-[#D72229]/15 
-                      to-[#F92428]/75">
-                        <p>درج خاص</p>
+                    <div>
+                      {/* OUTER WRAPPER */}
+                      <div className="relative w-28 h-28 md:w-36 md:h-36 z-[99] transform translate-y-1/2">
+
+                        {/* CARD (overflow-hidden هنا فقط) */}
+                        <div className="relative w-full h-full rounded-t-[60px] rounded-b-[45px] border-2 border-white overflow-hidden">
+                          <Image
+                            src={avatar}
+                            alt={user.name ?? "Avatar"}
+                            width={140}
+                            height={136}
+                            unoptimized
+                            className="object-cover w-full h-full"
+                          />
+
+                          {/* PRIVATE LAYER (مقصوصة) */}
+                          <div
+                            className="absolute bottom-0 left-0 w-full h-[42%]
+                            backdrop-blur-md flex items-center justify-center text-white
+                            bg-gradient-to-b from-[#D72229]/15 to-[#F92428]/75 z-10"
+                          >
+                            <p>درج خاص</p>
+                          </div>
+                        </div>
+
+                        {user.vip && (
+                          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                            <img
+                              src="/icons/vip.svg"
+                              alt="VIP"
+                              className="w-6 h-6 md:w-8 md:h-8"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   }
@@ -201,15 +253,30 @@ export default function ProfilePageClient() {
                   <button
                     aria-label="عرض الصورة"
                     onClick={openOverlay}
-                    className="w-[136px] z-[99] h-[136px] md:w-36 md:h-36 rounded-[60px] border-2 border-white overflow-hidden bg-gray-100 transform translate-y-1/2 focus:outline-none"
+                    className="relative w-[136px] h-[136px] md:w-36 md:h-36
+                    rounded-[60px] border-2 border-white overflow-hidden
+                    bg-gray-100 transform translate-y-1/2 focus:outline-none z-[99]"
                   >
-                    <Image src={avatar} alt={user.name ?? "Avatar"} width={150} height={150} unoptimized className="object-cover cursor-pointer" />
+                    <Image
+                      src={avatar}
+                      alt={user.name ?? "Avatar"}
+                      width={150}
+                      height={150}
+                      unoptimized
+                      className="object-cover cursor-pointer w-full h-full"
+                    />
                   </button>
                 </ClientVisibilityGate>
 
                 <div className="mb-2">
-                  <h1 className="text-xl md:text-2xl font-semibold text-white">{user.name}</h1>
-                  {user.username && <p className="text-sm text-white/90 mt-1">{user.username}@</p>}
+                  <h1 className="text-xl md:text-2xl font-semibold text-white">
+                    {user.name}
+                  </h1>
+                  {user.username && (
+                    <p className="text-sm text-white/90 mt-1">
+                      @{user.username}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -225,7 +292,21 @@ export default function ProfilePageClient() {
                   </div>
 
                   <div className="mt-7 ">
-                    {rateCount === 0 ? <p className="text-sm underline text-[#D72229]">لم يحصل هذا الدرج علي اي تقييم </p> : <div className="m-0 text-sm font-semibold underline text-[#D72229]"><span className="text-xs">حصل هذا الدرج  علي</span> تقييم {rateCount} نجوم</div>}
+                    <div
+                      onClick={setIsRateOverlayOpen.bind(null, true)}
+                      className="cursor-pointer select-none"
+                    >
+                      {rateCount === 0 ? (
+                        <p className="text-sm underline text-[#D72229]">
+                          لم يحصل هذا الدرج علي اي تقييم
+                        </p>
+                      ) : (
+                        <div className="m-0 text-sm font-semibold underline text-[#D72229]">
+                          <span className="text-xs">حصل هذا الدرج علي</span> تقييم {rateCount} نجوم
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex gap-4 mt-1" >
                       <div className="flex gap-1 items-center justify-center"><div className="text-sm text-[#B6B7B7]">صحابي هنا</div><div className="text-md font-semmibold">{followersCount}</div></div>
                       <div className="flex gap-1 items-center justify-center"><h3 className="text-sm font-semibold text-[#B6B7B7]">متابعين</h3><div className="text-md font-semmibold">{followingCount}</div></div>
@@ -289,6 +370,96 @@ export default function ProfilePageClient() {
           </div>
         </div>
       )}
+
+      {isRateOverlayOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        >
+          {/* الخلفية */}
+          <div
+            onClick={setIsRateOverlayOpen.bind(null, false)}
+            className="absolute inset-0 bg-[#000]/10 backdrop-blur-[20px] "
+          />
+
+          {/* الكارد */}
+          <div className="relative w-[690px] z-10 bg-gradient-to-l from-[#fff] to-[#8D8D8D] backdrop-blur-[20px]  rounded-[25px] ">
+            <div className="bg-[#fff]/25 backdrop-blur-[20px] rounded-t-[25px] px-5 py-3">
+              <h3 className="text-[20px] font-semibold ">
+                النجوم
+              </h3>
+            </div>
+
+            {rateCount === 0 ? (
+              <div className="h-[450px] flex flex-col items-center justify-center px-5 text-center">
+                <img src="/icons/no-rate.svg" alt="no-rate" className="w-[65px] h-[65px] mb-3" />
+                <h4 className="text-[25px] font-semibold">مافيش تقييمات لسه</h4>
+                <p className="text-[16px]">
+                 ماحدش قيّم لسه خليك أنت أول واحد يكسر الصمت
+                </p>
+              </div>
+            ) : (
+              <p className="text-md">
+                هذا الدرج حاصل على  
+                <span className="mx-1 font-semibold text-[#D72229]">
+                  {rateCount}
+                </span>
+                نجوم ⭐
+              </p>
+            )}
+            
+              {
+                <div className="
+                  flex items-center gap-3
+                  bg-[#fff]/50 backdrop-blur-xl
+                  px-5
+                  h-[100px]
+                  rounded-b-[25px]
+                ">
+                  {/* Avatar */}
+                  <div className="w-[42px] h-[42px] rounded-[25px] overflow-hidden shrink-0">
+                    <img
+                      src={userData?.userpersonaldata.img || "/imgs/user.png"}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* Input */}
+
+                  <div className=" z-9 w-full flex rounded-[19px]" style={{background:"#0000001A"}}>
+                    <input
+                      placeholder="اكتب تقييمك هنا"
+                      className="
+                        flex-1
+                        bg-transparent
+                        outline-none
+                        p-3
+                      "
+                    />
+                    {/* Submit */}
+                    <button
+                      className="
+                        bg-white
+                        px-4
+                        py-3
+                        rounded-tl-[19px]
+                        rounded-b-[19px]
+                        text-[#D72229]
+                        font-semibold
+                        shrink-0
+                        w-[135px]
+                        cursor-pointer
+                      "
+                    >
+                     تقييم  
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+      )}
+
     </div>
   );
 }

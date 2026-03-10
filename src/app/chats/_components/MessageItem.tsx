@@ -2,10 +2,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable jsx-a11y/alt-text */
 'use client';
-import {  useMemo } from "react";
+import {  useMemo, useState, useEffect  } from "react";
 import { Message } from "@/types/types";
 import VoiceNotePlayer from "./VoiceNotePlayer";
 import "../css/custom.css";
+import wsService from "@/lib/websocketService";
 
 /**
  * Convert media to playable URL
@@ -65,7 +66,7 @@ export const MessageItem = ({
     const circumference = normalized * 2 * Math.PI;
     const offset =
       circumference - (value / 100) * circumference;
-
+    
     return (
       <svg width={40} height={40}>
         <circle
@@ -112,7 +113,7 @@ const isSameDay = (d1: Date, d2: Date) =>
   d1.getFullYear() === d2.getFullYear() &&
   d1.getMonth() === d2.getMonth() &&
   d1.getDate() === d2.getDate();
-
+  
 const getDateLabel = (date: Date) => {
   const today = new Date();
   const yesterday = new Date();
@@ -136,6 +137,63 @@ const showDateHeader =
     new Date(prevMessage.timestamp),
     messageDate
   );
+
+const [liked, setLiked] = useState(
+      m.likes?.includes(myId ?? "")
+    );
+    const [likesCount, setLikesCount] = useState(
+      m.likes?.length || 0
+    );
+    useEffect(() => {
+      setLiked(m.likes?.includes(myId ?? ""));
+      setLikesCount(m.likes?.length || 0);
+    }, [m.likes, myId]);
+
+
+const handleLike = async () => {
+  if (!myId || liked) return;
+
+  setLiked(true);
+  setLikesCount((prev) => prev + 1);
+
+  const token = localStorage.getItem("boChatToken");
+  if (!token) return;
+
+  try {
+    const res = await fetch("http://bo-chat.space/reacttomessage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        reacter: myId,
+        messageid: m._id?.toString(), // ✅ هنا الحل
+      }),
+    });
+    console.log(res);
+    console.log({
+      reacter: myId,
+      messageid: m._id?.toString(), 
+    });
+    const data = await res.json();
+    console.log("❤️ API RESPONSE:", data);
+
+    wsService.send({
+      event: "react",
+      metadata: {
+        sender: myId,
+        messageid: m._id?.toString(),
+        reciever: m.sender,
+      },
+    });
+  } catch (err) {
+    console.error("LIKE ERROR", err);
+    setLiked(false);
+    setLikesCount((prev) => Math.max(prev - 1, 0));
+  }
+};
+
 
 const dateLabel = getDateLabel(messageDate);
   return (
@@ -161,6 +219,10 @@ const dateLabel = getDateLabel(messageDate);
 
         {/* TEXT */}
           {(!m.type || m.type === "text") && (
+            <div className={`flex flex-row items-center gap-1 ${mine ? "" : "flex-row-reverse"}`}
+              onClick={()=> console.log(m)}
+            >
+
             <div
               className={`
                 ${mine ? "text-white bg-[#D72229]" : "text-[#D72229] bg-[#F3F5FF]"}
@@ -168,11 +230,26 @@ const dateLabel = getDateLabel(messageDate);
                 flex items-center justify-center px-5 py-2.5
                 text-[18px] !rounded-[25px]
               `}
-            >
+              onDoubleClick={()=>handleLike()}
+              // onClick={()=>handleLike()}
+              >
               {m.message}
             </div>
-          )}
+             {likesCount > 0 && (
+              <div style={{ fontSize: 14 }}>
+                <img
+                  src="/icons/like.svg"
+                  style={{
+                    filter: "brightness(0) saturate(100%) invert(24%) sepia(91%) saturate(4251%) hue-rotate(350deg)"
+                     
+                  }}
+                  alt="like-icon"
+                />
+              </div>
+            )}
 
+              </div>
+          )}
 
         {/* AUDIO */}
         {m.type === "audio" && (
@@ -181,6 +258,7 @@ const dateLabel = getDateLabel(messageDate);
               <VoiceNotePlayer
                 mediaUrl={mediaUrl}
                 mine={mine}
+                
               />
             ) : (
               <span style={{ fontSize: 12, color: "#999" }}>
@@ -192,25 +270,51 @@ const dateLabel = getDateLabel(messageDate);
         {/* sticker */}
         {
           m.type === "sticker" && (
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <img
-                src={mediaUrl}
-                style={{
-                  maxWidth: "100%",
-                  opacity: typeof m.uploadProgress === "number" ? 0.6 : 1,
-                }}                className="rounded-[18px] object-cover"
-                alt="image"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                width={180}
-                height={230}
-                />
+            <div className={`flex flex-row items-center gap-1 ${mine ? "" : "flex-row-reverse"}`}>
+
+              <div style={{ position: "relative", display: "inline-block" }}
+                onDoubleClick={()=>handleLike()}
+              >
+                <img
+                  src={mediaUrl}
+                  style={{
+                    maxWidth: "100%",
+                    opacity: typeof m.uploadProgress === "number" ? 0.6 : 1,
+                  }}                className="rounded-[18px] object-cover"
+                  alt="image"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  width={180}
+                  height={230}
+                  />
+              </div>
+                {m.likes && m.likes.length > 0 && (
+                <div
+                  className={` 
+                    ${mine ? "" : ""}
+                    
+                  `}
+                  style={{ fontSize: 14 }}
+                >
+                  <img src="/icons/like.svg"
+                    style={{
+                      filter:
+                        "brightness(0) saturate(100%) invert(24%) sepia(91%) saturate(4251%) hue-rotate(350deg) brightness(90%) contrast(95%)"
+                    }}
+                    alt="like-icon" />
+                </div>
+              )}
             </div>
+
           ) 
         }
         {/* IMAGE */}
         {m.type === "image" && mediaUrl && (
-          <div style={{ position: "relative", display: "inline-block" }}>
+          <div className={`flex flex-row items-center gap-1 ${mine ? "" : "flex-row-reverse"}`}>
+
+          <div style={{ position: "relative", display: "inline-block" }}
+              onDoubleClick={()=>handleLike()}
+          >
             <div className={`flex items-center  overflow-hidden w-[200px] max-h-[250px] p-4  rounded-[18px] ${mine ? "bg-[#D72229]" : "bg-[#F3F5FF]"} ${isThird ? (mine ? "message-mine" : "message-other") : ""} `}>
               <img
                 src={mediaUrl}
@@ -225,6 +329,19 @@ const dateLabel = getDateLabel(messageDate);
                 width={180}
                 height={230}
                 />
+            </div>
+            {m.likes && m.likes.length > 0 && (
+                <div
+                  style={{ fontSize: 14 }}
+                >
+                  <img src="/icons/like.svg"
+                    style={{
+                      filter:
+                        "brightness(0) saturate(100%) invert(24%) sepia(91%) saturate(4251%) hue-rotate(350deg) brightness(90%) contrast(95%)"
+                    }}
+                    alt="like-icon" />
+                </div>
+              )}
             </div>
 
             {typeof m.uploadProgress === "number" && (
@@ -246,15 +363,35 @@ const dateLabel = getDateLabel(messageDate);
 
         {/* VIDEO */}
         {m.type === "video" && mediaUrl && (
+          <div className={`flex flex-row items-center gap-1 ${mine ? "" : "flex-row-reverse"}`}> 
+
           <video
             src={mediaUrl}
             controls
             style={{ maxWidth: "100%", borderRadius: 8 }}
             controlsList="nodownload noremoteplayback"
             disablePictureInPicture
-          />
+            />
+            {m.likes && m.likes.length > 0 && (
+                <div
+                  className={` 
+                    ${mine ? "" : ""}
+                    
+                  `}
+                  style={{ fontSize: 14 }}
+                >
+                  <img src="/icons/like.svg"
+                    style={{
+                      filter:
+                        "brightness(0) saturate(100%) invert(24%) sepia(91%) saturate(4251%) hue-rotate(350deg) brightness(90%) contrast(95%)"
+                    }}
+                    alt="like-icon" />
+                </div>
+              )}
+          </div>
         )}
         {!mine && isThird ? (
+          
           <img
             src={recieverImg}
             className="w-[40px] h-[40px] rounded-full mr-2"

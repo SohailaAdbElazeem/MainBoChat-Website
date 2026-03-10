@@ -11,43 +11,48 @@ export default function LoginPage() {
   const [sessionId, setSessionId] = useState<string>("");
   const router = useRouter();
 
-  useEffect(() => {
-    const init = async () => {
-      // 1️⃣ هات sessionId
-      const res = await fetch("https://bo-chat.space/qrCode");
-      const data = await res.json();
+useEffect(() => {
+  let unsubscribe: any;
 
-      setSessionId(data.sessionId);
+  const init = async () => {
+    const res = await fetch("https://bo-chat.space/qrCode");
+    const data = await res.json();
 
-      // 2️⃣ افتح WS (بدون userId لأن ده QR flow)
-      wsService.connect(`qr-${data.sessionId}`);
+    setSessionId(data.sessionId);
 
-      // 3️⃣ register session
-      wsService.send({
-        event: "registerSession",
-        metadata: {},
-        sessionId: data.sessionId,
-      });
+    // 1️⃣ سجل handler الأول
+    unsubscribe = wsService.addHandler((message) => {
+      console.log("📩 FULL MESSAGE:", JSON.stringify(message, null, 2));
+    });
 
-      // 4️⃣ اسمع approval
-      const unsubscribe = wsService.addHandler((message) => {
-        if (message.event === "qrApproved") {
-          document.cookie = `boChatToken=${message.accessToken}; path=/; max-age=2592000`;
+    // 2️⃣ افتح الاتصال
+    wsService.connect(`qr-${data.sessionId}`);
 
-          wsService.disconnect();
-          unsubscribe();
+    // 3️⃣ استنى فعليًا لحد ما يفتح
+    const waitForOpen = setInterval(() => {
+      if (wsService.socket?.readyState === WebSocket.OPEN) {
+        console.log("🟢 WS CONNECTED");
 
-          router.push("/dashboard");
-        }
-      });
-    };
+        wsService.send({
+          event: "registerSession",
+          metadata: {},
+          sessionId: data.sessionId,
+        });
 
-    init();
+        console.log("📤 registerSession sent");
 
-    return () => {
-      wsService.disconnect();
-    };
-  }, [router]);
+        clearInterval(waitForOpen);
+      }
+    }, 100);
+  };
+
+  init();
+
+  return () => {
+    wsService.disconnect();
+    if (unsubscribe) unsubscribe();
+  };
+}, [router]);
 
 
   return (
