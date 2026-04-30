@@ -2,14 +2,14 @@
 export const runtime = "nodejs";
 export const revalidate = 1800; 
 
-const DEFAULT_ACTIVE_USERS_ID =
-  process.env.ACTIVE_USERS_ID || "6877d5497b04a3c83759f122";
+const DEFAULT_ACTIVE_USERS_ID =process.env.ACTIVE_USERS_ID || "6882a4be584078fa6a133783";
 
 export async function GET() {
   // const token = process.env.ACTIVE_USERS_TOKEN;
   const token = process.env.ACTIVE_USERS_TOKEN;
   if (!token) {
     console.error("[active-users] Missing ACTIVE_USERS_TOKEN");
+    console.log("TOKEN:", token);
     return new Response(
       JSON.stringify({ error: "Missing ACTIVE_USERS_TOKEN" }),
       { status: 500, headers: { "content-type": "application/json" } }
@@ -24,7 +24,8 @@ export async function GET() {
   try {
     const res = await fetch(endpoint, {
       method: "GET",
-      headers: { Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzY0MDA1NTk3LCJleHAiOjE3NjQ2MTAzOTd9.wGFSnfk4ULUMG7Qbl8ksRgh6ShX9EkyXQgtPSrfNa4E` },
+      // headers: { Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyaWQiOiI2ODc3ZDU0OTdiMDRhM2M4Mzc1OWYxMjIiLCJyb2xlIjpbImRlbGV0ZSIsInJlcG9ydCIsInB1Ymxpc2giLCJhZGQiLCJibG9ja2VkQ29udGVudCIsImJsb2NrIiwidmVyaWZ5IiwiYWNjZXB0Iiwid2F0Y2giXSwiaWF0IjoxNzY0MDA1NTk3LCJleHAiOjE3NjQ2MTAzOTd9.wGFSnfk4ULUMG7Qbl8ksRgh6ShX9EkyXQgtPSrfNa4E` },
+      headers: { Authorization: `Bearer ${token}` },
       signal: ctrl.signal,
       // نسيب ISR شغال على مستوى الرد بتاعنا، بس من الأفضل من غير force-cache هنا
       // عشان لو Upstream بيرجع Cache headers غريبة ما تلخبطش
@@ -33,7 +34,6 @@ export async function GET() {
     });
 
     const text = await res.text(); // اقرأ دايمًا الـ body حتى في الأخطاء
-
     if (!res.ok) {
       // سجّل للـ dev
       console.error(

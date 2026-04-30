@@ -19,7 +19,8 @@ export default function PostsFeed() {
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   const LIMIT = 20;
-  const API_BASE = "http://bo-chat.space/postsTest/686695914211804ef3875338";
+  // const API_BASE = "http://bo-chat.space/postsTest/686695914211804ef3875338";
+  const API_BASE = "https://bo-chat.space/home_posts/686695914211804ef3875338?page=1&limit=100";
   const STORAGE_KEY = "posts_feed_cache";
 
 
@@ -27,57 +28,120 @@ export default function PostsFeed() {
   // --------------------------------------------------------------------
   // ✅ تحميل البيانات - FIXED (بدون loop)
   // --------------------------------------------------------------------
-  const loadPosts = useCallback(
-    async (newPage: number) => {
-      if (loadingMore || !hasMore) return;
+    const token = process.env.ACTIVE_USERS_TOKEN;
+  // const loadPosts = useCallback(
+  //   async (newPage: number) => {
+  //     if (loadingMore || !hasMore) return;
 
-      try {
-        setLoadingMore(true);
-        setError(null);
+  //     try {
+  //       setLoadingMore(true);
+  //       setError(null);
+  //       const res = await fetch(`${API_BASE}&page=${newPage}&limit=${LIMIT}`, {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
 
-        const res = await fetch(`${API_BASE}?page=${newPage}&limit=${LIMIT}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  //       // const res = await fetch(`${API_BASE}?page=${newPage}&limit=${LIMIT}`);
+  //       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        const data = await res.json();
-        const newPosts = Array.isArray(data) ? data : [];
+  //       const data = await res.json();
+  //       const newPosts = Array.isArray(data) ? data : [];
 
-        if (newPosts.length < LIMIT) setHasMore(false);
+  //       if (newPosts.length < LIMIT) setHasMore(false);
 
-        setPosts((prev) => {
-          const existingIds = new Set(prev.map((p) => p._id));
-          const uniqueNew = newPosts.filter(
-            (post: Post) => !existingIds.has(post._id)
-          );
+  //       setPosts((prev) => {
+  //         const existingIds = new Set(prev.map((p) => p._id));
+  //         const uniqueNew = newPosts.filter(
+  //           (post: Post) => !existingIds.has(post._id)
+  //         );
 
-          const combined = [...prev, ...uniqueNew];
+  //         const combined = [...prev, ...uniqueNew];
 
-          // 👇 اعمل shuffle مرة واحدة بس بعد أول تحميل
-          if (!shuffledOnce && newPage === 1) {
-            for (let i = combined.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 5));
-              [combined[i], combined[j]] = [combined[j], combined[i]];
-            }
-            setShuffledOnce(true);
-          }
+  //         // 👇 اعمل shuffle مرة واحدة بس بعد أول تحميل
+  //         if (!shuffledOnce && newPage === 1) {
+  //           for (let i = combined.length - 1; i > 0; i--) {
+  //             const j = Math.floor(Math.random() * (i + 5));
+  //             [combined[i], combined[j]] = [combined[j], combined[i]];
+  //           }
+  //           setShuffledOnce(true);
+  //         }
 
-          return combined;
-        });
+  //         return combined;
+  //       });
 
-        setPage(newPage);
-      } catch (err: any) {
-        setError(err.message || "تعذر تحميل البيانات");
-      } finally {
-        setLoading(false);
-        setTimeout(() => setLoadingMore(false), 250); // 🌙 smooth scroll
-      }
-    },
-    [hasMore, loadingMore] // ← مش هنحط loadPosts ف dependency
-  );
+  //       setPage(newPage);
+  //     } catch (err: any) {
+  //       setError(err.message || "تعذر تحميل البيانات");
+  //     } finally {
+  //       setLoading(false);
+  //       setTimeout(() => setLoadingMore(false), 250); // 🌙 smooth scroll
+  //     }
+  //   },
+  //   [hasMore, loadingMore] // ← مش هنحط loadPosts ف dependency
+  // );
 
   // --------------------------------------------------------------------
   // ✅ أول تحميل
   // --------------------------------------------------------------------
-useEffect(() => {
+const loadPosts = useCallback(
+  async (newPage: number) => {
+    if (loadingMore || !hasMore) return;
+
+    try {
+      setLoadingMore(true);
+      setError(null);
+
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("token")
+          : null;
+
+      const res = await fetch(
+        `${API_BASE}&page=${newPage}&limit=${LIMIT}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      const newPosts = Array.isArray(data) ? data : [];
+
+      if (newPosts.length < LIMIT) setHasMore(false);
+
+      setPosts((prev) => {
+        const existingIds = new Set(prev.map((p) => p._id));
+        const uniqueNew = newPosts.filter(
+          (post: Post) => !existingIds.has(post._id)
+        );
+
+        const combined = [...prev, ...uniqueNew];
+
+        if (!shuffledOnce && newPage === 1) {
+          for (let i = combined.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [combined[i], combined[j]] = [combined[j], combined[i]];
+          }
+          setShuffledOnce(true);
+        }
+
+        return combined;
+      });
+
+      setPage(newPage);
+    } catch (err: any) {
+      setError(err.message || "تعذر تحميل البيانات");
+    } finally {
+      setLoading(false);
+      setTimeout(() => setLoadingMore(false), 250);
+    }
+  },
+  [hasMore, loadingMore, shuffledOnce]
+);
+  useEffect(() => {
   const cached = sessionStorage.getItem(STORAGE_KEY);
 
   if (cached) {

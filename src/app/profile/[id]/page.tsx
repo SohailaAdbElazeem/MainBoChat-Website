@@ -26,6 +26,7 @@ function safeCount<T>(val?: T[] | Record<string, unknown> | number | null) {
 export default function ProfilePageClient() {
   const params = useParams();
   const id = params && typeof params === "object" ? (params as any).id : undefined;
+// const token = process.env.NEXT_PUBLIC_ACTIVE_USERS_TOKEN;
 
   const [data, setData] = useState<UserAPIResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,16 +75,15 @@ export default function ProfilePageClient() {
   }, [id]);
 
   useEffect(() => {
-    const TOKEN = localStorage.getItem("boChatToken") || "";
+    const TOKEN = localStorage.getItem("token") || process.env.NEXT_PUBLIC_ACTIVE_USERS_TOKEN;
     if (!id) {
       setError("معرّف الملف الشخصي مفقود من الـ URL.");
-      setLoading(false);
+      setLoading(false);  
       return;
     }
     const ac = new AbortController();
     let mounted = true;
-    
-    async function fetchUser() {
+     async function fetchUser() {
       setLoading(true);
       setError(null);
       try {
@@ -92,7 +92,12 @@ export default function ProfilePageClient() {
           cache: "no-store",
           signal: ac.signal,
         });
-        if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
+        // if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
+        if (!res.ok) {
+  console.log("STATUS:", res.status);
+  console.log(await res.text());
+  throw new Error(`HTTP ${res.status}`);
+}
         const json = (await res.json()) as UserAPIResponse;
         if (mounted) {
           setData(json)
@@ -115,7 +120,7 @@ export default function ProfilePageClient() {
   }, [id]);
     const fetchUserData = async () => {
     try {
-      const token = localStorage.getItem("boChatToken");
+      const token = localStorage.getItem("token");
       const userid = localStorage.getItem("userid");
       const res = await fetch(`https://bo-chat.space/users/${userid}`, {
         headers: {

@@ -67,10 +67,14 @@ export default function ActiveUsersCarousel({
       try {
         setError(null);
         setUsers(null);
-        const res = await fetch(endpoint, {
-          signal: abort.signal,
-          cache: "no-store", // بدون كاش
-        });
+       const res = await fetch(endpoint, {
+  signal: abort.signal,
+  cache: "no-store",
+  headers: {
+    Authorization: token ? `Bearer ${token}` : "",
+    Accept: "application/json",
+  },
+});
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as RawUser[] | { data: RawUser[] };
         const rows = Array.isArray(data) ? data : (data as any).data ?? [];
