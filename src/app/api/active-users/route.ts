@@ -59,17 +59,17 @@ export async function GET() {
     return new Response(text, {
       headers: { "content-type": "application/json" },
     });
-  } catch (err: any) {
-    console.error("[active-users] Request failed:", err?.message || err);
-    const isAbort = err?.name === "AbortError";
-    return new Response(
-      JSON.stringify({
-        error: isAbort ? "Upstream timeout" : "Request failed",
-        detail: err?.message || String(err),
-      }),
-      { status: 500, headers: { "content-type": "application/json" } }
-    );
-  } finally {
+  } catch (err: unknown) {
+  console.error("[active-users] Request failed:", err instanceof Error ? err.message : err);
+  const isAbort = err instanceof Error && err.name === "AbortError";
+  return new Response(
+    JSON.stringify({
+      error: isAbort ? "Upstream timeout" : "Request failed",
+      detail: err instanceof Error ? err.message : String(err),
+    }),
+    { status: 500, headers: { "content-type": "application/json" } }
+  );
+}finally {
     clearTimeout(to);
   }
 }

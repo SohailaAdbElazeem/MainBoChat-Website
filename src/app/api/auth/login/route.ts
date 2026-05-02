@@ -27,10 +27,17 @@ export async function POST(req: NextRequest) {
 
     setAuthCookie(token);
     return NextResponse.json({ ok: true }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, message: e?.message || "Login failed" },
-      { status: 500 }
-    );
-  }
+  } catch (e: unknown) {
+  const message = e instanceof Error ? e.message : String(e);
+  return NextResponse.json(
+    { ok: false, message: message || "Login failed" },
+    { status: 500 }
+  );
+}
+  // catch (e: any) {
+  //   return NextResponse.json(
+  //     { ok: false, message: e?.message || "Login failed" },
+  //     { status: 500 }
+  //   );
+  // }
 }

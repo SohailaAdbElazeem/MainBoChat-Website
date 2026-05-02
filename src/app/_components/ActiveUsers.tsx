@@ -243,8 +243,9 @@ export default function ActiveUsersCarousel({
     const token = propToken || localStorage.getItem("boChatToken");
     if (!token) {
       router.push("/login");
-      return;
-    }
+        // setError("No token");
+  // return;
+}
 
     const abortController = new AbortController();
 
@@ -268,6 +269,8 @@ export default function ActiveUsersCarousel({
           localStorage.removeItem("userid");
           router.push("/login");
           return;
+            // setError("No token");
+  // return;
         }
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
