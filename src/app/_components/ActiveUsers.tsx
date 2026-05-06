@@ -242,9 +242,9 @@ export default function ActiveUsersCarousel({
     // Get token from localStorage if not provided via prop
     const token = propToken || localStorage.getItem("boChatToken");
     if (!token) {
-      router.push("/login");
+      // router.push("/login");
         // setError("No token");
-  // return;
+  return;
 }
 
     const abortController = new AbortController();

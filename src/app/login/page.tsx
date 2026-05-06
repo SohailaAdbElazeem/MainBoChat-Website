@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @next/next/no-html-link-for-pages */
-// "use client";
+//  "use client";
 
 // import { useEffect, useState } from "react";
 // import { useRouter } from "next/navigation";
@@ -128,53 +128,205 @@ import wsService from "@/lib/websocketService";
 const LoginPage = () => {
   const [sessionId, setSessionId] = useState<string>("");
   const unsubscribeRef = useRef<(() => void) | undefined>();
+ 
+    
 
   useEffect(() => {
-    let isMounted = true;
+  let isMounted = true;
 
-    const init = async () => {
-      try {
-        const res = await fetch("https://bo-chat.space/qrCode");
-        const data = await res.json();
-        if (!isMounted) return;
+  const init = async () => {
+    try {
+      const res = await fetch("https://bo-chat.space/qrCode");
+      const data = await res.json();
+      if (!isMounted) return;
+    
+      setSessionId(data.sessionId);
 
-        setSessionId(data.sessionId);
+      //  sessionId
+      localStorage.setItem("SessionId", data.sessionId);
 
-        const unsubscribe = wsService.addHandler((message) => {
-          console.log("📩 FULL MESSAGE:", JSON.stringify(message, null, 2));
-        });
-        unsubscribeRef.current = unsubscribe;
+      // const unsubscribe = wsService.addHandler((message) => {
+      //   console.log("📩 FULL MESSAGE :", JSON.stringify(message, null, 2));
+      // });
+      const unsubscribe = wsService.addHandler(async (message) => {
+  console.log("📩 FULL MESSAGE :", message);
 
-        wsService.connect(`qr-${data.sessionId}`);
+  // 1) نتأكد إن الحدث هو confirmSession
+  if (message.event === "confirmSession") {
+  const storedSession = localStorage.getItem("SessionId");
 
-        const waitForOpen = setInterval(() => {
-          if (wsService.socket?.readyState === WebSocket.OPEN) {
-            console.log("🟢 WS CONNECTED");
-            wsService.send({
-              event: "registerSession",
-              metadata: {},
-              sessionId: data.sessionId,
-            });
-            console.log("📤 registerSession sent");
-            clearInterval(waitForOpen);
-          }
-        }, 100);
-      } catch (error) {
-        console.error("Init error:", error);
-      }
-    };
+  if (!storedSession) return;
 
-    init();
+  // تأكيد إن الجلسة صح
+  if (message.sessionId !== storedSession) {
+    console.warn(" Session ID mismatch");
+    return;
+  }
 
-    return () => {
-      isMounted = false;
-      wsService.disconnect();
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, []);
+  console.log(" Session matched - proceeding login");
 
+ 
+    // 2 session 
+    if (!storedSession) return;
+    if (message.sessionId !== storedSession) return;
+ 
+//  try {
+//       const res = await fetch("https://bo-chat.space/qrCode", {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         body: JSON.stringify({
+//           userid: localStorage.getItem("userId"), // أو من التوكن
+//           deviceToken: "web",
+//         }),
+        
+//       });
+//         console.log(res.body);
+
+//       if (!res.ok) {
+//         console.error("❌ Login failed:", res.status);
+//         return;
+//       }
+
+//       const data = await res.json();
+
+//       console.log("🎟 LOGIN RESPONSE:", data);
+//         if (data.token) {
+//         localStorage.setItem("boChatToken", data.token);
+//       }
+
+//       wsService.disconnect();
+
+//       window.location.href = "/";
+//     } catch (err) {
+//       console.error("❌ Login error:", err);
+//     }
+  
+   
+  }
+});
+      unsubscribeRef.current = unsubscribe;
+
+      wsService.connect(`qr-${data.sessionId}`);
+
+      const waitForOpen = setInterval(() => {
+        if (wsService.socket?.readyState === WebSocket.OPEN) {
+          console.log("🟢 WS CONNECTED");
+
+          wsService.send({
+            event: "registerSession",
+            metadata: {},
+            sessionId: data.sessionId,
+          });
+
+          console.log("📤 registerSession sent");
+          clearInterval(waitForOpen);
+          
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Init error:", error);
+    }
+  };
+
+  init();
+
+  return () => {
+    isMounted = false;
+    wsService.disconnect();
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+    }
+  };
+}, []);
+
+// useEffect(() => {
+//   let isMounted = true;
+
+//   const init = async () => {
+//     try {
+//       const res = await fetch("https://bo-chat.space/qrCode");
+//       const data = await res.json();
+//       if (!isMounted) return;
+
+//       setSessionId(data.sessionId);
+
+//       // ✅ خزني السيشن
+//       localStorage.setItem("SessionId", data.sessionId);
+
+//       // ✅ handler واحد بس (مهم جدًا)
+//    const unsubscribe = wsService.addHandler(async (message) => {
+//   console.log("📩 FULL MESSAGE :", JSON.stringify(message, null, 2));
+
+//   if (message.event === "confirmSession") {
+//     const storedSession = localStorage.getItem("SessionId");
+//     if (message.sessionId !== storedSession) return;
+
+//     console.log("✅ LOGIN SUCCESS");
+
+//     try {
+//       const res = await fetch("https://bo-chat.space/qrCode", {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         body: JSON.stringify({
+//           sessionId: message.sessionId,
+//           deviceToken: "web", // 👈 مهم لو السيرفر محتاجه
+//         }),
+//       });
+
+//       const data = await res.json();
+//       console.log("🎟 TOKEN RESPONSE:", data);
+
+//       if (data.token) {
+//         localStorage.setItem("boChatToken", data.token);
+//       }
+
+//       // 🚀 redirect مرة واحدة بس
+//       window.location.href = "/";
+
+//     } catch (err) {
+//       console.error("Login error:", err);
+//     }
+//   }
+// });
+
+//       unsubscribeRef.current = unsubscribe;
+
+//       wsService.connect(`qr-${data.sessionId}`);
+
+//       const waitForOpen = setInterval(() => {
+//         if (wsService.socket?.readyState === WebSocket.OPEN) {
+//           console.log("🟢 WS CONNECTED");
+
+//           wsService.send({
+//             event: "registerSession",
+//             metadata: {},
+//             sessionId: data.sessionId,
+//           });
+
+//           console.log("📤 registerSession sent");
+//           clearInterval(waitForOpen);
+//         }
+//       }, 100);
+
+//     } catch (error) {
+//       console.error("Init error:", error);
+//     }
+//   };
+
+//   init();
+
+//   return () => {
+//     isMounted = false;
+//     wsService.disconnect();
+//     if (unsubscribeRef.current) {
+//       unsubscribeRef.current();
+//     }
+//   };
+// }, []);
   return (
     <div className="min-h-screen bg-[#D72229] flex flex-col items-center justify-center relative text-white main-layer">
       <a href="/">
@@ -234,3 +386,5 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
+ 
