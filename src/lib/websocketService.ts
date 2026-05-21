@@ -5,7 +5,10 @@
 type WSHandler = (payload: any) => void;
 
 class WSService {
-  private base = "ws://bo-chat.space:3000";
+  // private base = "ws://bo-chat.space:3000";
+  private base = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  ? "wss://bo-chat.space:3000"
+  : "ws://bo-chat.space:3000";
   private ws: WebSocket | null = null;
   private handlers = new Set<WSHandler>();
 
@@ -34,7 +37,7 @@ class WSService {
     console.log("%c[WS]", "color:#D72229;font-weight:bold;", ...args);
   }
 
-  /* ------------------ CONNECT ------------------ */
+   /* ------------------ CONNECT ------------------ */
   connect(userId: string) {
     if (!userId) return;
 
@@ -232,7 +235,7 @@ class WSService {
   get socket() {
     return this.ws;
   }
-}
+ }
 
 const wsService = new WSService();
 export default wsService;

@@ -96,6 +96,7 @@ const loadPosts = useCallback(
           ? localStorage.getItem("token")
           : null;
 
+
       const res = await fetch(
         `${API_BASE}&page=${newPage}&limit=${LIMIT}`,
         {

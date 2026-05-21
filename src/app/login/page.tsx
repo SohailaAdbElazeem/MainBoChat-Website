@@ -1,358 +1,152 @@
-/* eslint-disable @next/next/no-img-element */
-/* eslint-disable @next/next/no-html-link-for-pages */
-//  "use client";
-
-// import { useEffect, useState } from "react";
-// import { useRouter } from "next/navigation";
-// import StyledQRCode from "../_components/StyledQRCode";
-// import wsService from "@/lib/websocketService";
-
-// export default function LoginPage() {
-//   const [sessionId, setSessionId] = useState<string>("");
-//   const router = useRouter();
-
-// useEffect(() => {
-//   let unsubscribe: any;
-
-//   const init = async () => {
-//     const res = await fetch("https://bo-chat.space/qrCode");
-//     const data = await res.json();
-
-//     setSessionId(data.sessionId);
-
-//     // 1️⃣ سجل handler الأول
-//     unsubscribe = wsService.addHandler((message) => {
-//       console.log("📩 FULL MESSAGE:", JSON.stringify(message, null, 2));
-//     });
-
-//     // 2️⃣ افتح الاتصال
-//     wsService.connect(`qr-${data.sessionId}`);
-
-//     // 3️⃣ استنى فعليًا لحد ما يفتح
-//     const waitForOpen = setInterval(() => {
-//       if (wsService.socket?.readyState === WebSocket.OPEN) {
-//         console.log("🟢 WS CONNECTED");
-
-//         wsService.send({
-//           event: "registerSession",
-//           metadata: {},
-//           sessionId: data.sessionId,
-//         });
-
-//         console.log("📤 registerSession sent");
-
-//         clearInterval(waitForOpen);
-//       }
-//     }, 100);
-//   };
-
-//   init();
-
-//   return () => {
-//     wsService.disconnect();
-//     if (unsubscribe) unsubscribe();
-//   };
-// }, [router]);
-
-
-//   return (
-//     <div className="min-h-screen bg-[#D72229] flex flex-col items-center justify-center relative text-white main-layer">
-//       <a href="/">
-//         <img
-//           src="/logo.png"
-//           className="absolute top-5 left-1/2 -translate-x-1/2 w-[47px]"
-//           alt="logo"
-//         />
-//       </a>
-
-//       <img src="/logo.png" className="layer-1" alt="logo" />
-//       <img src="/logo.png" className="layer-2" alt="logo" />
-
-//       <div className="flex items-top gap-5 z-10">
-//         {/* QR Container */}
-//         <div className="shadow-xl rounded-[28px]  max-w-[280px] overflow-hidden">
-//           <p className="text-center text-[#D72229] mt-3 font-semibold text-lg p-4 rounded-t-[28px] text-[28px] bg-[#FFFFFF]/80 backdrop-blur-sm">
-//             امسح الكود الآن
-//           </p>
-
-//           {sessionId && (
-//             <div className="bg-white rounded-b-[28px] p-1 flex items-center justify-center">
-//               <StyledQRCode
-//                 value={JSON.stringify({
-//                   event: "LOGIN",
-//                   sessionId,
-//                 })}
-//               />
-//             </div>
-//           )}
-//         </div>
-
-//         {/* Text */}
-//         <div className="max-w-xl">
-//           <h1 className="text-[45px] mb-1">أهلاً بيك في بو شات Web</h1>
-
-//           <p className="text-black mb-5 text-[20px]">
-//             ادخل على حسابك بسهولة ومن غير ما تكتب
-//             <br />
-//             كلمة سر
-//           </p>
-
-//           <p className="mb-3 font-semibold text-[18px]">
-//             علشان تسجّل دخولك من المتصفح:
-//           </p>
-
-//           <ol className="space-y-2 text-black text-[15px]">
-//             <li>1 افتح تطبيق بو شات على موبايلك</li>
-//             <li>2 روح لـ الإعدادات</li>
-//             <li>3 اختار تسجيل الدخول من الويب / الأجهزة المتوصّلة</li>
-//             <li>4 استخدم الكاميرا وامسح الكود اللي قدّامك</li>
-//             <li>5 خلال ثواني… هتلاقي حسابك فتح هنا</li>
-//           </ol>
-//         </div>
-//       </div>
-
-//       <p className="absolute bottom-4 text-[16px] text-white/90">
-//         مسح بسيط للـ QR من موبايلك وهتلاقي كل حاجة هنا قدامك
-//       </p>
-//     </div>
-//   );
-// }
-
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-// import { useRouter } from "next/navigation";  // غير مستخدم -> علقه أو احذفه
+import { useRouter } from "next/navigation";
 import StyledQRCode from "../_components/StyledQRCode";
 import wsService from "@/lib/websocketService";
 
 const LoginPage = () => {
   const [sessionId, setSessionId] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+
+  const hasLoggedInRef = useRef(false);
   const unsubscribeRef = useRef<(() => void) | undefined>();
- 
-    
+  const router = useRouter();
 
   useEffect(() => {
-  let isMounted = true;
+    // 1. إذا كان المستخدم مسجلاً دخوله بالفعل، اذهب مباشرة إلى الرئيسية
+    const token = localStorage.getItem("accessToken");
+    if (token && localStorage.getItem("isLoggedIn") === "true") {
+      router.replace("/");
+      return;
+    }
 
-  const init = async () => {
-    try {
-      const res = await fetch("https://bo-chat.space/qrCode");
-      const data = await res.json();
-      if (!isMounted) return;
-    
-      setSessionId(data.sessionId);
+    let isMounted = true;
+    let intervalId: NodeJS.Timeout | null = null;
 
-      //  sessionId
-      localStorage.setItem("SessionId", data.sessionId);
+    const init = async () => {
+      try {
+        const res = await fetch("https://bo-chat.space/qrCode");
+        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
 
-      // const unsubscribe = wsService.addHandler((message) => {
-      //   console.log("📩 FULL MESSAGE :", JSON.stringify(message, null, 2));
-      // });
-      const unsubscribe = wsService.addHandler(async (message) => {
-  console.log("📩 FULL MESSAGE :", message);
+        const data = await res.json();
+        if (!isMounted) return;
+        if (!data?.sessionId) throw new Error("No sessionId from server");
 
-  // 1) نتأكد إن الحدث هو confirmSession
-  if (message.event === "confirmSession") {
-  const storedSession = localStorage.getItem("SessionId");
+        setSessionId(data.sessionId);
+        localStorage.setItem("SessionId", data.sessionId);
 
-  if (!storedSession) return;
+        const unsubscribe = wsService.addHandler((message: any) => {
+          console.log("📩 WS Message received:", message);
 
-  // تأكيد إن الجلسة صح
-  if (message.sessionId !== storedSession) {
-    console.warn(" Session ID mismatch");
-    return;
+          //   qrApproved هو حدث النجاح
+          if (message.event !== "qrApproved") return;
+          if (hasLoggedInRef.current) return;
+
+          hasLoggedInRef.current = true;
+
+          const payload = message.data || {};
+          const accessToken = payload.accessToken;
+          const refreshToken = payload.refreshToken;
+          const userData = payload.data;
+
+          if (!accessToken) {
+            console.error("❌ No accessToken in qrApproved message");
+            return;
+          }
+
+          console.log("✅ QR Login Approved! Saving tokens...");
+
+          // حفظ البيانات
+          localStorage.setItem("accessToken", accessToken);
+          if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+          if (userData) localStorage.setItem("userData", JSON.stringify(userData));
+          localStorage.setItem("isLoggedIn", "true");
+
+          // تنظيف WebSocket
+          wsService.disconnect();
+          if (unsubscribeRef.current) unsubscribeRef.current();
+
+          // تأخير بسيط لضمان اكتمال الحفظ ثم التوجيه
+          setTimeout(() => {
+            // استخدام replace مع force
+            router.replace("/");
+            // احتياطي: في حال فشل Next.js router، نستخدم window.location
+            setTimeout(() => {
+              if (window.location.pathname !== "/") {
+                window.location.href = "/";
+              }
+            }, 100);
+          }, 100);
+        });
+
+        unsubscribeRef.current = unsubscribe;
+        wsService.connect(`qr-${data.sessionId}`);
+
+        intervalId = setInterval(() => {
+          if (wsService.socket?.readyState === WebSocket.OPEN) {
+            wsService.send({
+              event: "registerSession",
+              sessionId: data.sessionId,
+            });
+            if (intervalId) clearInterval(intervalId);
+          }
+        }, 150);
+      } catch (err: any) {
+        console.error("Init error:", err);
+        if (isMounted) setError(err.message || "فشل في تحميل QR Code");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
+      wsService.disconnect();
+      if (unsubscribeRef.current) unsubscribeRef.current();
+    };
+  }, [router]);
+
+  // إضافة تأثير إضافي للتحقق بعد التحميل إذا وجد توكن
+  useEffect(() => {
+    if (!loading) {
+      const token = localStorage.getItem("accessToken");
+      if (token && localStorage.getItem("isLoggedIn") === "true") {
+        router.replace("/");
+      }
+    }
+  }, [loading, router]);
+
+  if (loading) {
+    return <div className="min-h-screen bg-[#D72229] flex items-center justify-center text-white text-xl">جاري تحميل الكود...</div>;
   }
 
-  console.log(" Session matched - proceeding login");
-
- 
-    // 2 session 
-    if (!storedSession) return;
-    if (message.sessionId !== storedSession) return;
- 
-//  try {
-//       const res = await fetch("https://bo-chat.space/qrCode", {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify({
-//           userid: localStorage.getItem("userId"), // أو من التوكن
-//           deviceToken: "web",
-//         }),
-        
-//       });
-//         console.log(res.body);
-
-//       if (!res.ok) {
-//         console.error("❌ Login failed:", res.status);
-//         return;
-//       }
-
-//       const data = await res.json();
-
-//       console.log("🎟 LOGIN RESPONSE:", data);
-//         if (data.token) {
-//         localStorage.setItem("boChatToken", data.token);
-//       }
-
-//       wsService.disconnect();
-
-//       window.location.href = "/";
-//     } catch (err) {
-//       console.error("❌ Login error:", err);
-//     }
-  
-   
+  if (error) {
+    return <div className="min-h-screen bg-[#D72229] flex items-center justify-center text-white">{error}</div>;
   }
-});
-      unsubscribeRef.current = unsubscribe;
 
-      wsService.connect(`qr-${data.sessionId}`);
-
-      const waitForOpen = setInterval(() => {
-        if (wsService.socket?.readyState === WebSocket.OPEN) {
-          console.log("🟢 WS CONNECTED");
-
-          wsService.send({
-            event: "registerSession",
-            metadata: {},
-            sessionId: data.sessionId,
-          });
-
-          console.log("📤 registerSession sent");
-          clearInterval(waitForOpen);
-          
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Init error:", error);
-    }
-  };
-
-  init();
-
-  return () => {
-    isMounted = false;
-    wsService.disconnect();
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-    }
-  };
-}, []);
-
-// useEffect(() => {
-//   let isMounted = true;
-
-//   const init = async () => {
-//     try {
-//       const res = await fetch("https://bo-chat.space/qrCode");
-//       const data = await res.json();
-//       if (!isMounted) return;
-
-//       setSessionId(data.sessionId);
-
-//       // ✅ خزني السيشن
-//       localStorage.setItem("SessionId", data.sessionId);
-
-//       // ✅ handler واحد بس (مهم جدًا)
-//    const unsubscribe = wsService.addHandler(async (message) => {
-//   console.log("📩 FULL MESSAGE :", JSON.stringify(message, null, 2));
-
-//   if (message.event === "confirmSession") {
-//     const storedSession = localStorage.getItem("SessionId");
-//     if (message.sessionId !== storedSession) return;
-
-//     console.log("✅ LOGIN SUCCESS");
-
-//     try {
-//       const res = await fetch("https://bo-chat.space/qrCode", {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify({
-//           sessionId: message.sessionId,
-//           deviceToken: "web", // 👈 مهم لو السيرفر محتاجه
-//         }),
-//       });
-
-//       const data = await res.json();
-//       console.log("🎟 TOKEN RESPONSE:", data);
-
-//       if (data.token) {
-//         localStorage.setItem("boChatToken", data.token);
-//       }
-
-//       // 🚀 redirect مرة واحدة بس
-//       window.location.href = "/";
-
-//     } catch (err) {
-//       console.error("Login error:", err);
-//     }
-//   }
-// });
-
-//       unsubscribeRef.current = unsubscribe;
-
-//       wsService.connect(`qr-${data.sessionId}`);
-
-//       const waitForOpen = setInterval(() => {
-//         if (wsService.socket?.readyState === WebSocket.OPEN) {
-//           console.log("🟢 WS CONNECTED");
-
-//           wsService.send({
-//             event: "registerSession",
-//             metadata: {},
-//             sessionId: data.sessionId,
-//           });
-
-//           console.log("📤 registerSession sent");
-//           clearInterval(waitForOpen);
-//         }
-//       }, 100);
-
-//     } catch (error) {
-//       console.error("Init error:", error);
-//     }
-//   };
-
-//   init();
-
-//   return () => {
-//     isMounted = false;
-//     wsService.disconnect();
-//     if (unsubscribeRef.current) {
-//       unsubscribeRef.current();
-//     }
-//   };
-// }, []);
   return (
     <div className="min-h-screen bg-[#D72229] flex flex-col items-center justify-center relative text-white main-layer">
       <a href="/">
-        <img
-          src="/logo.png"
-          className="absolute top-5 left-1/2 -translate-x-1/2 w-[47px]"
-          alt="شعار بو شات"
-        />
+        <img src="/logo.png" className="absolute top-5 left-1/2 -translate-x-1/2 w-[47px]" alt="شعار بو شات" />
       </a>
 
       <img src="/logo.png" className="layer-1" alt="شعار بو شات" />
       <img src="/logo.png" className="layer-2" alt="شعار بو شات" />
 
-      <div className="flex items-top gap-5 z-10">
+      <div className="flex items-start gap-5 z-10">
         <div className="shadow-xl rounded-[28px] max-w-[280px] overflow-hidden">
-          <p className="text-center text-[#D72229] mt-3 font-semibold text-lg p-4 rounded-t-[28px] text-[28px] bg-[#FFFFFF]/80 backdrop-blur-sm">
+          <p className="text-center text-[#D72229] mt-3 font-semibold text-[28px] p-4 bg-white/90 rounded-t-[28px]">
             امسح الكود الآن
           </p>
-
           {sessionId && (
-            <div className="bg-white rounded-b-[28px] p-1 flex items-center justify-center">
+            <div className="bg-white p-6 flex items-center justify-center rounded-b-[28px]">
               <StyledQRCode
-                value={JSON.stringify({
-                  event: "LOGIN",
-                  sessionId,
-                })}
+                value={JSON.stringify({ event: "LOGIN", sessionId })}
               />
             </div>
           )}
@@ -361,30 +155,20 @@ const LoginPage = () => {
         <div className="max-w-xl">
           <h1 className="text-[45px] mb-1">أهلاً بيك في بو شات Web</h1>
           <p className="text-black mb-5 text-[20px]">
-            ادخل على حسابك بسهولة ومن غير ما تكتب
-            <br />
-            كلمة سر
+            ادخل على حسابك بسهولة ومن غير ما تكتب كلمة سر
           </p>
-          <p className="mb-3 font-semibold text-[18px]">
-            علشان تسجّل دخولك من المتصفح:
-          </p>
+          <p className="mb-3 font-semibold text-[18px]">علشان تسجّل دخولك:</p>
           <ol className="space-y-2 text-black text-[15px]">
-            <li>1 افتح تطبيق بو شات على موبايلك</li>
-            <li>2 روح لـ الإعدادات</li>
-            <li>3 اختار تسجيل الدخول من الويب / الأجهزة المتوصّلة</li>
-            <li>4 استخدم الكاميرا وامسح الكود اللي قدّامك</li>
-            <li>5 خلال ثواني… هتلاقي حسابك فتح هنا</li>
+            <li>1. افتح تطبيق بو شات على موبايلك</li>
+            <li>2. روح للإعدادات</li>
+            <li>3. اختار تسجيل الدخول من الويب</li>
+            <li>4. امسح الكود بالكاميرا</li>
+            <li>5. هتلاقي حسابك فتح تلقائي</li>
           </ol>
         </div>
       </div>
-
-      <p className="absolute bottom-4 text-[16px] text-white/90">
-        مسح بسيط للـ QR من موبايلك وهتلاقي كل حاجة هنا قدامك
-      </p>
     </div>
   );
 };
 
 export default LoginPage;
-
- 
