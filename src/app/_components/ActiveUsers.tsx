@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-namespace */
-/* eslint-disable @next/next/no-img-element */
+// /* eslint-disable @typescript-eslint/no-explicit-any */
+// /* eslint-disable @typescript-eslint/no-namespace */
+// /* eslint-disable @next/next/no-img-element */
 
 // 'use client'
 // import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -185,127 +185,331 @@
 //   }
 // }
 
+// /////////////////////////////////
+// 'use client';
+// import React, { useEffect, useMemo, useRef, useState } from "react";
+// import { useRouter } from "next/navigation";
+// import './css/style.css';
+// import GlobalLoader from "@/components/GlobalLoader";
 
+// type RawUser = Record<string, any>;
+
+// type User = {
+//   id: string;
+//   name: string;
+//   img: string;
+//   isActive: boolean;
+// };
+
+// type Props = {
+//   endpoint?: string;
+//   token?: string;
+//   initialData?: RawUser[];
+//   className?: string;
+// };
+
+// const DOT_COLOR = "#D72229";
+
+// export default function ActiveUsersCarousel({
+//   endpoint = "https://bo-chat.space/active-users", // ← absolute URL
+//   token: propToken,
+//   initialData,
+//   className = "",
+// }: Props) {
+//   const [users, setUsers] = useState<User[] | null>(null);
+//   const [error, setError] = useState<string | null>(null);
+//   const scrollerRef = useRef<HTMLDivElement>(null);
+//   const router = useRouter();
+
+//   // Normalize user data
+//   const normalize = (rows: RawUser[] = []): User[] =>
+//     rows
+//       .map((r, idx) => {
+//         const id = (r.id ?? r._id ?? r.userId ?? r.userid ?? String(idx)) as string;
+//         const name = (r.name ?? r.username ?? r.fullName ?? r.displayName ?? "Member") as string;
+//         const img = (r.img ?? r.photo ?? r.image ?? r.profileImage ?? r.profile_photo ?? r.pic ?? "") as string;
+//         const isActive = (r.isActive ?? r.active ?? r.online ?? (r.status === "online") ?? true) as boolean;
+//         return { id, name, img, isActive };
+//       })
+//       .filter(Boolean);
+
+//   useEffect(() => {
+//     if (initialData) {
+//       setUsers(normalize(initialData));
+//       return;
+//     }
+
+//     // Get token from localStorage if not provided via prop
+//     // const token = propToken || localStorage.getItem("boChatToken");
+//     const token = propToken || localStorage.getItem("accessToken");
+//     if (!token) {
+//       // router.push("/login");
+//         // setError("No token");
+//   return;
+// }
+
+//     const abortController = new AbortController();
+
+//     (async () => {
+//       try {
+//         setError(null);
+//         setUsers(null);
+
+//         const res = await fetch(endpoint, {
+//           signal: abortController.signal,
+//           cache: "no-store",
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             Accept: "application/json",
+//           },
+//         });
+
+//         // Handle 401 Unauthorized
+//         if (res.status === 401) {
+//           localStorage.removeItem("boChatToken");
+//           localStorage.removeItem("userid");
+//           router.push("/login");
+//           return;
+//             // setError("No token");
+//   // return;
+//         }
+
+//         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+//         const data = await res.json();
+//         const rows = Array.isArray(data) ? data : (data as any).data ?? [];
+//         setUsers(normalize(rows));
+//       } catch (e: any) {
+//         if (e?.name !== "AbortError") {
+//           setError(e?.message || "Failed to load active users");
+//         }
+//       }
+//     })();
+
+//     return () => abortController.abort();
+//   }, [endpoint, propToken, initialData, router]);
+
+//   const scrollBy = (px: number) => scrollerRef.current?.scrollBy({ left: px, behavior: "smooth" });
+
+//   const content = useMemo(() => {
+//     if (error) {
+//       return (
+//         <div className="text-sm text-red-600 px-3 py-2 rounded-[21px] bg-red-50 border border-red-200">
+//           حصل خطأ أثناء جلب الأعضاء النشطين: {error}
+//         </div>
+//       );
+//     }
+//     if (!users) {
+//       return (
+//         <div className="text-sm text-red-600 px-3 py-2 rounded-[21px] border border-red-200">
+//           <GlobalLoader />
+//         </div>
+//       );
+//     }
+//     if (users.length === 0) {
+//       return (
+//         <div className="text-sm text-gray-500 h-[50px] flex items-center justify-center">
+//           لا يوجد أعضاء نشطون الآن.
+//         </div>
+//       );
+//     }
+
+//     return (
+//       <div
+//         dir="rtl"
+//         ref={scrollerRef}
+//         className="relative flex gap-4 overflow-x-auto no-scrollbar py-2 scroll-smooth"
+//       >
+//         {users.map((u) => (
+//           <button
+//             key={u.id}
+//             title={u.name}
+//             className="relative cursor-pointer shrink-0 focus:outline-none"
+//             onClick={() => router.push(`/profile/${u.id}`)}
+//           >
+//             <div className="w-[54px] h-[54px] rounded-[23px] shadow-md online">
+//               {u.img ? (
+//                 <img src={u.img} alt={u.name} className="w-full h-full object-cover rounded-[23px]" />
+//               ) : (
+//                 <div className="w-full h-full grid place-items-center bg-gray-200 text-xs text-gray-600">
+//                   {u.name?.slice(0, 2) ?? "NA"}
+//                 </div>
+//               )}
+//             </div>
+//             {u.isActive && (
+//               <span
+//                 style={{ backgroundColor: DOT_COLOR }}
+//                 className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full ring-2 ring-white"
+//               />
+//             )}
+//           </button>
+//         ))}
+//       </div>
+//     );
+//   }, [users, error, router]);
+
+//   const activeCount = (users ?? []).filter((u) => u.isActive).length;
+//   const showArrows = activeCount >= 5;
+
+//   return (
+//     <section className={`relative ${className}`}>
+//       <h2 className="text-2xl font-semibold mb-2" dir="rtl">
+//         أعضاء نشطين
+//       </h2>
+//       <div className="relative min-w-[350px]">
+//         {showArrows && (
+//           <>
+//             <button
+//               aria-label="السابق"
+//               onClick={() => scrollBy(-240)}
+//               className="absolute z-10 left-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
+//             >
+//               <img src="/imgs/arrowleft.svg" alt="arrow" className="w-5 h-5" />
+//             </button>
+//             <button
+//               aria-label="التالي"
+//               onClick={() => scrollBy(240)}
+//               className="absolute z-10 right-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
+//             >
+//               <img src="/imgs/arrowright.svg" alt="arrow" className="w-5 h-5" />
+//             </button>
+//           </>
+//         )}
+//         <div className="rounded-tr-[21px] rounded-br-[21px] bg-[#F6F6F6] p-[5px]">{content}</div>
+//       </div>
+//     </section>
+//   );
+// }
+
+// // Extend JSX for dir attribute
+// declare global {
+//   namespace JSX {
+//     interface IntrinsicElements {
+//       div: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement> & {
+//         dir?: "rtl" | "ltr" | "auto";
+//       };
+//     }
+//   }
+// }
+
+
+// update 
 'use client';
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import './css/style.css';
 import GlobalLoader from "@/components/GlobalLoader";
 
 type RawUser = Record<string, any>;
-
-type User = {
-  id: string;
-  name: string;
-  img: string;
-  isActive: boolean;
-};
-
-type Props = {
-  endpoint?: string;
-  token?: string;
-  initialData?: RawUser[];
-  className?: string;
-};
+type User = { id: string; name: string; img: string; isActive: boolean; };
+type Props = { token?: string; className?: string; };
 
 const DOT_COLOR = "#D72229";
 
-export default function ActiveUsersCarousel({
-  endpoint = "https://bo-chat.space/active-users", // ← absolute URL
-  token: propToken,
-  initialData,
-  className = "",
-}: Props) {
+const ActiveUsersCarousel = ({ token: propToken, className = "" }: Props) => {
   const [users, setUsers] = useState<User[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const router = useRouter();
+  const hasFetchedRef = useRef(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
-  // Normalize user data
-  const normalize = (rows: RawUser[] = []): User[] =>
-    rows
-      .map((r, idx) => {
-        const id = (r.id ?? r._id ?? r.userId ?? r.userid ?? String(idx)) as string;
-        const name = (r.name ?? r.username ?? r.fullName ?? r.displayName ?? "Member") as string;
-        const img = (r.img ?? r.photo ?? r.image ?? r.profileImage ?? r.profile_photo ?? r.pic ?? "") as string;
-        const isActive = (r.isActive ?? r.active ?? r.online ?? (r.status === "online") ?? true) as boolean;
-        return { id, name, img, isActive };
-      })
-      .filter(Boolean);
+  const normalize = useCallback((rows: RawUser[] = []): User[] =>
+    rows.map((r, idx) => ({
+      id: r.id ?? r._id ?? r.userId ?? r.userid ?? String(idx),
+      name: r.name ?? r.username ?? r.fullName ?? r.displayName ?? "Member",
+      img: r.img ?? r.photo ?? r.image ?? r.profileImage ?? r.profile_photo ?? r.pic ?? "",
+      isActive: r.isActive ?? r.active ?? r.online ?? (r.status === "online") ?? true,
+    })).filter(Boolean), []
+  );
 
   useEffect(() => {
-    if (initialData) {
-      setUsers(normalize(initialData));
+    if (hasFetchedRef.current) return;
+
+    // قراءة userData من localStorage (نفس الطريقة المستخدمة في PostsFeed)
+    let currentUserId: string | null = null;
+    let token: string | null = null;
+
+    const userDataRaw = localStorage.getItem("userData");
+    if (userDataRaw) {
+      try {
+        const userData = JSON.parse(userDataRaw);
+        currentUserId = userData?._id || null;
+      } catch (e) {
+        console.error("Failed to parse userData", e);
+      }
+    }
+
+    token = propToken || localStorage.getItem("accessToken");
+
+    if (!currentUserId) {
+      setError("لا يمكن تحميل المستخدمين النشطين: معرف المستخدم غير موجود");
+      hasFetchedRef.current = true;
       return;
     }
 
-    // Get token from localStorage if not provided via prop
-    const token = propToken || localStorage.getItem("boChatToken");
     if (!token) {
-      // router.push("/login");
-        // setError("No token");
-  return;
-}
+      setError("لا يمكن تحميل المستخدمين النشطين: رمز الدخول غير موجود");
+      hasFetchedRef.current = true;
+      return;
+    }
 
+    // بناء الرابط بالمعرف الصحيح
+    const API_ENDPOINT = `https://bo-chat.space/activeusers/${currentUserId}`;
     const abortController = new AbortController();
+    hasFetchedRef.current = true;
+    setIsLoading(true);
 
-    (async () => {
+    const fetchUsers = async () => {
       try {
-        setError(null);
-        setUsers(null);
-
-        const res = await fetch(endpoint, {
+        const res = await fetch(API_ENDPOINT, {
           signal: abortController.signal,
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         });
 
-        // Handle 401 Unauthorized
         if (res.status === 401) {
-          localStorage.removeItem("boChatToken");
-          localStorage.removeItem("userid");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("userData");
           router.push("/login");
           return;
-            // setError("No token");
-  // return;
         }
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
         const data = await res.json();
-        const rows = Array.isArray(data) ? data : (data as any).data ?? [];
+        const rows = Array.isArray(data) ? data : data?.data ?? [];
         setUsers(normalize(rows));
+        setError(null);
       } catch (e: any) {
         if (e?.name !== "AbortError") {
-          setError(e?.message || "Failed to load active users");
+          setError(e?.message || "فشل في تحميل المستخدمين النشطين");
         }
+      } finally {
+        setIsLoading(false);
       }
-    })();
+    };
 
+    fetchUsers();
     return () => abortController.abort();
-  }, [endpoint, propToken, initialData, router]);
+  }, [propToken, router, normalize]);
 
-  const scrollBy = (px: number) => scrollerRef.current?.scrollBy({ left: px, behavior: "smooth" });
+  const scrollBy = useCallback((px: number) => scrollerRef.current?.scrollBy({ left: px, behavior: "smooth" }), []);
 
   const content = useMemo(() => {
-    if (error) {
+    if (isLoading) {
       return (
-        <div className="text-sm text-red-600 px-3 py-2 rounded-[21px] bg-red-50 border border-red-200">
-          حصل خطأ أثناء جلب الأعضاء النشطين: {error}
-        </div>
-      );
-    }
-    if (!users) {
-      return (
-        <div className="text-sm text-red-600 px-3 py-2 rounded-[21px] border border-red-200">
+        <div className="text-sm text-gray-500 px-3 py-2 rounded-[21px] bg-gray-50 border">
           <GlobalLoader />
         </div>
       );
     }
-    if (users.length === 0) {
+    if (error) {
+      return (
+        <div className="text-sm text-red-600 px-3 py-2 rounded-[21px] bg-red-50 border border-red-200">
+          {error}
+        </div>
+      );
+    }
+    if (!users || users.length === 0) {
       return (
         <div className="text-sm text-gray-500 h-[50px] flex items-center justify-center">
           لا يوجد أعضاء نشطون الآن.
@@ -314,11 +518,7 @@ export default function ActiveUsersCarousel({
     }
 
     return (
-      <div
-        dir="rtl"
-        ref={scrollerRef}
-        className="relative flex gap-4 overflow-x-auto no-scrollbar py-2 scroll-smooth"
-      >
+      <div dir="rtl" ref={scrollerRef} className="relative flex gap-4 overflow-x-auto no-scrollbar py-2 scroll-smooth">
         {users.map((u) => (
           <button
             key={u.id}
@@ -345,16 +545,14 @@ export default function ActiveUsersCarousel({
         ))}
       </div>
     );
-  }, [users, error, router]);
+  }, [users, error, isLoading, router]);
 
-  const activeCount = (users ?? []).filter((u) => u.isActive).length;
+  const activeCount = useMemo(() => (users ?? []).filter((u) => u.isActive).length, [users]);
   const showArrows = activeCount >= 5;
 
   return (
     <section className={`relative ${className}`}>
-      <h2 className="text-2xl font-semibold mb-2" dir="rtl">
-        أعضاء نشطين
-      </h2>
+      <h2 className="text-2xl font-semibold mb-2" dir="rtl">أعضاء نشطين</h2>
       <div className="relative min-w-[350px]">
         {showArrows && (
           <>
@@ -378,15 +576,6 @@ export default function ActiveUsersCarousel({
       </div>
     </section>
   );
-}
+};
 
-// Extend JSX for dir attribute
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      div: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement> & {
-        dir?: "rtl" | "ltr" | "auto";
-      };
-    }
-  }
-}
+export default React.memo(ActiveUsersCarousel);

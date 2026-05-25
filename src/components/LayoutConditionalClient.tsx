@@ -11,6 +11,7 @@ export default function LayoutRightSideClient() {
   const isHome = pathname === "/";
   const isProfile = pathname.startsWith("/profile");
   const [userId, setUserId] = useState<string | null>(null);
+
   
   const activeChatId = pathname.startsWith("/chats/")
   ? pathname.split("/chats/")[1]
@@ -69,3 +70,57 @@ export default function LayoutRightSideClient() {
     </aside>
   );
 }
+
+// "use client";
+// import { usePathname } from "next/navigation";
+// import { useEffect, useState } from "react";
+
+// import ActiveUsersCarousel from "@/app/_components/ActiveUsers";
+// import ReelsFeed from "@/app/_components/ReelsFeed";
+// import AllUsersGrid from "./AllUsersGrid";
+// import ChatListFromApi from "../app/chats/_components/ChatList";
+
+// export default function LayoutRightSideClient() {
+//   const pathname = usePathname();
+//   const [userId, setUserId] = useState<string | null>(null);
+
+//   const isHome = pathname === "/";
+//   const isProfile = pathname.startsWith("/profile");
+//   const activeChatId = pathname.startsWith("/chats/") 
+//     ? pathname.split("/chats/")[1] 
+//     : null;
+
+//   useEffect(() => {
+//     const id = localStorage.getItem("userid");
+//     if (id) setUserId(id);
+//   }, []);
+
+//   return (
+//     <aside
+//       className="hidden xl:block min-w-[380px] max-w-[450px] overflow-y-auto"
+//       style={{ boxShadow: "rgb(0 0 0 / 9%) 2px -1px 10px 0px" }}
+//     >
+//       {isHome && (
+//         <>
+//           <div className="mb-2 pr-2">
+//             <ActiveUsersCarousel />
+//           </div>
+//           <div className="px-2">
+//             <h1 dir="rtl" className="mb-2 text-2xl">الريلز</h1>
+//             <ReelsFeed />
+//           </div>
+//         </>
+//       )}
+
+//       {isProfile && <AllUsersGrid />}
+
+//       {pathname.startsWith("/chats") && (
+//         <ChatListFromApi
+//           userId={userId}
+//           apiBase="https://bo-chat.space"
+//           activeChatId={activeChatId}
+//         />
+//       )}
+//     </aside>
+//   );
+// }
