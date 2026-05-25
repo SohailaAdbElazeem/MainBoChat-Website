@@ -31,6 +31,7 @@ export default function ChatWindow({
   const fetchUrl = `${apiBase}/chats/${userId}?receiver=${otherId}`;
 
   // ---------- Load history ----------
+  
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -87,24 +88,66 @@ export default function ChatWindow({
         } catch (e) {}
       };
 
-      ws.onmessage = (ev) => {
-        try {
-          const payload = JSON.parse(ev.data);
-          // handle incoming events
-          if (payload && payload.type === "message_new" && payload.message) {
-            const msg = normalizeMessage(payload.message);
-            if (belongsToChat(msg, userId, otherId)) addUniqueMessage(msg);
-          } else if (payload && payload.type === "message_created" && payload.data) {
-            const msg = normalizeMessage(payload.data);
-            if (belongsToChat(msg, userId, otherId)) addUniqueMessage(msg);
-          } else if (payload && payload.type === "message_seen" && payload.chatWith) {
-            if (String(payload.chatWith) === String(otherId)) markAllSeenLocal();
-          }
-        } catch (e) {
-          console.error("WS parse error", e);
-        }
-      };
+      // ws.onmessage = (ev) => {
+      //   try {
+      //     const payload = JSON.parse(ev.data);
+      //     // handle incoming events
+      //     if (payload && payload.type === "message_new" && payload.message) {
+      //       const msg = normalizeMessage(payload.message);
+      //       if (belongsToChat(msg, userId, otherId)) addUniqueMessage(msg);
+      //     } else if (payload && payload.type === "message_created" && payload.data) {
+      //       const msg = normalizeMessage(payload.data);
+      //       if (belongsToChat(msg, userId, otherId)) addUniqueMessage(msg);
+      //     } else if (payload && payload.type === "message_seen" && payload.chatWith) {
+      //       if (String(payload.chatWith) === String(otherId)) markAllSeenLocal();
+      //     }
+      //   } catch (e) {
+      //     console.error("WS parse error", e);
+      //   }
+      // };
+ws.onmessage = (ev) => {
+  try {
+    const payload = JSON.parse(ev.data);
 
+    // TEXT / MEDIA MESSAGE (نفس نظامك)
+    if (payload.event === "message") {
+      const msg = payload.metadata;
+
+      setMessages((prev) => {
+        if (prev.some((m) => m._id === msg._id)) return prev;
+        return [...prev, msg];
+      });
+    }
+
+    // TYPING
+    if (payload.event === "typing") {
+      if (
+        payload.metadata?.sender === otherId &&
+        payload.metadata?.reicever === userId
+      ) {
+        setRemoteTyping(true);
+
+        setTimeout(() => {
+          setRemoteTyping(false);
+        }, 1500);
+      }
+    }
+
+    // SEEN
+    if (payload.event === "seen") {
+      setMessages((prev) =>
+        prev.map((m) => ({
+          ...m,
+          seenBy: Array.isArray(m.seenBy)
+            ? [...new Set([...m.seenBy, otherId])]
+            : [otherId],
+        }))
+      );
+    }
+  } catch (e) {
+    console.log("WS error", e);
+  }
+};
       ws.onclose = () => {};
       ws.onerror = (e) => {
         console.error("ChatWindow WS error", e);

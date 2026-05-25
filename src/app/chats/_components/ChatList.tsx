@@ -58,20 +58,39 @@ function normalizeChats(messages: Message[], myId: string): ChatItem[] {
   );
 }
 /* ================= COMPONENT ================= */
-export default function ChatList({ userId, apiBase }: Props) {
+// export default function ChatList({ userId, apiBase }: Props) 
+export default function ChatList({ apiBase }: { apiBase: string }) {
+  const [myUserId, setMyUserId] = useState("");
   const router = useRouter();
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const typingTimers = useRef<Record<string, any>>({});
   const bcRef = useRef<BroadcastChannel | null>(null);
+  
+useEffect(() => {
+  const raw = localStorage.getItem("userData");
+
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw);
+    setMyUserId(parsed._id); // 🔥 ده الصح
+  } catch (e) {
+    console.error("Invalid userData in localStorage");
+  }
+}, []);
   const token =
     typeof window !== "undefined"
-      ? localStorage.getItem("boChatToken")
+      ? localStorage.getItem("accessToken")
       : null;
+      // console.log("USER ID:", myUserId);
+      //  console.log("ACCESS TOKEN:", token);
   const pathname = usePathname();
   const activeChatId = pathname?.split("/").pop();
+
   /* ================= 1️⃣ LOAD FROM API ================= */
+
 
   useEffect(() => {
     async function load() {
@@ -79,7 +98,7 @@ export default function ChatList({ userId, apiBase }: Props) {
         setLoading(true);
 
         const res = await fetch(
-          `${apiBase}/chats/${userId}`,
+          `${apiBase}/chats/${myUserId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -91,7 +110,7 @@ export default function ChatList({ userId, apiBase }: Props) {
 
         const normalized = normalizeChats(
           data.userchats || [],
-          userId
+          myUserId
         );
 
         setChats(normalized);
@@ -101,15 +120,15 @@ export default function ChatList({ userId, apiBase }: Props) {
       }
     }
 
-    if (userId && token) load();
-  }, [userId, token, apiBase]);
+    if (myUserId && token) load();
+  }, [myUserId, token, apiBase]);
 
   /* ================= 2️⃣ WEBSOCKET (SHARED) ================= */
 
   useEffect(() => {
-    if (!userId) return;
+    if (!myUserId) return;
 
-    wsService.connect(userId);
+    wsService.connect(myUserId);
 
     const unsub = wsService.addHandler((payload: any) => {
       handleWsEvent(payload);
@@ -118,7 +137,7 @@ export default function ChatList({ userId, apiBase }: Props) {
     return () => {
       unsub(); // ❗ بنشيل handler بس
     };
-  }, [userId]);
+  }, [myUserId]);
 
   /* ================= 3️⃣ BROADCAST (INTERNAL) ================= */
 
@@ -187,7 +206,7 @@ function handleWsEvent(payload: any) {
 
 function onWsMessage(msg: Message) {
   setChats((prev) => {
-    const isMe = msg.sender === userId;
+    const isMe = msg.sender === myUserId;
     const otherId = isMe ? msg.receiver : msg.sender;
 
     const list = [...prev];
@@ -217,9 +236,10 @@ function onWsMessage(msg: Message) {
 
 function onTyping(payload: any) {
   const sender = payload.sender;
-  const to = payload.reicever || payload.receiver;
+  // const to = payload.reicever || payload.receiver;
+  const to = payload.receiver|| payload.receiver;
 
-  if (!sender || to !== userId) return;
+  if (!sender || to !== myUserId) return;
 
   setChats((prev) =>
     prev.map((c) =>
@@ -252,7 +272,7 @@ function onSeen({ sender }: any) {
   setChats(prev =>
     prev.map(c => {
       if (c.chatId !== sender) return c;
-      if (c.lastMessage.sender !== userId) return c;
+      if (c.lastMessage.sender !== myUserId) return c;
 
       return {
         ...c,
@@ -270,12 +290,12 @@ function onSeen({ sender }: any) {
 
 
 useEffect(() => {
-  if (!userId || !token) return;
+  if (!myUserId || !token) return;
 
   const poll = async () => {
     try {
       const res = await fetch(
-        `${apiBase}/chats/${userId}`,
+        `${apiBase}/chats/${myUserId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -284,6 +304,7 @@ useEffect(() => {
       );
 
       const data = await res.json();
+      // console.log("API DATA", data);
       const messages = data.userchats || [];
 
       setChats(prev => {
@@ -291,7 +312,7 @@ useEffect(() => {
         let changed = false;
 
         messages.forEach(msg => {
-          const isMe = msg.sender === userId;
+          const isMe = msg.sender === myUserId;
           const otherId = isMe ? msg.receiver : msg.sender;
 
           const existing = map.get(otherId);
@@ -334,7 +355,7 @@ if (!existing) {
   const id = setInterval(poll, 2500); // كل 2.5 ثانية
 
   return () => clearInterval(id);
-}, [userId, token, apiBase]);
+}, [myUserId, token, apiBase]);
 
   /* ================= 8️⃣ RENDER ================= */
 
@@ -356,7 +377,7 @@ if (!existing) {
 
           {chats.map((chat) => {
             const isLastFromMe =
-              chat.lastMessage.sender === userId;
+              chat.lastMessage.sender === myUserId;
 
             return (
               <div
