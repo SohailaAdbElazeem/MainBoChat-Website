@@ -19,14 +19,22 @@ export default function FollowButton({
   const [followerId, setFollowerId] = useState<string | null>(null);
 
   // لو عندك توكن فعلي استخدمه هنا (أو استخدم auth flow حق المشروع)
-  const AUTH_TOKEN = localStorage.getItem("token") || localStorage.getItem("boChatToken") || "";
+  const AUTH_TOKEN =  localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
 
   // Sync initial state from props / localStorage / server list
   useEffect(() => {
-    const myId =
-      typeof window !== "undefined"
-        ? localStorage.getItem("userid") || localStorage.getItem("followerId")
-        : null;
+    const userData = JSON.parse(
+  localStorage.getItem("userData") || "{}"
+);
+
+const myId =
+  localStorage.getItem("userid") ||
+  localStorage.getItem("followerId") ||
+  userData._id;
+    // const myId =
+    //   typeof window !== "undefined"
+    //     ? localStorage.getItem("userid") || localStorage.getItem("followerId")
+    //     : null;
 
     setFollowerId(myId);
 

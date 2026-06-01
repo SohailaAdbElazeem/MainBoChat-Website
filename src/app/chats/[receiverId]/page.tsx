@@ -16,6 +16,7 @@ import Loader from "@/components/Loader";
 import Stickers from "../_components/Stickers";
  import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 // ================= Helper: Broadcast =================
 function emitChatUpdate(event: "message" | "typing" | "typing_stop" | "seen", metadata: any) {
@@ -76,6 +77,15 @@ export default function ChatPage() {
   const [recordingStopped, setRecordingStopped] = useState(false);
  
 // Add receiverId
+const router = useRouter();
+
+useEffect(() => {
+  if (authLoading) return;
+
+  if (!token) {
+    router.replace("/login");
+  }
+}, [token, authLoading, router]);
 useEffect(() => {
   console.log("🔥 useEffect for saving receiverId, receiverId =", receiverId);
   if (receiverId) {

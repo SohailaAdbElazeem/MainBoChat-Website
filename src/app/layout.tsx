@@ -6,6 +6,7 @@ import Header from "@/components/GlobalSearch";
 import LayoutRightSideClient from "@/components/LayoutConditionalClient";
 import { usePathname } from "next/navigation";
 import { Toaster } from "react-hot-toast";
+import AuthGuard from "@/components/AuthGuard";
 
 // export const metadata: Metadata = {
 //   title: "Bo Chat",
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="bg-white">
-
+<AuthGuard/>
       {!isLogin ? <Header providers={[]} />: null}
         <div
           className="w-full flex overflow-hidden mx-auto"

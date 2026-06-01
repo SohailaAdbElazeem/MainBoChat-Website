@@ -105,8 +105,14 @@ useEffect(() => {
             },
           }
         );
+console.log("Status:", res.status);
+console.log("OK:", res.ok);
+console.log("Token:", token);
 
-        const data = await res.json();
+const data = await res.json();
+
+console.log("Full Response:", data);
+        // const data = await res.json();
 
         const normalized = normalizeChats(
           data.userchats || [],

@@ -1411,9 +1411,11 @@ export default function PostCard({ post }: { post: Post }) {
   const images = Array.isArray(post.image) ? post.image : [];
 
   // Get current user data from localStorage
-  const myUserId = typeof window !== "undefined" ? localStorage.getItem("userid") : null;
+  const user = JSON.parse(localStorage.getItem("userData") || "null");
+const myUserId = user?._id;
+  // const myUserId = typeof window !== "undefined" ? localStorage.getItem("userid") : null;
   const myUserImg = typeof window !== "undefined" ? localStorage.getItem("userimg") : "/imgs/user.png";
-  const token = typeof window !== "undefined" ? localStorage.getItem("boChatToken") : null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
 
   const handleLike = async () => {
     if (!token || !myUserId) return;
