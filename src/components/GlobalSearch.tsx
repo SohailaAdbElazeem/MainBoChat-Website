@@ -24,15 +24,15 @@ export const Magnifier = () => (
     <path fill="#C5C6C6" d="M10 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0-2a8 8 0 0 0 0 16 7.95 7.95 0 0 0 4.9-1.64l4.37 4.38 1.42-1.42-4.38-4.37A7.95 7.95 0 0 0 18 10a8 8 0 0 0-8-8Z"/>
   </svg>
 );
-// const PlusIcon = () => (
-//   <img src="/imgs/add.svg" width={28} alt="" />
-// );
-// const BotIcon = () => (
-//   <img src="/imgs/man-head.svg" width={28} alt="" />
-// );
-// const UsersLinkIcon = () => (
-//   <img src="/imgs/user-pen.svg" width={28} alt="" />
-// );
+const PlusIcon = () => (
+  <img src="/imgs/add.svg" width={28} alt="" />
+);
+const BotIcon = () => (
+  <img src="/imgs/man-head.svg" width={28} alt="" />
+);
+const UsersLinkIcon = () => (
+  <img src="/imgs/user-pen.svg" width={28} alt="" />
+);
 
 
 // Debounce hook
@@ -106,18 +106,18 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
     <div className={cn('w-full px-[30px] py-[15px]')}>
       <div className="flex items-center justify-between gap-3">
         {/* Left: Logo */}
-        <Link href="/" className="">
+         <Link href="/" className="">
           <img src="/logo-red.png" width={35} alt="logo" />
         </Link>
         {/* Right: actions + search */}
         <div className="ml-auto flex items-center gap-3">
-          {/* <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             {[{Icon: PlusIcon, title: 'New'}, {Icon: BotIcon, title: 'Assistant'}, {Icon: UsersLinkIcon, title: 'Share'}].map(({Icon, title}, i) => (
               <button key={i} title={title} className="w-[80px] h-[50px] rounded-[20px] bg-[#F2F2F2] text-red-600 flex items-center justify-center shadow-sm hover:shadow transition shadow-neutral-200/40">
                 <Icon />
               </button>
             ))}
-          </div> */}
+          </div>
 
           {/* Search */}
           <div className="relative" ref={panelRef} dir='rtl'>
@@ -172,6 +172,7 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
                               <button className="w-full text-start">{ItemContent}</button>
                             )}
                           </li>
+
                         );
                       })}
                     </ul>

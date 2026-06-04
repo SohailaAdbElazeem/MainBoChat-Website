@@ -1,10 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: false,
+
   typescript: {
     ignoreBuildErrors: true,
    },
    eslint: {
     ignoreDuringBuilds: true,
+  },
+  compiler: {
+    removeConsole: false, // لو عايزة تشيلي console.logs في الـ production بعدين
   },
   images: {
     remotePatterns: [
