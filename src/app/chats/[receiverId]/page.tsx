@@ -14,7 +14,7 @@ import { Message } from "@/types/types";
 import WaveSurfer from "wavesurfer.js";
 import Loader from "@/components/Loader";
 import Stickers from "../_components/Stickers";
- import Link from "next/link";
+import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 
@@ -75,6 +75,8 @@ export default function ChatPage() {
   const [waveData, setWaveData] = useState<number[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingStopped, setRecordingStopped] = useState(false);
+  const [blockConfirmVisible, setBlockConfirmVisible] = useState(false); // New state for confirmation modal
+  
  
 // Add receiverId
 const router = useRouter();
@@ -90,9 +92,9 @@ useEffect(() => {
   console.log("🔥 useEffect for saving receiverId, receiverId =", receiverId);
   if (receiverId) {
     localStorage.setItem("lastChatId", receiverId);
-    console.log("✅ تم حفظ lastChatId:", receiverId);
+    console.log(" تم حفظ lastChatId:", receiverId);
   } else {
-    console.log("❌ receiverId is undefined, cannot save");
+    console.log(" receiverId is undefined, cannot save");
   }
 }, [receiverId]);
    useEffect(() => {
@@ -627,6 +629,74 @@ useEffect(() => {
     sendImageFile(file);
   }, [sendImageFile]);
 
+  // ================= Block & Report with confirmation modal =================
+  // const handleBlockUser = useCallback(async () => {
+  //   if (!receiverId || !myId || !token) return;
+  //   try {
+  //     const res = await fetch(`${API_BASE}/block${myId}`, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+  //       body: JSON.stringify({ blockedid: receiverId }),
+  //     });
+  //     const data = await res.json();
+  //     if (data.success) setIBlockedHim(true);
+  //   } catch (error) {
+  //     console.error("Failed to block user", error);
+  //   }
+  //   setShowMenu(false);
+  // }, [receiverId, myId, token]);
+
+  // const handleReport = useCallback(() => {
+  //   console.log("Report user:", receiverId);
+  //    setBlockConfirmVisible(true);
+  //   // setShowMenu(false);
+  // }, []);
+
+  // const handleConfirmBlock = useCallback(async () => {
+  //   await handleBlockUser(); // This already sets iBlockedHim and closes menu
+  //   setBlockConfirmVisible(false);
+  // }, [handleBlockUser]);
+
+  // const handleCancelBlock = useCallback(() => {
+  //   setBlockConfirmVisible(false);
+  // }, []);
+
+  // ================= Block & Report with confirmation modal =================
+const handleBlockUser = useCallback(async () => {
+  if (!receiverId || !myId || !token) return;
+  try {
+    const res = await fetch(`${API_BASE}/block${myId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ blockedid: receiverId }),
+    });
+
+    if (res.ok) {
+      setIBlockedHim(true);   // نجاح الحظر
+    } else {
+      setError("فشل الحظر، حاول مرة أخرى");
+    }
+  } catch (error) {
+    console.error("Failed to block user", error);
+    setError("حدث خطأ أثناء محاولة الحظر");
+  }
+  setShowMenu(false);
+}, [receiverId, myId, token]);
+
+const handleReport = useCallback(() => {
+  setBlockConfirmVisible(true);
+  setShowMenu(false);
+}, []);
+
+const handleConfirmBlock = useCallback(async () => {
+  await handleBlockUser();
+  setBlockConfirmVisible(false);
+}, [handleBlockUser]);
+
+const handleCancelBlock = useCallback(() => {
+  setBlockConfirmVisible(false);
+}, []);
+
   // ================= WaveSurfer effect for audio preview =================
   useEffect(() => {
     if (!audioBlob || !waveRef.current) return;
@@ -653,29 +723,6 @@ useEffect(() => {
     };
   }, [audioBlob]);
 
-  // ================= Block user =================
-  const handleBlockUser = useCallback(async () => {
-    if (!receiverId || !myId || !token) return;
-    try {
-      const res = await fetch(`${API_BASE}/block/${myId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ blockedid: receiverId }),
-      });
-      const data = await res.json();
-      if (data.success) setIBlockedHim(true);
-    } catch (error) {
-      console.error("Failed to block user", error);
-    }
-    setShowMenu(false);
-  }, [receiverId, myId, token]);
-
-  const handleReport = useCallback(() => {
-    // Implement report logic
-    console.log("Report user", receiverId);
-    setShowMenu(false);
-  }, [receiverId]);
-
   // ================= Cleanup on unmount =================
   useEffect(() => {
     return () => {
@@ -689,7 +736,6 @@ useEffect(() => {
   const canShowMic = !isTyping && !isRecording && !audioBlob && !recordingStopped;
   const canShowRecordingUI = !isTyping && isRecording;
   const canSendVoice = !isTyping && recordingStopped && audioBlob;
-  // const shouldHideInput = iBlockedHim === true;
   const shouldHideInput = iBlockedHim === true || !myId || !receiverId;
 
   if (authLoading) return <div className="p-4">جاري التحميل...</div>;
@@ -758,6 +804,18 @@ useEffect(() => {
           انزل تحت
         </button>
       )}
+
+{/* رسالة الحظر */}
+{iBlockedHim && (
+  <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center justify-center gap-2 rounded-3xl  w-auto max-w-[90%]">
+    <p className="font-semibold text-[20px] leading-[100%] text-center text-[#D72229]">
+      ممنوع الوصول
+    </p>
+    <p className="font-semibold text-[15px] leading-[18px] text-center text-black max-w-[355px]">
+      {receiverData?.name || 'هذا المستخدم'} قفل درجه من ناحيتك مش هتقدر تشوف فضفضاته أو تكلمه
+    </p>
+  </div>
+)}
 
       {/* Input Area */}
       {!shouldHideInput && (
@@ -834,8 +892,9 @@ useEffect(() => {
               </div>
               <span className="text-white">حجب</span>
             </button>
+
             <button
-              onClick={handleReport}
+              onClick={handleReport }
               className="w-full bg-black/40 rounded-[20px] py-2 px-4 text-right flex hover:bg-black/60 items-center gap-2 cursor-pointer transition"
             >
               <div className="h-[45px] w-[45px] bg-[#D72229] flex items-center justify-center rounded-full">
@@ -854,6 +913,55 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+      {/* Block Confirmation Modal */}
+ {blockConfirmVisible && (
+  <div 
+    className="fixed inset-0 z-[99999] flex items-center justify-center"
+    onClick={handleCancelBlock}
+  >
+    <div 
+      className="w-[386px] h-[214px] rounded-[30px] bg-[#0000001A] backdrop-blur-[30px] flex flex-col items-center justify-between py-6 px-4"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Main Question Text - moved down with mt-6 */}
+      <h2 className="font-semibold text-[20px] leading-[100%] text-center text-[#D72229] mt-6 mb-0" style={{ fontFamily: 'Cairo, sans-serif' }}>
+        هتعمل حظر لـ "{receiverData?.name || 'هذا المستخدم'}"؟
+      </h2>
+      
+      {/* Explanation Text */}
+      <div className=" text-center mt-5 ">
+
+         <p 
+    className="font-semibold text-[14px] leading-loose text-center text-black max-w-[250px] mx-auto" 
+    style={{ fontFamily: 'Cairo, sans-serif' }}
+  >
+    مش هيقدر يكلمك أو يشوف منشوراتك بعد كدا
+  </p>
+      </div>
+      
+      {/* Buttons */}
+      <div className="flex gap-4 justify-center w-full mt-2">
+      
+        <button
+          onClick={handleCancelBlock}
+          className="min-w-[100px] h-[50px] rounded-[19px] border border-[#D72229] text-[#D72229] font-semibold text-[17px] leading-[100%] hover:bg-white/10 transition px-4"
+          style={{ fontFamily: 'Cairo, sans-serif' }}
+        >
+          إلغاء
+        </button>
+
+          <button
+          onClick={handleConfirmBlock}
+          className="w-[185px] h-[50px] rounded-[19px] border border-[#D72229] bg-[#D72229] text-white font-semibold text-[17px] leading-[100%] transition hover:bg-[#b81e24]"
+          style={{ fontFamily: 'Cairo, sans-serif' }}
+        >
+          حظر
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
