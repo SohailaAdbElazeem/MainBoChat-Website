@@ -12,15 +12,22 @@ import AuthGuard from "@/components/AuthGuard";
 //   title: "Bo Chat",
 //   description: "First Arabic Social Media Application",
 // };
+import { useEffect } from "react";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 
   const pathname = usePathname();
   const isLogin = pathname === "/login";
+  useEffect(() => {
+  console.log('🔴 RootLayout mounted');
+  const handler = () => console.log('📍 pagehide event');
+  window.addEventListener('pagehide', handler);
+  return () => window.removeEventListener('pagehide', handler);
+}, []);
   return (
     <html lang="en">
       <body className="bg-white">
-<AuthGuard/>
+{/* <AuthGuard/> */}
       {!isLogin ? <Header providers={[]} />: null}
         <div
           className="w-full flex overflow-hidden mx-auto"

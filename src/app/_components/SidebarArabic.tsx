@@ -28,8 +28,18 @@ export default function SidebarArabic({
   useEffect(() => {
     // safety: run only on client after mount
     setMounted(true);
-    const id = localStorage.getItem("userid") || localStorage.getItem("followerId") || null;
-    setUserId(id);
+      const storedUserData = localStorage.getItem("userData");
+  if (storedUserData) {
+    try {
+      const user = JSON.parse(storedUserData);
+        // console.log("User Data:", user);
+    // console.log("User ID:", user?._id);
+
+      setUserId(user?._id || null);
+    } catch (error) {
+      console.error("Failed to parse userData", error);
+    }
+  }
   }, []);
 
   // derive active item from pathname

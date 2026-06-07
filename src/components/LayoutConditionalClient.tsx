@@ -56,7 +56,6 @@ export default function LayoutRightSideClient() {
           </div>
         </div>
       )}
-
       {/* ➕ تقدر تضيف شروط تانية هنا */}
       {pathname.startsWith("/chats") && (
         <div className="">
