@@ -6,9 +6,14 @@ type WSHandler = (payload: any) => void;
 
 class WSService {
   // private base = "ws://bo-chat.space:3000";
-  private base = typeof window !== 'undefined' && window.location.protocol === 'https:'
-  ? "wss://bo-chat.space:3000"
-  : "ws://bo-chat.space:3000";
+  // private base = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  // ? "wss://bo-chat.space:3000"
+  // : "ws://bo-chat.space:3000";
+  private base =
+  typeof window !== "undefined" &&
+  window.location.protocol === "https:"
+    ? "wss://bochat-eg.com/ws"
+    : "ws://bochat-eg.com/ws";
   private ws: WebSocket | null = null;
   private handlers = new Set<WSHandler>();
 
