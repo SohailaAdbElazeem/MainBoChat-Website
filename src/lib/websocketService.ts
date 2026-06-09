@@ -9,12 +9,14 @@ class WSService {
   // private base = typeof window !== 'undefined' && window.location.protocol === 'https:'
   // ? "wss://bo-chat.space:3000"
   // : "ws://bo-chat.space:3000";
-  private base =
-  typeof window !== 'undefined' &&
-   window.location.protocol === 'https:'
-    ? "wss://bo-chat.space:3000"
-    : "ws://bo-chat.space:3000";
+    
 
+ private base =
+  typeof window !== "undefined"
+    ? process.env.NODE_ENV === "development"
+      ? "ws://bo-chat.space:3000"
+      : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`
+    : "";
     
   private ws: WebSocket | null = null;
   private handlers = new Set<WSHandler>();
@@ -68,7 +70,7 @@ class WSService {
     this.lastUserId = userId;
 
     const url = `${this.base}/?userid=${encodeURIComponent(userId)}`;
-    this.log("CONNECT()", url);
+     this.log("CONNECT()", url);
 
     this.open(url);
   }
