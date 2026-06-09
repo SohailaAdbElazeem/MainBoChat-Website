@@ -14,6 +14,8 @@ class WSService {
   window.location.protocol === "https:"
     ? "wss://bochat-eg.com/ws"
     : "ws://bochat-eg.com/ws";
+
+    
   private ws: WebSocket | null = null;
   private handlers = new Set<WSHandler>();
 

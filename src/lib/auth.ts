@@ -107,7 +107,8 @@ export function getAppUrl(req: NextRequest): string {
   // حاول تستخدم ENV أولاً
   if (process.env.APP_URL) return process.env.APP_URL;
   // استنتاج من الهيدر (ينفع على Vercel/Node)
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
+  // const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "https://bochat-eg.com";
   const proto = req.headers.get("x-forwarded-proto") ?? "http";
   return `${proto}://${host}`;
 }
