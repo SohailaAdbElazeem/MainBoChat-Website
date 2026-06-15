@@ -469,11 +469,12 @@
 //   );
 // }
 
+
+
+// FiRst Update
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @next/next/no-img-element */
 "use client";
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/profile/[id]/page.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -495,7 +496,8 @@ function safeCount<T>(val?: T[] | Record<string, unknown> | number | null) {
 export default function ProfilePageClient() {
   const params = useParams();
   const id = params && typeof params === "object" ? (params as any).id : undefined;
-
+// console.log("id :" ,id)
+  
   const [data, setData] = useState<UserAPIResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -508,6 +510,53 @@ export default function ProfilePageClient() {
   const closeOverlay = useCallback(() => setIsOverlayOpen(false), []);
   const openOverlay = useCallback(() => setIsOverlayOpen(true), []);
 
+  // 
+ const [posts, setPosts] = useState<any[]>([]);
+  const profileUserId = params?.id as string | undefined;
+  const [postsCount, setPostsCount] = useState<number | null>(null);
+useEffect(() => {
+   if (!data?.userpersonaldata?._id) return;
+
+  const fetchPostsCount = async () => {
+    try {
+      const token = localStorage.getItem("accessToken") || "";
+      const userId = data.userpersonaldata._id; // استخدم _id الحقيقي
+       const url = `https://bo-chat.space/myposts/${userId}?guestid=${userId}&page=1&limit=1000`;
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const posts = await response.json();
+
+      if (Array.isArray(posts)) {
+        // العدد الفعلي الذي تم جلبه (قد يصل إلى 1000)
+        const count = posts.length;
+        if (count === 1000) {
+          // إذا كان 1000، فهذا يعني أن هناك أكثر من 1000 بوست
+          setPostsCount(1000); // أو يمكنك عرض "1000+"
+          // يمكنك أيضًا إضافة إشارة في الـ UI أن العدد قد يكون أكبر
+        } else {
+          setPostsCount(count);
+        }
+      } else {
+        console.warn("Unexpected response format", posts);
+        setPostsCount(0);
+      }
+    } catch (error) {
+      console.error("Error fetching posts count:", error);
+      setPostsCount(0);
+    }
+  };
+
+  fetchPostsCount();
+}, [data?.userpersonaldata?._id]); // يعتمد على _id الحقيقي
+  // 
   const copyProfileLink = useCallback(async () => {
     if (!id) {
       setToast("معرّف المستخدم غير موجود.");
@@ -658,23 +707,36 @@ export default function ProfilePageClient() {
     .filter(Boolean);
 
   const avatar = user.img || "/imgs/default-avatar.png";
-  const postsCount = safeCount(res.posts);
+  // const postsCount = safeCount(res.posts);
+// const postsCount = posts?.length ?? 0;
   const followersCount = followers.length;
   const followingCount = following.length;
   const viewsCount = user.visit ?? 0;
   const rateCount = user.rate ?? 0;
-
   return (
     <div className="min-h-screen bg-white text-gray-800" dir="rtl">
       <div className="px-5 py-1">
         <h1 className="text-xl font-semibold">{user.name}</h1>
-        {user.private ? (
+        {/* {user.private ? (
           <p className="text-xs text-gray-500">درج خاص</p>
         ) : res.posts?.length === 0 ? (
           <p className="text-xs text-gray-500">لا يوجد فضفضات</p>
         ) : (
           <div className="text-xs text-gray-500">{postsCount} فضفضه</div>
-        )}
+        )} */}
+
+       {/* 4. عرض العدد أو رسالة "لا يوجد" بناءً على state postsCount */}
+      {user.private ? (
+  <p className="text-xs text-gray-500">درج خاص</p>
+) : postsCount === null ? (
+  <div className="text-xs text-gray-500 animate-pulse">جارى التحميل </div>
+) : postsCount === 0 ? (
+  <p className="text-xs text-gray-500">لا يوجد فضفضات</p>
+) : (
+  <div className="text-xs text-gray-500">
+    {postsCount === 1000 ? "1000+ فضفضة" : `${postsCount} فضفضة`}
+  </div>
+)}
       </div>
       <div className="min-h-screen overflow-hidden">
         <div className="relative overflow-y-auto h-[calc(100vh-100px)] scrollbar-hidden">
@@ -697,10 +759,10 @@ export default function ProfilePageClient() {
                             unoptimized
                             className="object-cover w-full h-full"
                           />
-                          <div className="absolute bottom-0 left-0 w-full h-[42%] backdrop-blur-md flex items-center justify-center text-white bg-gradient-to-b from-[#D72229]/15 to-[#F92428]/75 z-10">
+                          <div className="absolute bottom-0 left-0 w-full h-[42%] backdrop-blur-md flex items-center justify-center text-white bg-gradient-to-b from-[#D72229]/15 to-[#F92428]/50 z-10">
                             <p>درج خاص</p>
                           </div>
-                        </div>
+                         </div>
                         {user.vip && (
                           <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
                             <img src="/icons/vip.svg" alt="VIP" className="w-6 h-6 md:w-8 md:h-8" />
@@ -720,9 +782,16 @@ export default function ProfilePageClient() {
                 </ClientVisibilityGate>
 
                 <div className="mb-2">
-                  <h1 className="text-xl md:text-2xl font-semibold text-white">{user.name}</h1>
-                  {user.username && <p className="text-sm text-white/90 mt-1">@{user.username}</p>}
-                </div>
+                <h1 className="text-xl md:text-2xl font-semibold text-white leading-tight">
+                  {user.name}
+                </h1>
+
+                {user.username && (
+                  <p className="text-sm text-white/90 mt-[-1px] leading-none">
+                    @{user.username}
+                  </p>
+                )}
+              </div>
               </div>
             </div>
           </div>

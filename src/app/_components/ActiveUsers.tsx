@@ -551,30 +551,37 @@ const ActiveUsersCarousel = ({ token: propToken, className = "" }: Props) => {
   const showArrows = activeCount >= 5;
 
   return (
-    <section className={`relative ${className}`}>
-      <h2 className="text-2xl font-semibold mb-2" dir="rtl">أعضاء نشطين</h2>
-      <div className="relative min-w-[350px]">
-        {showArrows && (
-          <>
-            <button
-              aria-label="السابق"
-              onClick={() => scrollBy(-240)}
-              className="absolute z-10 left-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
-            >
-              <img src="/imgs/arrowleft.svg" alt="arrow" className="w-5 h-5" />
-            </button>
-            <button
-              aria-label="التالي"
-              onClick={() => scrollBy(240)}
-              className="absolute z-10 right-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
-            >
-              <img src="/imgs/arrowright.svg" alt="arrow" className="w-5 h-5" />
-            </button>
-          </>
-        )}
-        <div className="rounded-tr-[21px] rounded-br-[21px] bg-[#F6F6F6] p-[5px]">{content}</div>
-      </div>
-    </section>
+    // <section className={`relative ${className}`}>
+    //   <h2 className="text-2xl font-semibold mb-2" dir="rtl">أعضاء نشطين</h2>
+    //   <div className="relative min-w-[350px]">
+    //     {showArrows && (
+    //       <>
+    //         <button
+    //           aria-label="السابق"
+    //           onClick={() => scrollBy(-240)}
+    //           className="absolute z-10 left-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
+    //         >
+    //           <img src="/imgs/arrowleft.svg" alt="arrow" className="w-5 h-5" />
+    //         </button>
+    //         <button
+    //           aria-label="التالي"
+    //           onClick={() => scrollBy(240)}
+    //           className="absolute z-10 right-4 top-1/2 -translate-y-1/2 w-[55px] h-[55px] rounded-full backdrop-blur-[20px] bg-[#000000]/10 shadow flex items-center justify-center"
+    //         >
+    //           <img src="/imgs/arrowright.svg" alt="arrow" className="w-5 h-5" />
+    //         </button>
+    //       </>
+    //     )}
+    //     <div className="rounded-tr-[21px] rounded-br-[21px] bg-[#F6F6F6] p-[5px]">{content}</div>
+    //   </div>
+    // </section>
+ <section className={`relative ${className}`}>
+  <div className="relative min-w-[350px]">
+    <div className=" p-[5px]">
+      <div className="h-[70px]" />
+    </div>
+  </div>
+</section>
   );
 };
 

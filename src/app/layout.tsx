@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }, []);
   return (
     <html lang="en">
-      <body className="bg-white">
+      <body className="bg-white select-none">
 {/* <AuthGuard/> */}
       {!isLogin ? <Header providers={[]} />: null}
         <div

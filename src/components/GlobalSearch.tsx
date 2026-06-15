@@ -5,6 +5,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import Link from 'next/link';
 import { SearchResult } from '@/types/search-result';
 import { SearchProvider } from '@/types/search-provider';
+import { useRouter } from "next/navigation";
 
 
 export type GlobalSearchProps = {
@@ -24,16 +25,18 @@ export const Magnifier = () => (
     <path fill="#C5C6C6" d="M10 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0-2a8 8 0 0 0 0 16 7.95 7.95 0 0 0 4.9-1.64l4.37 4.38 1.42-1.42-4.38-4.37A7.95 7.95 0 0 0 18 10a8 8 0 0 0-8-8Z"/>
   </svg>
 );
-const PlusIcon = () => (
-  <img src="/imgs/add.svg" width={28} alt="" />
-);
-const BotIcon = () => (
-  <img src="/imgs/man-head.svg" width={28} alt="" />
-);
-const UsersLinkIcon = () => (
-  <img src="/imgs/user-pen.svg" width={28} alt="" />
-);
-
+// const PlusIcon = () => (
+//   <img src="/imgs/add.svg" width={28} alt="" />
+// );
+// const BotIcon = () => (
+//   <img src="/imgs/man-head.svg" width={28} alt="" />
+// );
+// const UsersLinkIcon = () => (
+//   <img src="/imgs/user-pen.svg" width={28} alt="" />
+// );
+const LogoutIcon=()=>(
+  <img src="/imgs/Group (2).svg" alt="Logout Button" width={22} height={22}/>
+)
 
 // Debounce hook
 function useDebounced<T>(value: T, delay = 250) {
@@ -56,7 +59,20 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const flatResults = useMemo(() => Object.entries(results).flatMap(([key, arr]) => arr.map((r) => ({ section: key, ...r }))), [results]);
+  const router = useRouter();
+ const goToProfile = () => {
+  const userData = localStorage.getItem("userData");
 
+  if (!userData) return;
+
+  const user = JSON.parse(userData);
+
+  router.push(`/profile/${user._id}`);
+};
+const handleLogout = () => {
+  localStorage.clear();
+  router.push("/login");
+};
   useEffect(() => {
     if (!debounced.trim()) { setResults({}); setOpen(false); return; }
     let cancelled = false;
@@ -111,13 +127,32 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
         </Link>
         {/* Right: actions + search */}
         <div className="ml-auto flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-3">
+          {/* <div className="hidden sm:flex items-center gap-3">
             {[{Icon: PlusIcon, title: 'New'}, {Icon: BotIcon, title: 'Assistant'}, {Icon: UsersLinkIcon, title: 'Share'}].map(({Icon, title}, i) => (
               <button key={i} title={title} className="w-[80px] h-[50px] rounded-[20px] bg-[#F2F2F2] text-red-600 flex items-center justify-center shadow-sm hover:shadow transition shadow-neutral-200/40">
                 <Icon />
               </button>
             ))}
-          </div>
+             
+          </div> */}
+              <button
+    onClick={handleLogout}
+    title="تسجيل الخروج"
+    className="
+    w-[80px]
+    h-[60px]
+    rounded-[27px]
+    bg-[#F2F2F2]
+    flex
+    items-center
+    justify-center
+    cursor-pointer
+    border-0
+  "
+  >
+    <LogoutIcon />
+
+  </button>
 
           {/* Search */}
           <div className="relative" ref={panelRef} dir='rtl'>

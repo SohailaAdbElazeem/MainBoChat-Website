@@ -142,19 +142,19 @@ export default function SidebarArabic({
       {/* الفوتر */}
       <div className=" space-y-3 text-sm text-black/70">
         <div className="flex flex-wrap items-center gap-x-3">
-          <Link href="#" className="hover:underline text-[#D72229]">
+          <Link href="https://bo-eg.online/PrivacyPolicies.html" className="hover:underline text-[#D72229]">
             سياسة الخصوصية
           </Link>
           <span className="opacity-60">|</span>
-          <Link href="#" className="hover:underline text-[#D72229]">
+          <Link href="https://bo-eg.online/PrivacyCenter.html" className="hover:underline text-[#D72229]">
             مركز الخصوصية
           </Link>
           <span className="opacity-60">|</span>
-          <Link href="#" className="hover:underline text-[#D72229]">
+          <Link href="https://bo-eg.online/ContactUs.html" className="hover:underline text-[#D72229]">
             اتصل بنا
           </Link>
           <span className="opacity-60">|</span>
-          <Link href="#" className="hover:underline text-[#D72229]">
+          <Link href="https://bo-eg.online/SocialGuiedLines.html" className="hover:underline text-[#D72229]">
             إرشادات المجتمع
           </Link>
         </div>
