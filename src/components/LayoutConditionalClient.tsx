@@ -37,9 +37,9 @@ export default function LayoutRightSideClient() {
       {/* 🏠 محتوى الهوم */}
       {isHome && (
         <>
-          <div className="mb-2 pr-2">
+          {/* <div className="mb-2 pr-2">
             <ActiveUsersCarousel />
-          </div>
+          </div> */}
 
           <div className="px-2">
             <h1 dir="rtl" className="mb-2 text-2xl">الريلز</h1>

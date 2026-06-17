@@ -1485,7 +1485,7 @@ const myUserId = user?._id;
       return;
     }
     try {
-      const res = await fetch(`http://bo-chat.space/report/${myUserId}`, {
+      const res = await fetch(`http://bo-chat.space/report${myUserId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

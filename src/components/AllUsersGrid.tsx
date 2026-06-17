@@ -669,7 +669,7 @@ export default function AllUsersSlider({
             className="mb-3 p-1 rounded-full hover:bg-gray-200 transition"
             aria-label={showAllImages ? "إخفاء كل الصور" : "عرض كل الصور"}
           >
-            <img src="/imgs/Vector (5).svg" className="w-5 h-5" alt="toggle" />
+            <img src="/imgs/Vector (5).svg"  className="w-[17px] h-[15px]  opacity-100" alt="toggle" />
           </button>
         </div>
 
@@ -704,14 +704,14 @@ export default function AllUsersSlider({
                   className="absolute z-10 left-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/10 backdrop-blur flex items-center justify-center"
                   aria-label="تمرير لليسار"
                 >
-                  <img src="/imgs/arrowleft.svg" className="w-6 h-6" alt="left" />
+                  <img src="/imgs/arrowleft.svg" className="w-[18px] h-[15px] opacity-100" alt="left" />
                 </button>
                 <button
                   onClick={scrollImagesRight}
                   className="absolute z-10 right-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/10 backdrop-blur flex items-center justify-center"
                   aria-label="تمرير لليمين"
                 >
-                  <img src="/imgs/arrowright.svg" className="w-6 h-6" alt="right" />
+                  <img src="/imgs/arrowright.svg" className="w-[18px] h-[15px] opacity-100" alt="right" />
                 </button>
                 <div
                   ref={imagesScrollerRef}
@@ -796,14 +796,14 @@ export default function AllUsersSlider({
               className="absolute z-10 left-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/10 backdrop-blur flex items-center justify-center"
               aria-label="تمرير لليسار"
             >
-              <img src="/imgs/arrowleft.svg" className="w-6 h-6" alt="left" />
+              <img src="/imgs/arrowleft.svg" className="w-[18px] h-[15px] opacity-100" alt="left" />
             </button>
             <button
               onClick={scrollPeopleRight}
               className="absolute z-10 right-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/10 backdrop-blur flex items-center justify-center"
               aria-label="تمرير لليمين"
             >
-              <img src="/imgs/arrowright.svg" className="w-6 h-6" alt="right" />
+              <img src="/imgs/arrowright.svg"className="w-[18px] h-[15px] opacity-100" alt="right" />
             </button>
 
             <div

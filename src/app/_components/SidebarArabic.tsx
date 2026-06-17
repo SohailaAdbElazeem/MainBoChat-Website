@@ -94,7 +94,15 @@ export default function SidebarArabic({
   }
 
   return (
-    <aside dir="rtl" className="select-none  text-right text-[#111] overflow-y-auto scrollbar-hidden" style={{ height: "calc(100vh - 90px)" }}>
+    <aside
+    //  dir="rtl" 
+    //  className="select-none  text-right text-[#111] overflow-y-auto scrollbar-hidden" 
+    //  style={{ height: "calc(100vh - 90px)" }}
+      dir="rtl"
+  className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden flex flex-col"
+  style={{ height: "calc(100vh - 90px)" }}
+     
+     >
       <nav className="space-y-2 mb-1">
         {items.map((item) => {
           const isActive = active === item.id;
@@ -137,10 +145,10 @@ export default function SidebarArabic({
         })}
       </nav>
       <div className="max-w-[380px] mb-2">
-        <img src="/imgs/banner.svg" className="min-w-[200px] h-full object-cover" alt="" />
-      </div>
+        {/* <img src="/imgs/banner.svg" className="min-w-[200px] h-full object-cover" alt="" /> */}
+       </div>
       {/* الفوتر */}
-      <div className=" space-y-3 text-sm text-black/70">
+      <div className="space-y-3 text-sm text-black/70 mt-auto mr-5 pb-4">
         <div className="flex flex-wrap items-center gap-x-3">
           <Link href="https://bo-eg.online/PrivacyPolicies.html" className="hover:underline text-[#D72229]">
             سياسة الخصوصية
@@ -157,11 +165,13 @@ export default function SidebarArabic({
           <Link href="https://bo-eg.online/SocialGuiedLines.html" className="hover:underline text-[#D72229]">
             إرشادات المجتمع
           </Link>
+           <span className="opacity-60">|</span>
+            <p className="text-xs opacity-70">
+              Powered by <span className="font-semibold text-[#D72229]">panda oracle</span>
+            </p>
+
         </div>
 
-        <p className="text-xs opacity-70">
-          Powered by <span className="font-semibold text-[#D72229]">panda oracle</span>
-        </p>
       </div>
     </aside>
   );

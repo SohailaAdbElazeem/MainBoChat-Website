@@ -56,25 +56,29 @@ export default function FollowersMenu({
   return (
     <div className="flex items-center gap-1">
         <div className="flex items-center pl-4 mt-1">
-            {visible.map((f, idx) => (
-            <button
-                key={f.id || idx}
-                onClick={() => f.id && handleOpenProfile(f.id)}
-                title={f.name || f.username || "متابع"}
-                className="relative w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white overflow-hidden cursor-pointer"
-                style={{ zIndex: 50 - idx, marginLeft: idx === 0 ? -15 : -15 }}
-                aria-label={`فتح الملف الشخصي لـ ${f.name || f.username || "متابع"}`}
-            >
-                <Image
-                src={f.img || defaultAvatar}
-                alt={f.name || f.username || "Avatar"}
-                width={40}
-                height={40}
-                className="object-cover w-full h-full"
-                unoptimized
-                />
-            </button>
-            ))}
+{visible.map((f, idx) => (
+  <button
+    key={f.id || idx}
+    onClick={() => f.id && handleOpenProfile(f.id)}
+    title={f.name || f.username || "متابع"}
+    className="relative w-[30px] h-[30px] rounded-[21px] border-[1px] border-white overflow-hidden cursor-pointer"
+    style={{
+      zIndex: idx,
+      marginLeft: "-10px",
+    }}
+    aria-label={`فتح الملف الشخصي لـ ${f.name || f.username || "متابع"}`}
+  >
+    <Image
+      src={f.img || defaultAvatar}
+      alt={f.name || f.username || "Avatar"}
+      width={30}
+      height={30}
+      className="object-cover w-full h-full"
+      unoptimized
+    />
+  </button>
+))}
+           
 
             {/* {extraCount > 0 && (
             <div
@@ -86,8 +90,10 @@ export default function FollowersMenu({
             )} */}
         </div>
         <div className="text-right">
-            <div className="text-base font-semibold">{title}</div>
-        </div>
+  <div className="text-[#D72229] underline text-[13px] leading-[165%] font-semibold font-cairo">
+    {title}
+  </div>
+</div>
     </div>
   );
 }

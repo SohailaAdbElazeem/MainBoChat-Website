@@ -787,7 +787,7 @@ useEffect(() => {
                 </h1>
 
                 {user.username && (
-                  <p className="text-sm text-white/90 mt-[-1px] leading-none">
+                  <p className="text-sm text-white/90 mt-[1px] leading-none">
                     @{user.username}
                   </p>
                 )}
@@ -811,7 +811,7 @@ useEffect(() => {
                   <div className="mt-7">
                     <div onClick={() => setIsRateOverlayOpen(true)} className="cursor-pointer select-none">
                       {rateCount === 0 ? (
-                        <p className="text-sm underline text-[#D72229]">لم يحصل هذا الدرج علي اي تقييم</p>
+                        <p className="text-sm underline text-[#D72229]  text-[15px]">لم يحصل هذا الدرج علي اي تقييم</p>
                       ) : (
                         <div className="m-0 text-sm font-semibold underline text-[#D72229]">
                           <span className="text-xs">حصل هذا الدرج علي</span> تقييم {rateCount} نجوم
@@ -819,13 +819,13 @@ useEffect(() => {
                       )}
                     </div>
 
-                    <div className="flex gap-4 mt-1">
-                      <div className="flex gap-1 items-center justify-center"><div className="text-sm text-[#B6B7B7]">صحابي هنا</div><div className="text-md font-semibold">{followersCount}</div></div>
+                    <div className="flex gap-4 mt-1 text-[15px]">
+                      <div className="flex gap-1 items-center justify-center"><div className="text-sm text-[#B6B7B7]"> صاحبي هنا</div><div className="text-md font-semibold">{followersCount}</div></div>
                       <div className="flex gap-1 items-center justify-center"><h3 className="text-sm font-semibold text-[#B6B7B7]">متابعين</h3><div className="text-md font-semibold">{followingCount}</div></div>
                       <div className="flex gap-1 items-center justify-center"><div className="text-sm text-[#B6B7B7]">مشاهدة</div><div className="text-md font-semibold">{viewsCount}</div></div>
                     </div>
 
-                    <ClientVisibilityGate profileId={res.userpersonaldata._id} profilePrivate={res.userpersonaldata.private}>
+                    <ClientVisibilityGate profileId={res.userpersonaldata._id} profilePrivate={res.userpersonaldata.private}  >
                       <FollowersMenu followers={res.followers ?? []} title="اطلع الان علي جميع المتابعين" limit={3} />
                     </ClientVisibilityGate>
                   </div>
