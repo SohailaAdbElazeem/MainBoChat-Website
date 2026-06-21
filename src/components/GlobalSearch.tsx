@@ -50,6 +50,7 @@ function useDebounced<T>(value: T, delay = 250) {
 
 // ============= Component =================
 export default function Header({ providers, placeholder }: GlobalSearchProps) {
+
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
@@ -74,6 +75,7 @@ const handleLogout = () => {
   router.push("/login");
 };
   useEffect(() => {
+      console.log("Debounced:", debounced);
     if (!debounced.trim()) { setResults({}); setOpen(false); return; }
     let cancelled = false;
     (async () => {
@@ -81,7 +83,10 @@ const handleLogout = () => {
       const sections: Record<string, SearchResult[]> = {};
       await Promise.all(providers.map(async (p) => {
         try {
+              console.log("Searching in:", p.label);
           const out = await p.search(debounced);
+              console.log("Results:", out);
+
           if (!cancelled) sections[p.label] = out.slice(0, 5);
         } catch (e) {
           if (!cancelled) sections[p.label] = [{ id: `${p.key}-err`, title: 'Error loading', subtitle: String(e) }];
@@ -155,12 +160,16 @@ const handleLogout = () => {
   </button>
 
           {/* Search */}
-          <div className="relative" ref={panelRef} dir='rtl'>
+          <div className="relative  z-[9999]" ref={panelRef} dir='rtl'>
             <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[23vw] max-w-[500px]">
               <Magnifier />
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                // onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                console.log("Typing:", e.target.value);
+                setQuery(e.target.value);
+              }}
                 onKeyDown={onKeyDown}
                 placeholder={placeholder || 'اكتب ما تبحث عنه هنا'}
                 className="bg-transparent outline-none w-full  text-[15px] placeholder:text-[#C5C6C6]"

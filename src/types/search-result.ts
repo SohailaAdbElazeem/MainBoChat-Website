@@ -6,3 +6,5 @@ export type SearchResult = {
   icon?: React.ReactNode;
   meta?: string;
 };
+
+ 

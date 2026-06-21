@@ -3,3 +3,5 @@ export type SearchProvider = {
   label: string;             // section header
   search: (q: string) => Promise<SearchResult[]> | SearchResult[];
 };
+
+ 
