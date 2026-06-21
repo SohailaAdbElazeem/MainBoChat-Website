@@ -211,93 +211,186 @@ const PostsFeed = ({ viewedUserId }: PostsFeedProps) => {
     }
   }, []);
 
+  // const loadPosts = useCallback(
+  //   async (newPage: number) => {
+  //     if (fetchingRef.current || !token) return;
+
+  //     try {
+  //       fetchingRef.current = true;
+
+  //       if (newPage === 1) {
+  //         setLoading(true);
+  //       } else {
+  //         setLoadingMore(true);
+  //       }
+
+  //       setError(null);
+
+  //       let url = "";
+
+  //       // Profile Posts
+  //       if (profileOwnerId) {
+  //         url =
+  //           `https://bo-chat.space/myposts/${profileOwnerId}` +
+  //           `?guestid=${guestId}` +
+  //           `&page=${newPage}` +
+  //           `&limit=${LIMIT}`;
+  //       }
+  //       // Home Feed
+  //       else if (guestId) {
+  //         url =
+  //           `https://bo-chat.space/home_posts/${guestId}` +
+  //           `?page=${newPage}` +
+  //           `&limit=${LIMIT}`;
+  //       } else {
+  //         return;
+  //       }
+
+  //       console.log("FETCH URL:", url);
+
+  //       const res = await fetch(url, {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       });
+
+  //       if (!res.ok) {
+  //         throw new Error(`HTTP ${res.status}`);
+  //       }
+
+  //       const data = await res.json();
+
+  //       let newPosts: Post[] = [];
+
+  //       if (Array.isArray(data)) {
+  //         newPosts = data;
+  //       } else if (Array.isArray(data.posts)) {
+  //         newPosts = data.posts;
+  //       } else if (Array.isArray(data.data)) {
+  //         newPosts = data.data;
+  //       }
+
+  //       if (newPage === 1) {
+  //         setPosts(newPosts);
+  //       } else {
+  //         setPosts((prev) => {
+  //           const existing = new Set(prev.map((p) => p._id));
+
+  //           const unique = newPosts.filter(
+  //             (p) => !existing.has(p._id)
+  //           );
+
+  //           return [...prev, ...unique];
+  //         });
+  //       }
+
+  //       setHasMore(newPosts.length >= LIMIT);
+  //       setPage(newPage);
+  //     } catch (err: any) {
+  //       console.error(err);
+  //       setError(err.message || "تعذر تحميل المنشورات");
+  //     } finally {
+  //       fetchingRef.current = false;
+  //       setLoading(false);
+  //       setLoadingMore(false);
+  //     }
+  //   },
+  //   [token, guestId, profileOwnerId]
+  // );
+
   const loadPosts = useCallback(
-    async (newPage: number) => {
-      if (fetchingRef.current || !token) return;
+  async (newPage: number) => {
+    // ✅ إزالة شرط token
+    if (fetchingRef.current) return;
 
-      try {
-        fetchingRef.current = true;
+    try {
+      fetchingRef.current = true;
 
-        if (newPage === 1) {
-          setLoading(true);
-        } else {
-          setLoadingMore(true);
-        }
-
-        setError(null);
-
-        let url = "";
-
-        // Profile Posts
-        if (profileOwnerId) {
-          url =
-            `https://bo-chat.space/myposts/${profileOwnerId}` +
-            `?guestid=${guestId}` +
-            `&page=${newPage}` +
-            `&limit=${LIMIT}`;
-        }
-        // Home Feed
-        else if (guestId) {
-          url =
-            `https://bo-chat.space/home_posts/${guestId}` +
-            `?page=${newPage}` +
-            `&limit=${LIMIT}`;
-        } else {
-          return;
-        }
-
-        console.log("FETCH URL:", url);
-
-        const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        let newPosts: Post[] = [];
-
-        if (Array.isArray(data)) {
-          newPosts = data;
-        } else if (Array.isArray(data.posts)) {
-          newPosts = data.posts;
-        } else if (Array.isArray(data.data)) {
-          newPosts = data.data;
-        }
-
-        if (newPage === 1) {
-          setPosts(newPosts);
-        } else {
-          setPosts((prev) => {
-            const existing = new Set(prev.map((p) => p._id));
-
-            const unique = newPosts.filter(
-              (p) => !existing.has(p._id)
-            );
-
-            return [...prev, ...unique];
-          });
-        }
-
-        setHasMore(newPosts.length >= LIMIT);
-        setPage(newPage);
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "تعذر تحميل المنشورات");
-      } finally {
-        fetchingRef.current = false;
-        setLoading(false);
-        setLoadingMore(false);
+      if (newPage === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
       }
-    },
-    [token, guestId, profileOwnerId]
-  );
 
+      setError(null);
+
+      let url = "";
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      // Profile Posts
+      if (profileOwnerId) {
+        url =
+          `https://bo-chat.space/myposts/${profileOwnerId}` +
+          `?guestid=${guestId}` +
+          `&page=${newPage}` +
+          `&limit=${LIMIT}`;
+      }
+      // Home Feed (مسجل دخول)
+      else if (guestId) {
+        url =
+          `https://bo-chat.space/home_posts/${guestId}` +
+          `?page=${newPage}` +
+          `&limit=${LIMIT}`;
+      }
+      // ✅ زيارة غير مسجل (الصفحة الرئيسية)
+      else {
+        url =
+          `https://bo-chat.space/home_posts/686695a04211804ef3875339` +
+          `?page=${newPage}` +
+          `&limit=${LIMIT}`;
+      }
+
+      console.log("FETCH URL:", url);
+
+      const res = await fetch(url, { headers });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      let newPosts: Post[] = [];
+
+      if (Array.isArray(data)) {
+        newPosts = data;
+      } else if (Array.isArray(data.posts)) {
+        newPosts = data.posts;
+      } else if (Array.isArray(data.data)) {
+        newPosts = data.data;
+      }
+
+      if (newPage === 1) {
+        setPosts(newPosts);
+      } else {
+        setPosts((prev) => {
+          const existing = new Set(prev.map((p) => p._id));
+          const unique = newPosts.filter((p) => !existing.has(p._id));
+          return [...prev, ...unique];
+        });
+      }
+
+      setHasMore(newPosts.length >= LIMIT);
+      setPage(newPage);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "تعذر تحميل المنشورات");
+    } finally {
+      fetchingRef.current = false;
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  },
+  [token, guestId, profileOwnerId] // يمكنك إضافة LIMIT إذا أردت
+);
+
+// ✅ تعديل useEffect لإزالة شرط token
+useEffect(() => {
+  loadPosts(1);
+}, [profileOwnerId, guestId, loadPosts]);
   useEffect(() => {
     if (!token) return;
 
