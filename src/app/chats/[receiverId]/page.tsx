@@ -662,7 +662,7 @@ useEffect(() => {
   // }, []);
 
   // ================= Block & Report with confirmation modal =================
-const handleBlockUser = useCallback(async () => {
+ const handleBlockUser = useCallback(async () => {
   if (!receiverId || !myId || !token) return;
   try {
     const res = await fetch(`${API_BASE}/block${myId}`, {
@@ -672,7 +672,8 @@ const handleBlockUser = useCallback(async () => {
     });
 
     if (res.ok) {
-      setIBlockedHim(true);   // نجاح الحظر
+      setIBlockedHim(true);
+      localStorage.setItem(`blocked_${receiverId}`, 'true');
     } else {
       setError("فشل الحظر، حاول مرة أخرى");
     }
@@ -682,7 +683,6 @@ const handleBlockUser = useCallback(async () => {
   }
   setShowMenu(false);
 }, [receiverId, myId, token]);
-
 const handleReport = useCallback(() => {
   setBlockConfirmVisible(true);
   setShowMenu(false);
@@ -730,7 +730,15 @@ const handleCancelBlock = useCallback(() => {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
     };
   }, [audioUrl]);
-
+useEffect(() => {
+  if (!receiverId) return;
+  const blocked = localStorage.getItem(`blocked_${receiverId}`);
+  if (blocked === 'true') {
+    setIBlockedHim(true);
+  } else {
+    setIBlockedHim(false);
+  }
+}, [receiverId]);
   // ================= UI flags =================
   const isTyping = text.trim().length > 0;
   const canShowMic = !isTyping && !isRecording && !audioBlob && !recordingStopped;
