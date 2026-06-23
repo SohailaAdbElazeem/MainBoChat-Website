@@ -84,7 +84,11 @@ export default function ActionAreaClient({
   return (
     <>
       <div className="flex gap-1 items-center">
-        <ActionMenu onBlock={() => setShowBlock(true)} />
+       
+          <ActionMenu
+  onBlock={() => setShowBlock(true)}
+  reportedUserId={receiverId}  
+/>
 
         <button
           onClick={() => router.push(`/chats/${receiverId}`)}

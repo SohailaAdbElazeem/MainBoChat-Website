@@ -29,7 +29,8 @@ const [stars, setStars] = useState<number>(5);
 const [commentText, setCommentText] = useState<string>('');
 const [ratingLoading, setRatingLoading] = useState<boolean>(false);
 
-// 
+//
+const [aboutExpanded, setAboutExpanded] = useState(false);
   const [data, setData] = useState<UserAPIResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -463,6 +464,7 @@ useEffect(() => {
   const followingCount = following.length;
   const viewsCount = user.visit ?? 0;
   const rateCount = user.rate ?? 0;
+  
   return (
     <div className="min-h-screen bg-white text-gray-800" dir="rtl">
       <div className="px-5 py-1">
@@ -552,7 +554,20 @@ useEffect(() => {
               <div className="flex flex-col gap-6">
                 <div className="flex-1 text-right">
                   <div className="mr-[150px] flex justify-between">
-                    <p className="text-sm text-[#B6B7B7] max-w-[280px]">{user.about || "أنا هنا لأتواصل وأكتشف عوالم جديدة مع أشخاص يشبهونني"}</p>
+                    {/* <p className="text-sm text-[#B6B7B7] max-w-[280px]">{user.about || "أنا هنا لأتواصل وأكتشف عوالم جديدة مع أشخاص يشبهونني"}</p> */}
+                   <p
+                  className="text-sm text-[#B6B7B7] max-w-[280px] h-[50px] cursor-pointer select-none"
+                  onClick={() => setAboutExpanded(!aboutExpanded)}
+                >
+                  {(() => {
+                    const text = user.about || "أنا هنا لأتواصل وأكتشف عوالم جديدة مع أشخاص يشبهونني";
+                    const words = text.split(' ');
+                    if (words.length > 7) {
+                      return aboutExpanded ? text : words.slice(0, 7).join(' ') + '...';
+                    }
+                    return text;
+                  })()}
+                </p>
                     <div className="flex gap-1">
                       {id ? <ActionAreaClient followingId={id} serverFollowerIds={followerIds} receiverId={user._id} username={user.name} /> : null}
                     </div>
@@ -564,7 +579,7 @@ useEffect(() => {
                         <p className="text-sm underline text-[#D72229]  text-[15px]">لم يحصل هذا الدرج علي اي تقييم</p>
                       ) : (
                         <div className="m-0 text-sm font-semibold underline text-[#D72229]">
-                          <span className="text-xs">حصل هذا الدرج علي</span> تقييم {rateCount} نجوم
+                          <span className="text-xs">حصل هذا الدرج علي</span> تقييم {Number(rateCount.toFixed(2))} نجوم
                         </div>
                       )}
                     </div>
