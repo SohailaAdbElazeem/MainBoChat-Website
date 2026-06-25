@@ -75,7 +75,7 @@ const handleLogout = () => {
   router.push("/login");
 };
   useEffect(() => {
-      console.log("Debounced:", debounced);
+      // console.log("Debounced:", debounced);
     if (!debounced.trim()) { setResults({}); setOpen(false); return; }
     let cancelled = false;
     (async () => {
@@ -83,9 +83,9 @@ const handleLogout = () => {
       const sections: Record<string, SearchResult[]> = {};
       await Promise.all(providers.map(async (p) => {
         try {
-              console.log("Searching in:", p.label);
+              // console.log("Searching in:", p.label);
           const out = await p.search(debounced);
-              console.log("Results:", out);
+              // console.log("Results:", out);
 
           if (!cancelled) sections[p.label] = out.slice(0, 5);
         } catch (e) {
@@ -167,7 +167,7 @@ const handleLogout = () => {
                 value={query}
                 // onChange={(e) => setQuery(e.target.value)}
                 onChange={(e) => {
-                console.log("Typing:", e.target.value);
+                // console.log("Typing:", e.target.value);
                 setQuery(e.target.value);
               }}
                 onKeyDown={onKeyDown}

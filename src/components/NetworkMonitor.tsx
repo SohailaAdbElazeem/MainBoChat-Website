@@ -1,18 +1,21 @@
+ 
 // src/components/NetworkMonitor.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 
 export default function NetworkMonitor() {
   const [isSlow, setIsSlow] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const lastNotifiedRef = useRef<'offline' | 'slow' | 'online' | 'latency' | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
    const showNotification = (
     title: string,
     subtitle: string,
     bgColor: string,
-    iconSrc: string = "imgs/Vector (8).svg",
+    iconSrc: string = "/imgs/Vector (8).svg",
     duration: number = 6000
   ) => {
     toast(
@@ -34,7 +37,6 @@ export default function NetworkMonitor() {
             gap: "12px",
           }}
         >
-          {/* النصوص */}
           <div
             style={{
               display: "flex",
@@ -73,7 +75,6 @@ export default function NetworkMonitor() {
             </span>
           </div>
 
-          {/* الأيقونة */}
           <div
             style={{
               width: "44px",
@@ -86,13 +87,21 @@ export default function NetworkMonitor() {
               justifyContent: "center",
             }}
           >
-            <img src={iconSrc} alt="" width="23" height="23" />
+            <img
+              src={iconSrc}
+              alt=""
+              width="23"
+              height="23"
+              onError={(e) => {
+                 e.currentTarget.style.display = 'none';
+              }}
+            />
           </div>
         </div>
       ),
       {
-        duration: duration,
-        position: 'top-left', 
+        duration,
+        position: 'top-left',
         style: {
           background: "transparent",
           boxShadow: "none",
@@ -105,44 +114,49 @@ export default function NetworkMonitor() {
     );
   };
 
-  useEffect(() => {
+   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      showNotification(
-        'تم استعادة الاتصال',
-        'شبكة الواي فاي لديك تعمل بشكل طبيعي',
-        '#28A745CC', 
-        'imgs/Vector (8).svg',
-        3000
-      );
+      if (lastNotifiedRef.current !== 'online') {
+        showNotification(
+          'تم استعادة الاتصال',
+          'شبكة الواي فاي لديك تعمل بشكل طبيعي',
+          '#28A745CC',
+          '/imgs/Vector (8).svg',
+          3000
+        );
+        lastNotifiedRef.current = 'online';
+      }
     };
 
     const handleOffline = () => {
       setIsOnline(false);
+      setIsSlow(false);
       showNotification(
         'لا يوجد اتصال',
         'يرجى التحقق من اتصالك بالإنترنت',
         '#D72229CC',
-        'imgs/Vector (8).svg',
+        '/imgs/Vector (8).svg',
         5000
       );
+      lastNotifiedRef.current = 'offline';
     };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-   useEffect(() => {
+  // 2. كشف ضعف الشبكة (عبر Network Information API)
+  useEffect(() => {
     if (!('connection' in navigator)) return;
-
     const connection = (navigator as any).connection;
 
     const handleChange = () => {
+      if (!isOnline) return;
       const isSlowNow =
         (connection.downlink && connection.downlink < 0.8) ||
         (connection.rtt && connection.rtt > 300);
@@ -152,54 +166,94 @@ export default function NetworkMonitor() {
         showNotification(
           'مشكلة في الاتصال',
           'شبكة الواي فاي لديك ضعيفة حاول مجدداً',
-          '#D72229CC', // أحمر
-          'imgs/Vector (8).svg',
+          '#D72229CC',
+          '/imgs/Vector (8).svg',
           6000
         );
+        lastNotifiedRef.current = 'slow';
       } else if (!isSlowNow && isSlow) {
         setIsSlow(false);
         showNotification(
           'استعاد الاتصال سرعته',
           'شبكة الواي فاي لديك تعمل بشكل طبيعي',
-          '#28A745CC', // أخضر
-          'imgs/Vector (8).svg',
+          '#28A745CC',
+          '/imgs/Vector (8).svg',
           2000
         );
+        lastNotifiedRef.current = 'online';
       }
     };
 
     connection.addEventListener('change', handleChange);
     handleChange();
-
     return () => connection.removeEventListener('change', handleChange);
-  }, [isSlow]);
+  }, [isSlow, isOnline]);
 
-   useEffect(() => {
-    if (!isOnline) return;
+  // 3. قياس زمن الاستجابة (Latency) – مع تحسينات لتجنب أخطاء الشبكة
+  useEffect(() => {
+    if (!isOnline) return; // لا نرسل طلباً إذا كنا غير متصلين
 
     const checkLatency = async () => {
+      // تحقق إضافي قبل الطلب
+      if (!navigator.onLine) return;
+
+      // إلغاء أي طلب سابق
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const signal = controller.signal;
+
       const start = Date.now();
       try {
-        await fetch('/api/ping', { method: 'HEAD', cache: 'no-store' });
+        // مهلة 5 ثوانٍ
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        await fetch('/', { 
+          method: 'HEAD', 
+          cache: 'no-store',
+          signal,
+        });
+        clearTimeout(timeoutId);
+
         const latency = Date.now() - start;
+
         if (latency > 1000 && !isSlow) {
-          setIsSlow(true);
-          showNotification(
-            'استجابة بطيئة',
-            'يرجى التحقق من اتصالك بالإنترنت',
-            '#FFC107CC', // 
-            'imgs/Vector (8).svg',
-            5000
-          );
+          if (lastNotifiedRef.current !== 'latency') {
+            showNotification(
+              'استجابة بطيئة',
+              'يرجى التحقق من اتصالك بالإنترنت',
+              '#FFC107CC', 
+              '/imgs/Vector (8).svg',
+              5000
+            );
+            lastNotifiedRef.current = 'latency';
+          }
+        } else if (latency <= 1000 && lastNotifiedRef.current === 'latency') {
+          lastNotifiedRef.current = null;
         }
-      } catch {
-       }
+      } catch (error) {
+       
+        if (error instanceof Error && error.name === 'AbortError') {
+         } else {
+         }
+      } finally {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
+      }
     };
 
     const interval = setInterval(checkLatency, 30000);
     checkLatency();
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [isOnline, isSlow]);
 
   return null;

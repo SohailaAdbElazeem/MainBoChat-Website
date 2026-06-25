@@ -246,8 +246,7 @@ const PostsFeed = ({ viewedUserId }: PostsFeedProps) => {
   //         return;
   //       }
 
-  //       console.log("FETCH URL:", url);
-
+ 
   //       const res = await fetch(url, {
   //         headers: {
   //           Authorization: `Bearer ${token}`,
@@ -343,8 +342,7 @@ const PostsFeed = ({ viewedUserId }: PostsFeedProps) => {
           `&limit=${LIMIT}`;
       }
 
-      console.log("FETCH URL:", url);
-
+ 
       const res = await fetch(url, { headers });
 
       if (!res.ok) {

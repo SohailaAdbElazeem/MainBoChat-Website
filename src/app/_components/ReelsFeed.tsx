@@ -121,7 +121,7 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
     else setLoadingMore(true);
 
     try {
-      const res = await fetch(`http://bo-chat.space/bestvideosTest/null?page=${pageToFetch}&limit=${limit}`);
+      const res = await fetch(`https://bo-chat.space/bestvideosTest/null?page=${pageToFetch}&limit=${limit}`);
       const data = await res.json();
       if (!Array.isArray(data) || data.length === 0) {
         setHasMore(false);
@@ -316,7 +316,7 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
     if (!targetUserId) return;
 
     try {
-      const res = await fetch("http://bo-chat.space/follow", {
+      const res = await fetch("https://bo-chat.space/follow", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ followerid: currentUserId, followingid: targetUserId }),
@@ -344,7 +344,7 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
     setLikesCount(prev => ({ ...prev, [video._id]: (prev[video._id] || 0) + (wasLiked ? -1 : 1) }));
 
     try {
-      const res = await fetch(`http://bo-chat.space/posts/${video._id}/reactions`, {
+      const res = await fetch(`https://bo-chat.space/posts/${video._id}/reactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ userid: myUserId }),
@@ -404,7 +404,7 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
   const handleReportComment = async (commentId: string) => {
     if (!token || !myUserId) return;
     try {
-      const res = await fetch(`http://bo-chat.space/report/comment/${commentId}`, {
+      const res = await fetch(`https://bo-chat.space/report/comment/${commentId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ userid: myUserId, reporttype: "comment", reportdescription: "محتوى غير لائق" }),
@@ -449,7 +449,7 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
     try {
       setSharing(true);
       const payload = { userid: myUserId, content: shareText.trim() };
-      const res = await fetch(`http://bo-chat.space/posts/${postId}/share`, {
+      const res = await fetch(`https://bo-chat.space/posts/${postId}/share`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -524,7 +524,7 @@ const handleBlockVideo = async () => {
       return;
     }
     try {
-      const res = await fetch(`http://bo-chat.space/report${myUserId}`, {
+      const res = await fetch(`https://bo-chat.space/report${myUserId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
