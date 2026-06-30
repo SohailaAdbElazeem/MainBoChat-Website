@@ -7,7 +7,6 @@ import { SearchResult } from '@/types/search-result';
 import { SearchProvider } from '@/types/search-provider';
 import { useRouter } from "next/navigation";
 
-
 export type GlobalSearchProps = {
   providers: SearchProvider[];
   placeholder?: string;
@@ -59,6 +58,19 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
   const debounced = useDebounced(query, 200);
   const panelRef = useRef<HTMLDivElement>(null);
 
+
+    const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+     const confirmLogout = () => {
+    localStorage.clear();
+    router.push("/login");
+    setShowLogoutDialog(false);
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutDialog(false);
+  };
+
   const flatResults = useMemo(() => Object.entries(results).flatMap(([key, arr]) => arr.map((r) => ({ section: key, ...r }))), [results]);
   const router = useRouter();
  const goToProfile = () => {
@@ -70,10 +82,14 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
 
   router.push(`/profile/${user._id}`);
 };
-const handleLogout = () => {
-  localStorage.clear();
-  router.push("/login");
-};
+// const handleLogout = () => {
+//   localStorage.clear();
+//   router.push("/login");
+// };
+ const handleLogout = () => {
+    setShowLogoutDialog(true);
+  };
+
   useEffect(() => {
       // console.log("Debounced:", debounced);
     if (!debounced.trim()) { setResults({}); setOpen(false); return; }
@@ -112,14 +128,14 @@ const handleLogout = () => {
     if (!open) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, flatResults.length - 1)); }
     if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
-    if (e.key === 'Enter') {
-      const r = flatResults[activeIndex];
-      if (r?.href) {
-        // navigate client-side
-        const a = document.createElement('a');
-        a.href = r.href; a.click();
-      }
-    }
+   if (e.key === 'Enter') {
+  const r = flatResults[activeIndex];
+  if (r?.href) {
+    e.preventDefault();
+    router.push(r.href);
+    setOpen(false);
+  }
+}
     if (e.key === 'Escape') setOpen(false);
   };
 
@@ -160,8 +176,8 @@ const handleLogout = () => {
   </button>
 
           {/* Search */}
-          <div className="relative  z-[9999]" ref={panelRef} dir='rtl'>
-            <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[23vw] max-w-[500px]">
+          <div className="relative z-[9998]" ref={panelRef} dir='rtl'>
+               <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[23vw] max-w-[500px]">
               <Magnifier />
               <input
                 value={query}
@@ -211,7 +227,20 @@ const handleLogout = () => {
                         return (
                           <li key={r.id} onMouseEnter={() => setActiveIndex(flatIndex)}>
                             {r.href ? (
-                              <Link href={r.href} className="block">{ItemContent}</Link>
+                              // <Link href={r.href} className="block">{ItemContent}</Link>
+                              <Link
+  href={r.href}
+  className="block"
+  onClick={(e) => {
+    e.preventDefault();          // منع السلوك الافتراضي للرابط
+    if (r.href) {
+      router.push(r.href);       // التنقل إلى البروفايل
+      setOpen(false);            // إغلاق القائمة بعد النقر
+    }
+  }}
+>
+  {ItemContent}
+</Link>
                             ) : (
                               <button className="w-full text-start">{ItemContent}</button>
                             )}
@@ -225,9 +254,36 @@ const handleLogout = () => {
               </div>
             )}
           </div>
+
+          {showLogoutDialog && (
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+    <div 
+      dir="rtl" 
+      className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-neutral-200/60 text-center"  // <--- أضفنا text-center هنا
+    >
+      <h3 className="text-lg font-semibold mb-2">تأكيد تسجيل الخروج</h3>
+      <p className="text-neutral-600 text-sm mb-6">هل أنت متأكد من رغبتك في تسجيل الخروج؟</p>
+      
+      {/* الأزرار تبقى في المنتصف بفضل justify-center */}
+      <div className="flex gap-3 justify-center">
+        <button
+          onClick={cancelLogout}
+          className="px-4 py-2 rounded-xl bg-[#F2F2F2] text-neutral-700 hover:bg-neutral-200 transition"
+        >
+          إلغاء
+        </button>
+        <button
+          onClick={confirmLogout}
+          className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition"
+        >
+          تسجيل الخروج
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         </div>
       </div>
     </div>
   );
 }
-

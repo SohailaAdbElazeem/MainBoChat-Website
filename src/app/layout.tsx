@@ -110,7 +110,8 @@ import { generalPostsProvider } from '@/providers/generalPostsProvider';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 
-     const searchProviders = [userSearchProvider, generalPostsProvider];
+    //  const searchProviders = [userSearchProvider, generalPostsProvider];
+     const searchProviders = [userSearchProvider];
     
     const pathname = usePathname();
     const isLogin = pathname === "/login";
@@ -123,7 +124,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }, []);
     
     return (
-        <html lang="en">
+        <html lang="en" suppressHydrationWarning>
             <body className="bg-white select-none">
                 <NetworkMonitor />
 

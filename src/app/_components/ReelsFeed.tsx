@@ -656,10 +656,10 @@ const handleBlockVideo = async () => {
               className="ml-auto w-[50px] h-[45px] rounded-[19px] bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition"
             >
               <img
-                src={followingStatus[video._id] ? "/imgs/Vector (7).svg" : "/imgs/Vector (7).svg"}
-                alt="action"
-                className="w-[19px] h-[19px]"
-              />
+    src={followingStatus[video._id] ?"/imgs/Follow.svg" :"/imgs/Vector (7).svg" }
+    alt="action"
+    className="w-[19px] h-[19px]"
+  />
             </div>
           </div>
 
@@ -774,7 +774,7 @@ const handleBlockVideo = async () => {
 
       {/* Fullscreen Overlay */}
       {showOverlay && (
-        <div ref={containerRef} className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center">
+        <div ref={containerRef} className="fixed inset-0 bg-black/90 z-[10000] flex items-center justify-center">
           <div className="relative">
             <video
               ref={videoRef}

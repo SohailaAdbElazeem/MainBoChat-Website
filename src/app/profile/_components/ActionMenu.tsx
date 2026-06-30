@@ -50,6 +50,7 @@ export default function ActionMenu({
   const [ratingsLoading, setRatingsLoading] = useState(false);
   const [newRatingText, setNewRatingText] = useState("");
   const [newRatingStars, setNewRatingStars] = useState(5);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   // ─── Rating options menu state ─────────────────────────────────────
@@ -827,7 +828,7 @@ useEffect(() => {
                           <div className="flex items-center gap-1">
                             {/* stars */}
                             <div className="flex">
-                              {Array.from({ length: 5 }, (_, i) => (
+                              {/* {Array.from({ length: 5 }, (_, i) => (
                                 <span key={i} className="inline-block w-[25px] h-[25px]">
                                   {i < rate.stars ? (
                                     <img
@@ -843,7 +844,44 @@ useEffect(() => {
                                     />
                                   )}
                                 </span>
-                              ))}
+                              ))} */}
+ <div className="flex gap-0.5">
+  {Array.from({ length: 5 }, (_, i) => {
+    const starIndex = i + 1;
+    let type: 'full' | 'half' | 'empty';
+    if (starIndex <= rate.stars) type = 'full';
+    else if (starIndex - 0.5 <= rate.stars) type = 'half';
+    else type = 'empty';
+
+    return (
+      <span key={i} className="inline-block w-[28px] h-[28px] relative">
+        {/* النجمة الفارغة (خلفية) */}
+        <img
+          src="/imgs/Vector (11).svg"
+          className="w-full h-full object-contain absolute inset-0"
+          alt="empty"
+        />
+        {/* النجمة الممتلئة (جزئية أو كاملة) */}
+        {type !== 'empty' && (
+          <div
+            className="absolute inset-0"
+            style={{
+              clipPath: type === 'half' ? 'inset(0 50% 0 0)' : 'inset(0)',
+            }}
+          >
+            <img
+              src="/imgs/Vector (9).svg"
+              className="w-full h-full object-contain"
+              alt="filled"
+            />
+          </div>
+        )}
+      </span>
+    );
+  })}
+</div>
+
+
                             </div>
 
                             {/* options button */}
@@ -915,7 +953,7 @@ useEffect(() => {
   </div>
 
   {/* stars selector */}
-  <div className="flex gap-0.5 shrink-0">
+  {/* <div className="flex gap-0.5 shrink-0">
     {[1, 2, 3, 4, 5].map((s) => (
       <button
         key={s}
@@ -930,8 +968,63 @@ useEffect(() => {
         />
       </button>
     ))}
-  </div>
+  </div> */}
+ <div
+  className="flex  gap-0.5"
+  onMouseLeave={() => setHoverRating(null)}
+>
+  {[1, 2, 3, 4, 5].map((star) => {
+    const rating = hoverRating !== null ? hoverRating : newRatingStars;
+    let type: 'full' | 'half' | 'empty';
+    if (star <= rating) type = 'full';
+    else if (star - 0.5 <= rating) type = 'half';
+    else type = 'empty';
 
+    return (
+      <div
+        key={star}
+        className="relative w-7 h-7 cursor-pointer"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const half = x < rect.width / 2;
+          const value = half ? star - 0.5 : star;
+          setNewRatingStars(Math.max(0.5, Math.min(5, value)));
+          setHoverRating(null);
+        }}
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const half = x < rect.width / 2;
+          const value = half ? star - 0.5 : star;
+          setHoverRating(Math.max(0.5, Math.min(5, value)));
+        }}
+      >
+        {/* النجمة الفارغة (خلفية) */}
+        <img
+          src="/imgs/Vector (11).svg"
+          className="w-full h-full object-contain absolute inset-0"
+          
+          alt="empty"
+        />
+         {type !== 'empty' && (
+          <div
+            className="absolute inset-0"
+            style={{
+    clipPath: type === 'half' ? 'inset(0 0 0 50%)' : 'inset(0)',
+            }}
+          >
+            <img
+              src="/imgs/Vector (9).svg"
+              className="w-full h-full object-contain"
+              alt="filled"
+            />
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
   <div
     className="z-9 w-full flex rounded-[19px]"
     style={{ background: "#0000001A" }}
