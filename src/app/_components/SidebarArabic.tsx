@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useMemo, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useLoginModal } from "@/contexts/LoginModalContext";
 
 type ItemId = "home" | "videos" | "messages" | "notifications" | "settings" | "profile";
 
@@ -22,31 +23,52 @@ export default function SidebarArabic({
   unreadMessages?: number;
 }) {
   const pathname = usePathname();
+  const { openLoginModal } = useLoginModal();
   const [userId, setUserId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    // safety: run only on client after mount
-    setMounted(true);
-      const storedUserData = localStorage.getItem("userData");
-  if (storedUserData) {
-    try {
-      const user = JSON.parse(storedUserData);
-        // console.log("User Data:", user);
-    // console.log("User ID:", user?._id);
-
-      setUserId(user?._id || null);
-    } catch (error) {
-      console.error("Failed to parse userData", error);
+  // دالة تحديث userId من localStorage
+  const updateUserData = () => {
+    const storedUserData = localStorage.getItem("userData");
+    if (storedUserData) {
+      try {
+        const user = JSON.parse(storedUserData);
+        setUserId(user?._id || null);
+      } catch (error) {
+        console.error("Failed to parse userData", error);
+        setUserId(null);
+      }
+    } else {
+      setUserId(null);
     }
-  }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    updateUserData(); // قراءة أولية
+
+    // الاستماع لحدث مخصص (يُطلق عند تسجيل الدخول/الخروج)
+    window.addEventListener("userDataUpdated", updateUserData);
+
+    // الاستماع لتغييرات localStorage من التبويبات الأخرى
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "userData") {
+        updateUserData();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("userDataUpdated", updateUserData);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
-  // derive active item from pathname
+  // تحديد العنصر النشط
   const active = pathname === "/"
     ? "home"
-    : pathname?.startsWith?.("/messages")
-    ? "messages"
+    : pathname?.startsWith?.("/chats")
+    ? "chats"
     : pathname?.startsWith?.("/profile")
     ? "profile"
     : undefined;
@@ -60,31 +82,37 @@ export default function SidebarArabic({
     user: <img src="/icons/user.svg" width={"20px"} alt="user" />,
   };
 
-  // build items — use placeholder href for profile until userId is known
   const items: MenuItem[] = useMemo(
     () => [
       { id: "home", label: "الصفحة الرئيسية", href: "/", icon: icons.home },
-      { id: "chats", label: "الرسائل", href: "/chats", icon: icons.mail, badgeCount: unreadMessages },
+      {
+        id: "chats",
+        label: "الرسائل",
+        href: userId ? "/chats" : "#",
+        icon: icons.mail,
+        badgeCount: unreadMessages,
+      },
       {
         id: "profile",
         label: "الدرج الشخصي",
-        href: userId ? `/profile/${userId}` : "#", // امنع undefined href
+        href: userId ? `/profile/${userId}` : "#",
         icon: icons.user,
       },
     ],
-    // include userId so menu updates when it becomes available
     [unreadMessages, userId]
   );
 
   const activeClass =
-    "bg-gradient-to-l from-white to-[#D72229] text-white rounded-tl-[24px] rounded-bl-[24px]  py-3 flex items-center gap-2";
+    "bg-gradient-to-l from-white to-[#D72229] text-white rounded-tl-[24px] rounded-bl-[24px] py-3 flex items-center gap-2";
 
-  // during SSR or before mount, we can render placeholder to avoid mismatch
   if (!mounted) {
     return (
-      <aside dir="rtl" className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden" style={{ height: "calc(100vh - 90px)" }}>
+      <aside
+        dir="rtl"
+        className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden"
+        style={{ height: "calc(100vh - 90px)" }}
+      >
         <nav className="space-y-2 mb-1">
-          {/* skeleton / placeholders */}
           <div className="h-10 rounded bg-gray-100 animate-pulse" />
           <div className="h-10 rounded bg-gray-100 animate-pulse" />
           <div className="h-10 rounded bg-gray-100 animate-pulse" />
@@ -95,22 +123,25 @@ export default function SidebarArabic({
 
   return (
     <aside
-    //  dir="rtl" 
-    //  className="select-none  text-right text-[#111] overflow-y-auto scrollbar-hidden" 
-    //  style={{ height: "calc(100vh - 90px)" }}
       dir="rtl"
-  className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden flex flex-col"
-  style={{ height: "calc(100vh - 90px)" }}
-     
-     >
+      className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden flex flex-col"
+      style={{ height: "calc(100vh - 90px)" }}
+    >
       <nav className="space-y-2 mb-1">
         {items.map((item) => {
           const isActive = active === item.id;
+          const isProtected = (item.id === "chats" || item.id === "profile") && !userId;
 
           return (
             <Link
               key={item.id}
               href={item.href ?? "#"}
+              onClick={(e) => {
+                if (isProtected) {
+                  e.preventDefault();
+                  openLoginModal();
+                }
+              }}
               className={`${isActive ? activeClass : ""} flex justify-between !pr-10`}
             >
               <span className="flex items-center">
@@ -120,8 +151,9 @@ export default function SidebarArabic({
                     "rounded-[26px]",
                   ].join(" ")}
                 >
-                  <span className={`${isActive ? "text-white filter invert":"text-black"}`}>{item.icon}</span>
-
+                  <span className={`${isActive ? "text-white filter invert" : "text-black"}`}>
+                    {item.icon}
+                  </span>
                   {item.dot && (
                     <span
                       className="
@@ -134,9 +166,8 @@ export default function SidebarArabic({
                 </span>
                 {item.label}
               </span>
-
               {item.badgeCount ? (
-                <span className="grid h-[28px] w-[26px] place-items-center ml-3 rounded-[11px] bg-[#D72229]  text-sm text-white">
+                <span className="grid h-[28px] w-[26px] place-items-center ml-3 rounded-[11px] bg-[#D72229] text-sm text-white">
                   {item.badgeCount}
                 </span>
               ) : null}
@@ -144,10 +175,7 @@ export default function SidebarArabic({
           );
         })}
       </nav>
-      <div className="max-w-[380px] mb-2">
-        {/* <img src="/imgs/banner.svg" className="min-w-[200px] h-full object-cover" alt="" /> */}
-       </div>
-      {/* الفوتر */}
+      <div className="max-w-[380px] mb-2">{/* banner */}</div>
       <div className="space-y-3 text-sm text-black/70 mt-auto mr-5 pb-4">
         <div className="flex flex-wrap items-center gap-x-3">
           <Link href="https://bo-eg.online/PrivacyPolicies.html" className="hover:underline text-[#D72229]">
@@ -165,13 +193,11 @@ export default function SidebarArabic({
           <Link href="https://bo-eg.online/SocialGuiedLines.html" className="hover:underline text-[#D72229]">
             إرشادات المجتمع
           </Link>
-           <span className="opacity-60">|</span>
-            <p className="text-xs opacity-70">
-              Powered by <span className="font-semibold text-[#D72229]">panda oracle</span>
-            </p>
-
+          <span className="opacity-60">|</span>
+          <p className="text-xs opacity-70">
+            Powered by <span className="font-semibold text-[#D72229]">panda oracle</span>
+          </p>
         </div>
-
       </div>
     </aside>
   );

@@ -1,3 +1,4 @@
+// //////////////
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
@@ -5,8 +6,8 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import FollowButton from "../profile/_components/FollowButton";
 import Loader from "@/components/Loader";
+import { useLoginModal } from "@/contexts/LoginModalContext";
 
 type Video = {
   _id: string;
@@ -26,6 +27,8 @@ type ReelsFeedProps = {
 };
 
 export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedProps) {
+  const { openLoginModal } = useLoginModal();
+
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -71,8 +74,10 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
   // ========== OPTIONS MENU state ==========
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
-  // مرجع للعنصر الذي يحتوي على زر الخيارات والقائمة (لإغلاق القائمة عند النقر خارجها)
   const optionsWrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // ===== قائمة المتابعين (من الخادم) =====
+  const [followingList, setFollowingList] = useState<string[]>([]);
 
   // Helper functions
   const seekForward = (seconds: number = 10) => {
@@ -115,6 +120,33 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
   const myUserId = getCurrentUserId();
   const token = getAuthToken();
 
+  // ===== جلب قائمة المتابعين من الخادم =====
+  const fetchFollowingList = async () => {
+    if (!myUserId || !token) return;
+    try {
+      const res = await fetch(`https://bo-chat.space/users/${myUserId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user data");
+      const data = await res.json();
+      // استخراج الـ following IDs من المصفوفة
+      const following = Array.isArray(data.following)
+        ? data.following.map((item: any) => item.followingid)
+        : [];
+      setFollowingList(following);
+    } catch (err) {
+      console.error("Error fetching following list:", err);
+    }
+  };
+
+  // جلب القائمة عند تحميل المكون
+  useEffect(() => {
+    if (myUserId && token) {
+      fetchFollowingList();
+    }
+  }, [myUserId, token]);
+
+  // ===== جلب الفيديوهات =====
   const fetchVideos = async (pageToFetch = 1, limit = 10) => {
     if ((loading && pageToFetch !== 1) || loadingMore || !hasMore) return;
     if (pageToFetch === 1) setLoading(true);
@@ -129,11 +161,12 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
         setVideos((prev) => (pageToFetch === 1 ? data : [...prev, ...data]));
         setPage(pageToFetch + 1);
 
-        // Initialize following status for new videos
+        // تعيين حالة المتابعة بناءً على followingList
         setFollowingStatus((prev) => {
           const newStatus = { ...prev };
           data.forEach((video: Video) => {
-            if (newStatus[video._id] === undefined) newStatus[video._id] = false;
+            const isFollowing = followingList.includes(video.userid || '');
+            newStatus[video._id] = isFollowing;
           });
           return newStatus;
         });
@@ -179,7 +212,12 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
     }
   };
 
-  useEffect(() => { fetchVideos(1, 10); }, []);
+  // تحميل الصفحة الأولى عند جلب followingList
+  useEffect(() => {
+    fetchVideos(1, 10);
+  }, [followingList]);
+
+  // التحميل اللانهائي
   useEffect(() => {
     if (!hasMore) return;
     if (activeIndex >= videos.length - 1 && videos.length > 0) {
@@ -287,7 +325,6 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
     videoRefs.current = videoRefs.current.slice(0, videos.length);
   }, [videos.length]);
 
-  // تشغيل الفيديو تلقائياً عند تغيير activeIndex
   useEffect(() => {
     const currentVideo = videoRefs.current[activeIndex];
     if (currentVideo) {
@@ -297,6 +334,10 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
 
   // ---------------------- FOLLOW / UNFOLLOW ----------------------
   const openActionModal = (video: Video, type: "unfollow" | "follow") => {
+    if (!myUserId || !token) {
+      openLoginModal();
+      return;
+    }
     setUnfollowTargetVideo(video);
     setModalType(type);
     setShowUnfollowModal(true);
@@ -326,11 +367,32 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
       try { data = JSON.parse(text); } catch { data = { message: text }; }
       if (res.ok) {
         const newStatus = modalType === "follow";
+
+        // تحديث حالة المتابعة في الـ state
         setFollowingStatus(prev => ({ ...prev, [unfollowTargetVideo._id]: newStatus }));
+
+        // تحديث قائمة المتابعين (followingList) محلياً
+        setFollowingList(prev => {
+          if (newStatus) {
+            // إضافة المستخدم إلى القائمة
+            if (!prev.includes(targetUserId)) {
+              return [...prev, targetUserId];
+            }
+            return prev;
+          } else {
+            // إزالة المستخدم من القائمة
+            return prev.filter(id => id !== targetUserId);
+          }
+        });
+
         closeUnfollowModal();
+        toast.success(modalType === "follow" ? "تم المتابعة" : "تم إلغاء المتابعة");
       } else {
+        toast.error(data.message || "حدث خطأ");
       }
     } catch (err) {
+      console.error("Follow error:", err);
+      toast.error("خطأ في الاتصال");
     } finally {
       setIsUnfollowing(false);
     }
@@ -338,7 +400,10 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
 
   // ---------------------- LIKE ----------------------
   const handleLike = async (video: Video) => {
-    if (!token || !myUserId) return;
+    if (!token || !myUserId) {
+      openLoginModal();
+      return;
+    }
     const wasLiked = likedStatus[video._id] || false;
     setLikedStatus(prev => ({ ...prev, [video._id]: !wasLiked }));
     setLikesCount(prev => ({ ...prev, [video._id]: (prev[video._id] || 0) + (wasLiked ? -1 : 1) }));
@@ -360,7 +425,7 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
   // ---------------------- COMMENTS ----------------------
   const fetchComments = async (postId: string) => {
     if (!myUserId || !token) {
-      window.location.href = "/login";
+      openLoginModal();
       return;
     }
     try {
@@ -381,7 +446,7 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
 
   const submitComment = async (postId: string) => {
     if (!myUserId || !token) {
-      window.location.href = "/login";
+      openLoginModal();
       return;
     }
     if (!commentText.trim()) return;
@@ -402,7 +467,10 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
   };
 
   const handleReportComment = async (commentId: string) => {
-    if (!token || !myUserId) return;
+    if (!token || !myUserId) {
+      openLoginModal();
+      return;
+    }
     try {
       const res = await fetch(`https://bo-chat.space/report/comment/${commentId}`, {
         method: "POST",
@@ -418,7 +486,10 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
   };
 
   const handleCommentLike = async (commentId: string) => {
-    if (!token || !myUserId) return;
+    if (!token || !myUserId) {
+      openLoginModal();
+      return;
+    }
     setComments(prev =>
       prev.map(comment => {
         if (comment._id !== commentId) return comment;
@@ -445,7 +516,10 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
 
   // ---------------------- SHARE ----------------------
   const handleShare = async (postId: string) => {
-    if (!token || !myUserId) return;
+    if (!token || !myUserId) {
+      openLoginModal();
+      return;
+    }
     try {
       setSharing(true);
       const payload = { userid: myUserId, content: shareText.trim() };
@@ -469,58 +543,50 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
   };
 
   // ===================== OPTIONS MENU FUNCTIONS =====================
-  // const handleBlockVideo = () => {
-  //   toast.error("الميزة قيد التطوير");
-  //   setShowOptionsMenu(false);
-  // };
- 
-const handleBlockVideo = async () => {
-  if (!token || !myUserId) {
-    window.location.href = "/login";
-    return;
-  }
-  const video = videos[activeIndex];
-  if (!video || !video.userid) {
-    toast.error("لا يمكن حظر هذا المستخدم");
-    return;
-  }
-  if (video.userid === myUserId) {
-    toast.error("لا يمكنك حظر نفسك");
-    return;
-  }
-  setIsBlocking(true);
-  try {
-    const res = await fetch(`https://bo-chat.space/block${myUserId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ blockedid: video.userid }),
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(text || "فشل الحظر");
-    toast.success("تم حظر المستخدم بنجاح ");
-
-    // إزالة فيديوهات هذا المستخدم من القائمة
-    setVideos((prev) => prev.filter((v) => v.userid !== video.userid));
-    // تعديل المؤشر النشط
-    setActiveIndex((prev) => {
-      if (prev >= videos.length - 1) return Math.max(0, prev - 1);
-      return prev;
-    });
-    setShowOptionsMenu(false);
-  } catch (err) {
-    console.error("BLOCK ERROR:", err);
-    toast.error("حدث خطأ أثناء الحظر");
-  } finally {
-    setIsBlocking(false);
-  }
-};
+  const handleBlockVideo = async () => {
+    if (!token || !myUserId) {
+      openLoginModal();
+      return;
+    }
+    const video = videos[activeIndex];
+    if (!video || !video.userid) {
+      toast.error("لا يمكن حظر هذا المستخدم");
+      return;
+    }
+    if (video.userid === myUserId) {
+      toast.error("لا يمكنك حظر نفسك");
+      return;
+    }
+    setIsBlocking(true);
+    try {
+      const res = await fetch(`https://bo-chat.space/block${myUserId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ blockedid: video.userid }),
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(text || "فشل الحظر");
+      toast.success("تم حظر المستخدم بنجاح ");
+      setVideos((prev) => prev.filter((v) => v.userid !== video.userid));
+      setActiveIndex((prev) => {
+        if (prev >= videos.length - 1) return Math.max(0, prev - 1);
+        return prev;
+      });
+      setShowOptionsMenu(false);
+    } catch (err) {
+      console.error("BLOCK ERROR:", err);
+      toast.error("حدث خطأ أثناء الحظر");
+    } finally {
+      setIsBlocking(false);
+    }
+  };
 
   const handleReportVideo = async () => {
     if (!token || !myUserId) {
-      window.location.href = "/login";
+      openLoginModal();
       return;
     }
     try {
@@ -651,15 +717,19 @@ const handleBlockVideo = async () => {
               <p className="text-white font-semibold">{video.name}</p>
               <p className="text-gray-300 text-sm">{timeAgoAr(video.createdAt)}</p>
             </div>
+          
             <div
-              onClick={() => openActionModal(video, followingStatus[video._id] ? "unfollow" : "follow")}
-              className="ml-auto w-[50px] h-[45px] rounded-[19px] bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition"
+              onClick={() => {
+                  const vid = videos[activeIndex];
+                  if (vid) openActionModal(vid, followingStatus[vid._id] ? "unfollow" : "follow");
+                }}
+               className="ml-auto w-[50px] h-[45px] rounded-[19px] bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition"
             >
               <img
-    src={followingStatus[video._id] ?"/imgs/Follow.svg" :"/imgs/Vector (7).svg" }
-    alt="action"
-    className="w-[19px] h-[19px]"
-  />
+                src={followingStatus[video._id] ? "/imgs/Follow.svg" : "/imgs/Vector (7).svg"}
+                alt="action"
+                className="w-[19px] h-[19px]"
+              />
             </div>
           </div>
 
@@ -668,7 +738,7 @@ const handleBlockVideo = async () => {
             <img src="/icons/eye.svg" className="rounded-17px" alt="" />
           </div>
 
-          {/* العمود الأيمن للأزرار (بما فيها زر الخيارات) */}
+          {/* العمود الأيمن للأزرار */}
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col items-center gap-1">
             <button onClick={handleOverlay} className="text-white rounded-full bg-[#000000]/15 backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center hover:bg-[#fff]/20 transition">
               <img src="/icons/fullscreen.svg" alt="" className="w-5 h-5" />
@@ -682,41 +752,38 @@ const handleBlockVideo = async () => {
               >
                 <img src="/icons/options-white.svg" alt="options" className="w-5 h-5" />
               </div>
-              {/* القائمة تظهر فوق الزر (bottom-full) ومحاذاة لليمين */}
               {showOptionsMenu && index === activeIndex && (
                 <div className="absolute bottom-full right-0 mb-2 z-[9999]">
                   <div className="bg-[#000000]/15 rounded-[30px] shadow-xl backdrop-blur-xl p-4 w-[260px] flex flex-col gap-4">
-
-                   
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.stopPropagation(); 
-              handleBlockVideo();
-            }}
-            disabled={isBlocking}
-            className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2] disabled:opacity-50"
-          >
-            <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
-              <img
-                src="/icons/eye.svg"
-                className="w-5 h-5 invert-0 transform"
-                style={{ filter: "brightness(0) saturate(100%)" }}
-              />
-            </div>
-            <span className="text-black">
-              {isBlocking ? "جاري الحظر..." : "لا اريد مشاهدة هذا"}
-            </span>
-          </button>
                     <button
-                        onClick={handleReportVideo}
-                        className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2]"
-                      >
-                        <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
-                          <img src="/icons/flag.svg" className="w-4 h-4" />
-                        </div>
-                        <span className="text-black">إبلاغ عن المنشور</span>
-                      </button>
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        handleBlockVideo();
+                      }}
+                      disabled={isBlocking}
+                      className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2] disabled:opacity-50"
+                    >
+                      <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
+                        <img
+                          src="/icons/eye.svg"
+                          className="w-5 h-5 invert-0 transform"
+                          style={{ filter: "brightness(0) saturate(100%)" }}
+                        />
+                      </div>
+                      <span className="text-black">
+                        {isBlocking ? "جاري الحظر..." : "لا اريد مشاهدة هذا"}
+                      </span>
+                    </button>
+                    <button
+                      onClick={handleReportVideo}
+                      className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2]"
+                    >
+                      <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
+                        <img src="/icons/flag.svg" className="w-4 h-4" />
+                      </div>
+                      <span className="text-black">إبلاغ عن المنشور</span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -749,6 +816,10 @@ const handleBlockVideo = async () => {
             {/* Comment Button */}
             <button
               onClick={() => {
+                if (!myUserId || !token) {
+                  openLoginModal();
+                  return;
+                }
                 setShowCommentOverlay(true);
                 fetchComments(video._id);
               }}
@@ -761,7 +832,13 @@ const handleBlockVideo = async () => {
 
             {/* Share Button */}
             <button
-              onClick={() => setShowShareOverlay(true)}
+              onClick={() => {
+                if (!myUserId || !token) {
+                  openLoginModal();
+                  return;
+                }
+                setShowShareOverlay(true);
+              }}
               className={`text-white rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center transition-all ${
                 userSharedStatus[video._id] ? "bg-[#D722294D]" : "bg-[#000000]/15"
               }`}
@@ -774,8 +851,12 @@ const handleBlockVideo = async () => {
 
       {/* Fullscreen Overlay */}
       {showOverlay && (
-        <div ref={containerRef} className="fixed inset-0 bg-black/90 z-[10000] flex items-center justify-center">
-          <div className="relative">
+        <div ref={containerRef} className="fixed inset-0 bg-black/90 z-[10000] flex items-center justify-center"
+          onClick={handleCloseOverlay}
+        >
+          <div className="relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <video
               ref={videoRef}
               src={videos[activeIndex]?.video[0]?.video}
@@ -817,7 +898,6 @@ const handleBlockVideo = async () => {
             </div>
 
             <div className="absolute top-20 right-2 flex flex-col items-center gap-2">
-              {/* زر الخيارات في الوضع المكبر */}
               <div ref={optionsWrapperRef} className="relative">
                 <div
                   onClick={() => setShowOptionsMenu((prev) => !prev)}
@@ -826,40 +906,39 @@ const handleBlockVideo = async () => {
                   <img src="/icons/options-white.svg" className="w-5 h-5" />
                 </div>
                 {showOptionsMenu && (
-  <div className="absolute top-full right-9 mt-[-7] z-[9999]">
-    <div className="bg-[#000000]/15 rounded-[30px] shadow-xl backdrop-blur-xl p-4 w-[260px] flex flex-col gap-4">
-      <button
-        onClick={handleBlockVideo}
-        className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2]"
-      >
-        <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
-          <img
-            src="/icons/eye.svg"
-            className="w-5 h-5 invert-0 transform"
-            style={{ filter: "brightness(0) saturate(100%)" }}
-          />
-        </div>
-        <span className="text-black">لا اريد مشاهدة هذا</span>
-      </button>
-      <button
-        onClick={handleReportVideo}
-        className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2]"
-      >
-        <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
-          <img src="/icons/flag.svg" className="w-4 h-4" />
-        </div>
-        <span className="text-black">إبلاغ عن المنشور</span>
-      </button>
-    </div>
-  </div>
-)}
+                  <div className="absolute top-full right-9 mt-[-7] z-[9999]">
+                    <div className="bg-[#000000]/15 rounded-[30px] shadow-xl backdrop-blur-xl p-4 w-[260px] flex flex-col gap-4">
+                      <button
+                        onClick={handleBlockVideo}
+                        className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2]"
+                      >
+                        <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
+                          <img
+                            src="/icons/eye.svg"
+                            className="w-5 h-5 invert-0 transform"
+                            style={{ filter: "brightness(0) saturate(100%)" }}
+                          />
+                        </div>
+                        <span className="text-black">لا اريد مشاهدة هذا</span>
+                      </button>
+                      <button
+                        onClick={handleReportVideo}
+                        className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2]"
+                      >
+                        <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
+                          <img src="/icons/flag.svg" className="w-4 h-4" />
+                        </div>
+                        <span className="text-black">إبلاغ عن المنشور</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button onClick={togglePlayOverlay} className="text-white rounded-full bg-[#000000]/15 backdrop-blur-md p-3 w-[45px] h-[45px] flex items-center justify-center">
                 <img src={isPlayingOverlay ? "/imgs/Group 9081.svg" : "/icons/play.svg"} className="w-5 h-5" />
               </button>
 
-              {/* Like Button (Overlay) */}
               <button
                 onClick={() => handleLike(videos[activeIndex])}
                 className={`text-white rounded-full backdrop-blur-md p-3 w-[45px] h-[45px] flex flex-col items-center justify-center transition-all ${
@@ -872,9 +951,15 @@ const handleBlockVideo = async () => {
                 />
               </button>
 
-              {/* Comment Button (Overlay) */}
               <button
-                onClick={() => { setShowCommentOverlay(true); fetchComments(videos[activeIndex]?._id); }}
+                onClick={() => {
+                  if (!myUserId || !token) {
+                    openLoginModal();
+                    return;
+                  }
+                  setShowCommentOverlay(true);
+                  fetchComments(videos[activeIndex]?._id);
+                }}
                 className={`text-white rounded-full backdrop-blur-md p-3 w-[45px] h-[45px] flex items-center justify-center transition-all ${
                   userCommentedStatus[videos[activeIndex]?._id] ? "bg-[#D722294D]" : "bg-[#000000]/15"
                 }`}
@@ -882,9 +967,14 @@ const handleBlockVideo = async () => {
                 <img src="/icons/comment-white.svg" className="w-5 h-5" />
               </button>
 
-              {/* Share Button (Overlay) */}
               <button
-                onClick={() => setShowShareOverlay(true)}
+                onClick={() => {
+                  if (!myUserId || !token) {
+                    openLoginModal();
+                    return;
+                  }
+                  setShowShareOverlay(true);
+                }}
                 className={`text-white rounded-full backdrop-blur-md p-3 w-[45px] h-[45px] flex items-center justify-center transition-all ${
                   userSharedStatus[videos[activeIndex]?._id] ? "bg-[#D722294D]" : "bg-[#000000]/15"
                 }`}
@@ -907,7 +997,9 @@ const handleBlockVideo = async () => {
           </div>
 
           <h1 className="absolute top-15 right-8 text-white text-xl">الريلز</h1>
-          <div className="absolute top-1/2 right-8 transform -translate-y-1/2 flex flex-col items-center gap-3">
+          <div className="absolute top-1/2 right-8 transform -translate-y-1/2 flex flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button onClick={handleCloseOverlay} className="w-[45px] h-[45px] rounded-full bg-[#fff]/15 backdrop-blur-md flex items-center justify-center">
               <img src="/icons/close.svg" alt="" />
             </button>
@@ -918,7 +1010,7 @@ const handleBlockVideo = async () => {
               <img src="/icons/arrow-down.svg" alt="" />
             </button>
           </div>
-          <div onClick={handleSeek} dir="ltr" className="absolute bottom-[9vh] left-1/2 -translate-x-1/2 bg-gray-600 rounded-full cursor-pointer overflow-hidden" style={{ width: videoWidth ? `${videoWidth - 30}px` : "calc(70% - 8px)", height: "6px" }}>
+          <div onClick={handleSeek} dir="ltr" className="absolute bottom-[8.5vh] left-1/2 -translate-x-1/2 bg-gray-600 rounded-full cursor-pointer overflow-hidden" style={{ width: videoWidth ? `${videoWidth - 30}px` : "calc(70% - 8px)", height: "6px" }}>
             <div className="h-full bg-red-600 rounded-full" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
@@ -926,7 +1018,7 @@ const handleBlockVideo = async () => {
 
       {/* ========== COMMENT OVERLAY ========== */}
       {showCommentOverlay && currentVideo && (
-        <div className="fixed inset-0 z-[9999] bg-[#0000001A] backdrop-blur-[20px] flex items-center justify-center">
+        <div className="fixed inset-0 z-[10000] bg-[#0000001A] backdrop-blur-[20px] flex items-center justify-center">
           <div className="relative w-[90%] max-w-[600px] rounded-[25px] max-h-[80vh] bg-gradient-to-l from-[#fff] to-[#8D8D8D] flex flex-col z-[99999]">
             <div
               onClick={() => setShowCommentOverlay(false)}
@@ -1045,7 +1137,7 @@ const handleBlockVideo = async () => {
 
       {/* Unfollow Modal */}
       {showUnfollowModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50">
           <div className="w-[237px] h-[271px] rounded-[26px] flex flex-col items-center justify-between py-6" style={{ background: "#00000080", backdropFilter: "blur(15px)" }}>
             <h2 className={`${modalType === "unfollow" ? "text-[#F92429]" : "text-white"} font-semibold text-[18px] text-center mt-4`}>{modalType === "unfollow" ? "إلغاء المتابعة؟" : "متابعة؟"}</h2>
             <p className="text-white font-semibold text-[12px] text-center w-[226px] mt-5">{modalType === "unfollow" ? "لن ترى تحديثات هذا المستخدم في صفحتك بعد الآن" : "ستظهر تحديثات هذا المستخدم في صفحتك"}</p>

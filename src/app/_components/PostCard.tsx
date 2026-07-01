@@ -10,6 +10,10 @@ import toast from "react-hot-toast";
 import FollowButton from "../profile/_components/FollowButton";
 import Loader from "@/components/Loader";
 
+// 
+import { useLoginModal } from "@/contexts/LoginModalContext";
+
+// 
 function parseDateFlexible(dateStr?: string | null): Date | null {
   if (!dateStr) return null;
   const s = String(dateStr).trim();
@@ -39,6 +43,10 @@ export function timeAgoAr(dateStr?: string) {
 }
 
 export default function PostCard({ post }: { post: Post }) {
+  // 
+  const { openLoginModal } = useLoginModal();
+// 
+
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(
     Array.isArray(post.likes) ? post.likes.length : 0
@@ -115,8 +123,11 @@ export default function PostCard({ post }: { post: Post }) {
   }, [post._id]);
 
   const handleLike = async () => {
-    if (!token || !myUserId) return;
-
+    // if (!token || !myUserId) return;
+if (!token || !myUserId) {
+  openLoginModal();
+  return;
+} 
     // Optimistic Update
     setLiked((prev) => {
       setLikeCount((count) => (prev ? count - 1 : count + 1));
@@ -173,6 +184,11 @@ export default function PostCard({ post }: { post: Post }) {
   // ---------------------------   BLOCK / REPORT   -----------------------------------------
   const handleBlock = () => {
     // Hide the post and persist in localStorage
+     if (!myUserId || !token) {
+    openLoginModal();
+    setShowMenu(false); // أغلق القائمة
+    return; // لا تنفذ الحظر
+  }
     if (typeof window !== "undefined" && post._id) {
       const hidden = JSON.parse(localStorage.getItem("hiddenPosts") || "[]");
       if (!hidden.includes(post._id)) {
@@ -185,10 +201,16 @@ export default function PostCard({ post }: { post: Post }) {
   };
 
   const handleReport = async () => {
-    if (!token || !myUserId) {
-      window.location.href = "/login";
-      return;
-    }
+    // if (!token || !myUserId) {
+    //   window.location.href = "/login";
+    //   return;
+    // }
+
+   if (!token || !myUserId) {
+    openLoginModal();
+    return;
+  }
+
     try {
       const res = await fetch(`http://bo-chat.space/report${myUserId}`, {
         method: "POST",
@@ -222,10 +244,14 @@ export default function PostCard({ post }: { post: Post }) {
   const [showCommentMenu, setShowCommentMenu] = useState<string | null>(null);
 
   const fetchComments = async () => {
-    if (!myUserId || !token) {
-      window.location.href = "/login";
-      return;
-    }
+    // if (!myUserId || !token) {
+    //   window.location.href = "/login";
+    //   return;
+    // }
+     if (!myUserId || !token) {
+    openLoginModal();
+    return;
+  }
     try {
       setLoadingComments(true);
       const res = await fetch(
@@ -246,10 +272,14 @@ export default function PostCard({ post }: { post: Post }) {
   };
 
   const submitComment = async () => {
-    if (!myUserId || !token) {
-      window.location.href = "/login";
-      return;
-    }
+    // if (!myUserId || !token) {
+    //   window.location.href = "/login";
+    //   return;
+    // }
+     if (!myUserId || !token) {
+    openLoginModal();
+    return;
+  }
     if (!commentText.trim()) return;
     try {
       const res = await fetch(`https://bo-chat.space/posts/${post._id}/comments`, {
@@ -270,10 +300,14 @@ export default function PostCard({ post }: { post: Post }) {
   };
 
   const handleReportComment = async (commentId: string) => {
-    if (!token || !myUserId) {
-      window.location.href = "/login";
-      return;
-    }
+    // if (!token || !myUserId) {
+    //   window.location.href = "/login";
+    //   return;
+    // }
+      if (!token || !myUserId) {
+    openLoginModal();
+    return;
+  }
     try {
       const res = await fetch(`http://bo-chat.space/report/comment/${commentId}`, {
         method: "POST",
@@ -298,10 +332,14 @@ export default function PostCard({ post }: { post: Post }) {
   };
 
   const handleCommentLike = async (commentId: string) => {
-    if (!token || !myUserId) {
-      window.location.href = "/login";
-      return;
-    }
+    // if (!token || !myUserId) {
+    //   window.location.href = "/login";
+    //   return;
+    // }
+     if (!token || !myUserId) {
+    openLoginModal();
+    return;
+  }
     // Optimistic UI
     setComments((prev) =>
       prev.map((comment) => {
@@ -336,10 +374,15 @@ export default function PostCard({ post }: { post: Post }) {
   const [showShareOverlay, setShowShareOverlay] = useState(false);
 
   const handleShare = async () => {
+    // if (!token || !myUserId) {
+    //   window.location.href = "/login";
+    //   return;
+    // }
     if (!token || !myUserId) {
-      window.location.href = "/login";
-      return;
-    }
+    openLoginModal();
+    return;
+  }
+
     try {
       setSharing(true);
       const payload = { userid: myUserId, content: shareText.trim() };
@@ -431,7 +474,7 @@ if (isHidden) {
   return (
     <article dir="rtl" className={`${cardClass + textInnerBorder} relative`}>
       <header className="p-5 flex items-start justify-between gap-3">
-        <div className="flex gap-2">
+        {/* <div className="flex gap-2">
           <div className="relative h-[50px] w-[50px] shrink-0 rounded-[21px]">
             <Link href={`/profile/${post.userid}`}>
               <img
@@ -453,7 +496,48 @@ if (isHidden) {
               <span className="text-sm text-black/50">@{userHandle}</span>
             </div>
           </div>
-        </div>
+        </div> */}
+        <div className="flex gap-2">
+  {/* صورة المستخدم */}
+  <div
+    className="relative h-[50px] w-[50px] shrink-0 rounded-[21px] cursor-pointer"
+    onClick={() => {
+      if (!myUserId || !token) {
+        openLoginModal();
+        return;
+      }
+      window.location.href = `/profile/${post.userid}`;
+    }}
+  >
+    <img
+      src={post.userimg || "/imgs/user.png"}
+      alt={userName}
+      sizes="50px"
+      className="object-cover rounded-[21px]"
+    />
+    {post.vip && (
+      <div className="absolute bottom-[-8px] right-1/2 transform translate-x-1/2 w-5 h-5">
+        <img src="/icons/vip.svg" alt="" />
+      </div>
+    )}
+  </div>
+  {/* اسم المستخدم */}
+  <div
+    className="cursor-pointer"
+    onClick={() => {
+      if (!myUserId || !token) {
+        openLoginModal();
+        return;
+      }
+      window.location.href = `/profile/${post.userid}`;
+    }}
+  >
+    <div className="flex flex-col">
+      <span className="font-semibold">{userName}</span>
+      <span className="text-sm text-black/50">@{userHandle}</span>
+    </div>
+  </div>
+</div>
         <div className="flex relative items-center justify-center gap-2">
           <div className="text-xs text-[#D72229]">
             {timeAgoAr(post.createdAt || new Date().toISOString())}
@@ -552,7 +636,16 @@ if (isHidden) {
           </div>
         ) : (
           <>
-            <div className="flex items-center" onClick={() => setShowLikesOverlay(true)}>
+            <div className="flex items-center" 
+            // onClick={() => setShowLikesOverlay(true)}
+            onClick={() => {
+    if (!myUserId || !token) {
+      openLoginModal();
+      return;
+    }
+    setShowLikesOverlay(true);
+  }}
+            >
               {likerAvatars.length > 0 ? (
                 <div className="flex items-center">
                   {likerAvatars.map((src, idx) => (
@@ -589,6 +682,10 @@ if (isHidden) {
               </button>
               <span
                 onClick={() => {
+                     if (!myUserId || !token) {
+                      openLoginModal();
+                      return; // ← نمنع فتح طبقة التعليقات
+                    }
                   fetchComments();
                   setShowCommentOverlay(true);
                 }}
@@ -598,7 +695,14 @@ if (isHidden) {
                 {commentCount}
               </span>
               <span
-                onClick={() => setShowShareOverlay(true)}
+                // onClick={() => setShowShareOverlay(true)}
+                onClick={() => {
+            if (!myUserId || !token) {
+              openLoginModal();
+              return; // ← يمنع فتح نافذة المشاركة
+            }
+            setShowShareOverlay(true);
+          }}
                 className="inline-flex items-center gap-1"
               >
                 <ShareIcon />

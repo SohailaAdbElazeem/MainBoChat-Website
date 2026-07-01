@@ -96,6 +96,8 @@
 
 // Upate Code 
 'use client';
+ import { LoginModalProvider } from "@/contexts/LoginModalContext";
+
 import "./globals.css";
 import SidebarArabic from "./_components/SidebarArabic";
 import Header from "@/components/GlobalSearch";
@@ -125,7 +127,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     
     return (
         <html lang="en" suppressHydrationWarning>
+         
+      
             <body className="bg-white select-none">
+                  <LoginModalProvider>
                 <NetworkMonitor />
 
                  {!isLogin ? <Header providers={searchProviders} /> : null}
@@ -169,6 +174,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         }}
                     />
                 </div>
+                          {/* {children} */}
+{/*  */}
+                        </LoginModalProvider>
+
             </body>
         </html>
     );

@@ -284,32 +284,64 @@ const QRLoginModal: React.FC<QRLoginModalProps> = ({ isOpen, onClose, onLoginSuc
         setSessionId(data.sessionId);
         localStorage.setItem("SessionId", data.sessionId);
 
+        // const unsubscribe = wsService.addHandler((message: any) => {
+        //   if (message.event !== "qrApproved") return;
+        //   if (hasLoggedInRef.current) return;
+        //   hasLoggedInRef.current = true;
+
+        //   const payload = message.data || {};
+        //   const accessToken = payload.accessToken;
+        //   const refreshToken = payload.refreshToken;
+        //   const userData = payload.data;
+
+        //   if (!accessToken) {
+        //     console.error("❌ No accessToken in qrApproved message");
+        //     return;
+        //   }
+
+        //   localStorage.setItem("accessToken", accessToken);
+        //   if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+        //   if (userData) localStorage.setItem("userData", JSON.stringify(userData));
+        //   localStorage.setItem("isLoggedIn", "true");
+
+        //   wsService.disconnect();
+        //   if (unsubscribeRef.current) unsubscribeRef.current();
+
+        //   onLoginSuccess();
+        //   onClose();
+        // });
+
+
         const unsubscribe = wsService.addHandler((message: any) => {
-          if (message.event !== "qrApproved") return;
-          if (hasLoggedInRef.current) return;
-          hasLoggedInRef.current = true;
+  if (message.event !== "qrApproved") return;
+  if (hasLoggedInRef.current) return;
+  hasLoggedInRef.current = true;
 
-          const payload = message.data || {};
-          const accessToken = payload.accessToken;
-          const refreshToken = payload.refreshToken;
-          const userData = payload.data;
+  const payload = message.data || {};
+  const accessToken = payload.accessToken;
+  const refreshToken = payload.refreshToken;
+  const userData = payload.data;
 
-          if (!accessToken) {
-            console.error("❌ No accessToken in qrApproved message");
-            return;
-          }
+  if (!accessToken) {
+    console.error("❌ No accessToken in qrApproved message");
+    return;
+  }
 
-          localStorage.setItem("accessToken", accessToken);
-          if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
-          if (userData) localStorage.setItem("userData", JSON.stringify(userData));
-          localStorage.setItem("isLoggedIn", "true");
+  // ✅ حفظ البيانات
+  localStorage.setItem("accessToken", accessToken);
+  if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+  if (userData) localStorage.setItem("userData", JSON.stringify(userData));
+  localStorage.setItem("isLoggedIn", "true");
 
-          wsService.disconnect();
-          if (unsubscribeRef.current) unsubscribeRef.current();
+  // 🚀 الحل السحري: إطلاق الحدث يدوياً لإعلام الصفحة الحالية
+  window.dispatchEvent(new Event("storage"));
 
-          onLoginSuccess();
-          onClose();
-        });
+  wsService.disconnect();
+  if (unsubscribeRef.current) unsubscribeRef.current();
+
+  onLoginSuccess();
+  onClose();
+});
 
         unsubscribeRef.current = unsubscribe;
         wsService.connect(`qr-${data.sessionId}`);
@@ -343,7 +375,7 @@ const QRLoginModal: React.FC<QRLoginModalProps> = ({ isOpen, onClose, onLoginSuc
   return (
     // الخلفية - النقر عليها يغلق المودال
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-[9999]"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-[10000]"
       onClick={onClose}
     >
       {/* البوكس الكبير - منع انتشار حدث النقر إلى الخلفية */}
@@ -421,7 +453,8 @@ const QRLoginModal: React.FC<QRLoginModalProps> = ({ isOpen, onClose, onLoginSuc
             كلمة سر
           </p>
 
-          <p
+     
+         <p
             className="text-white font-semibold text-[25px] leading-[50px] text-right"
             style={{
               fontFamily: "Cairo, sans-serif",

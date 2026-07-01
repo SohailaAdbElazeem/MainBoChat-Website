@@ -119,7 +119,7 @@ export default function SinglePostPage() {
 
       {/* التفاعلات */}
       <div className="flex items-center gap-6 text-gray-500 border-t pt-4">
-        <span>❤️ {post.likes?.length || 0}</span>
+        <span>❤️ {post.likes?.length || }</span>
         <span>💬 {post.comments?.length || 0}</span>
       </div>
 
