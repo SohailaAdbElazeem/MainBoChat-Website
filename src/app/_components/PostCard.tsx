@@ -135,7 +135,7 @@ if (!token || !myUserId) {
     });
 
     try {
-      const res = await fetch(`http://bo-chat.space/posts/${post._id}/reactions`, {
+      const res = await fetch(`https://bo-chat.space/posts/${post._id}/reactions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -212,7 +212,7 @@ if (!token || !myUserId) {
   }
 
     try {
-      const res = await fetch(`http://bo-chat.space/report${myUserId}`, {
+      const res = await fetch(`https://bo-chat.space/report${myUserId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -309,7 +309,7 @@ if (!token || !myUserId) {
     return;
   }
     try {
-      const res = await fetch(`http://bo-chat.space/report/comment/${commentId}`, {
+      const res = await fetch(`https://bo-chat.space/report/comment/${commentId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -386,7 +386,7 @@ if (!token || !myUserId) {
     try {
       setSharing(true);
       const payload = { userid: myUserId, content: shareText.trim() };
-      const res = await fetch(`http://bo-chat.space/posts/${post._id}/share`, {
+      const res = await fetch(`https://bo-chat.space/posts/${post._id}/share`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

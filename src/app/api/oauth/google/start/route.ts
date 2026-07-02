@@ -43,7 +43,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://bo-chat.space";
-const FRONT_URL = process.env.NEXT_PUBLIC_FRONT_URL || "http://localhost:3000";
+const FRONT_URL = process.env.NEXT_PUBLIC_FRONT_URL || "https://localhost:3000";
 
 interface OAuthResponse {
   url?: string;

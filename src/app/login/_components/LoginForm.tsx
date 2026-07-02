@@ -729,7 +729,7 @@ declare global {
   }
 }
 
-const API_BASE = 'http://bo-chat.space';
+const API_BASE = 'https://bo-chat.space';
 
 export default function LoginForm() {
   const [lang, setLang] = useState<Lang>('ar');

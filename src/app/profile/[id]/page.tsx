@@ -277,7 +277,7 @@ useEffect(() => {
       setTimeout(() => setToast(null), 1800);
       return;
     }
-    const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "http://localhost:3000";
+    const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "https://localhost:3000";
     const profileUrl = `${origin}/profile/${id}`;
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {

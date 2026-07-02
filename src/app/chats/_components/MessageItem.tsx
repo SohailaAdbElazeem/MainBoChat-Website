@@ -160,7 +160,7 @@ const handleLike = async () => {
   if (!token) return;
 
   try {
-    const res = await fetch("http://bo-chat.space/reacttomessage", {
+    const res = await fetch("https://bo-chat.space/reacttomessage", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

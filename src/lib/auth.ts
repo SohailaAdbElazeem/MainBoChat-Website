@@ -106,7 +106,7 @@ export function extractToken(data: ApiData): string | null {
 export function getAppUrl(req: NextRequest): string {
    if (process.env.APP_URL) return process.env.APP_URL;
    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
-   const proto = req.headers.get("x-forwarded-proto") ?? "http";
+   const proto = req.headers.get("x-forwarded-proto") ?? "https";
   return `${proto}://${host}`;
 }
 

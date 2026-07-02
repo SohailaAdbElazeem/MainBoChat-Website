@@ -15,7 +15,7 @@ export default function ChatWindow({
   userId,
   otherId,
   otherInfo = {},
-  apiBase = "http://bo-chat.space",
+  apiBase = "https://bo-chat.space",
   wsUrl = "wss://bo-chat.space/ws",
   token = "",
   onClose,

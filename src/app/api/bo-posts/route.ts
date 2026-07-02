@@ -66,7 +66,7 @@
 import { NextResponse } from "next/server";
 
 const TIMEOUT_MS = 8000;
-const UPSTREAM_URL = "http://bo-chat.space/homeposts/null";
+const UPSTREAM_URL = "https://bo-chat.space/homeposts/null";
 
 // تحويل القيمة إلى كائن JSON إذا كان نصوصاً تشبه JSON
 function toJsonLoose(x: unknown): unknown {
