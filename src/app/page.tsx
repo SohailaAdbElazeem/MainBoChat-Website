@@ -35,7 +35,7 @@ export default function Home() {
 
       {!isLoggedIn && (
         <div 
-      className="fixed bottom-0 left-0 right-0 w-full h-[80px] flex items-center justify-center z-50 shadow-lg"
+      className="fixed bottom-0 left-0 right-0 w-full h-[75px] flex items-center justify-center z-50 shadow-lg"
   style={{
     background: "rgba(215, 34, 41, 0.70)",
     backdropFilter: "blur(20px)",
@@ -48,7 +48,7 @@ export default function Home() {
             {/* النص */}
 
             
-            <p
+            {/* <p
               className="text-white text-[25px] md:text-[30px] font-semibold leading-none text-right flex-1 min-w-0"
       style={{
         fontFamily: "Cairo, sans-serif",
@@ -60,7 +60,23 @@ export default function Home() {
       }}
             >
               كن أول من يعرف الجديد... مستخدمو بو شات يواكبون الأحداث لحظة بلحظة
-            </p>
+            </p> */}
+
+   <p
+  className="text-white text-right flex-1 min-w-0"
+  style={{
+    fontFamily: "Cairo, sans-serif",
+    lineHeight: "100%",
+    color: "#FFFFFF",
+  }}
+>
+  <span style={{ fontSize: "30px", fontWeight: 600 }}>
+    كن أول من يعرف الجديد...{" "}
+  </span>
+  <span style={{ fontSize: "20px", fontWeight: 600 }}>
+    مستخدمو بو شات يواكبون الأحداث لحظة بلحظة
+  </span>
+</p>
 
             <div className="flex items-center gap-3">
  
