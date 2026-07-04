@@ -7,12 +7,12 @@ type WSHandler = (payload: any) => void;
 class WSService {
   // private base = "ws://bo-chat.space:3000";
   private base = typeof window !== 'undefined' && window.location.protocol === 'https:'
-  ? "ws://bo-chat.space:4000"
+  ? "wss://bo-chat.space:4000"
   : "ws://bo-chat.space:4000";
     
-
  
-    
+    // console.log("🟢 Base URL:", this.base);
+
   private ws: WebSocket | null = null;
   private handlers = new Set<WSHandler>();
 
@@ -64,8 +64,9 @@ class WSService {
     this.shouldReconnect = true;
     this.lastUserId = userId;
 
-    const url = `${this.base}/?userid=${encodeURIComponent(userId)}`;
-     this.log("CONNECT()", url);
+    // const url = `${this.base}/?userid=${encodeURIComponent(userId)}`;
+    const url = `${this.base}?userid=${encodeURIComponent(this.lastUserId)}`;
+      this.log("CONNECT()", url);  // <-- هذا السطر موجود  !
 
     this.open(url);
   }
