@@ -7,7 +7,7 @@ type WSHandler = (payload: any) => void;
 class WSService {
   // private base = "ws://bo-chat.space:3000";
   private base = typeof window !== 'undefined' && window.location.protocol === 'https:'
-  ? "wss://bo-chat.space:4000"
+  ? "ws://bo-chat.space:4000"
   : "ws://bo-chat.space:4000";
     
 
