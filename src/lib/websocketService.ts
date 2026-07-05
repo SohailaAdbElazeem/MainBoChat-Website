@@ -6,10 +6,14 @@ type WSHandler = (payload: any) => void;
 
 class WSService {
   // private base = "ws://bo-chat.space:3000";
-  private base = typeof window !== 'undefined' && window.location.protocol === 'https:'
-  ? "wss://bo-chat.space:4000"
-  : "ws://bo-chat.space:4000";
+  // private base = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  // ? "wss://bo-chat.space:4000"
+  // : "ws://bo-chat.space:4000";
     
+  private base =
+  typeof window !== "undefined" && window.location.protocol === "https:"
+    ? "wss://socket.bo-chat.space/ws"
+    : "ws://socket.bo-chat.space/ws";
  
     // console.log("🟢 Base URL:", this.base);
 
@@ -66,6 +70,7 @@ class WSService {
 
     // const url = `${this.base}/?userid=${encodeURIComponent(userId)}`;
     const url = `${this.base}?userid=${encodeURIComponent(this.lastUserId)}`;
+    // const url = `${this.base}?userid=${encodeURIComponent(this.lastUserId)}`;
       this.log("CONNECT()", url);  // <-- هذا السطر موجود  !
 
     this.open(url);
@@ -178,7 +183,8 @@ class WSService {
 
       if (!this.lastUserId) return;
 
-      const url = `${this.base}/?userid=${encodeURIComponent(this.lastUserId)}`;
+      // const url = `${this.base}/?userid=${encodeURIComponent(this.lastUserId)}`;
+      const url = `${this.base}?userid=${encodeURIComponent(this.lastUserId)}`;
       this.log("RECONNECT now");
 
       this.open(url);
