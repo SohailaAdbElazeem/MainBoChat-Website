@@ -30,7 +30,9 @@ const PostsFeed = ({ viewedUserId }: PostsFeedProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const fetchingRef = useRef(false);
-
+// ظظظظظظظظظظظظظظظظ
+const [loginTriggered, setLoginTriggered] = useState(false);
+// ظظظظظظظظظظظظظظظظظ
   const LIMIT = 10;
 
   const token = useMemo(() => {

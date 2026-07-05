@@ -119,7 +119,9 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
 
   const myUserId = getCurrentUserId();
   const token = getAuthToken();
-
+// ظظظظظظظظظظظظظظظظظ
+const isLoggedIn = !!myUserId || !!token;
+// ظظظظظظظظظظظظظظظظظظ
   // ===== جلب قائمة المتابعين من الخادم =====
   const fetchFollowingList = async () => {
     if (!myUserId || !token) return;
@@ -240,8 +242,17 @@ export default function ReelsFeed({ currentUserId: propUserId = "" }: ReelsFeedP
   };
 
   const handleNextVideo = () => {
-    stopAllVideos();
-    setActiveIndex((prev) => (prev < videos.length - 1 ? prev + 1 : prev));
+    // stopAllVideos();
+    // setActiveIndex((prev) => (prev < videos.length - 1 ? prev + 1 : prev));
+      stopAllVideos();
+        if (!isLoggedIn && activeIndex === 4) {
+        openLoginModal();
+        return;
+     }
+      setActiveIndex((prev) =>
+        prev < videos.length - 1 ? prev + 1 : prev
+      );
+
   };
 
   const handlePrevVideo = () => {
