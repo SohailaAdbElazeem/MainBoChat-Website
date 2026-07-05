@@ -594,7 +594,7 @@ export default function SidebarArabic({
       <nav className="space-y-2 mb-1">
         {visibleItems.map((item) => {
           const isActive = active === item.id;
-          const isProtected = (item.id === "chats" || item.id === "profile") && !userId;
+          const isProtected = (item.id === "chats" || item.id === "profile" || item.id === "videos") && !userId;
 
           return (
             <Link
@@ -640,70 +640,125 @@ export default function SidebarArabic({
         })}
       </nav>
       <div className="max-w-[380px] mb-2">{/* banner */}</div>
-      <div className={`space-y-3 text-sm text-black/70 mt-auto mr-3 ${userId ? 'pb-10' : 'pb-20'}`}>
-        <div className="flex flex-wrap items-center gap-x-3">
-          <Link href="https://bo-eg.online/PrivacyPolicies.html" className="hover:underline text-[#D72229]">
-            سياسة الخصوصية
-          </Link>
-           <span 
-          className="inline-block" 
-          style={{ 
-            width: '23px', 
-            height: '0px', 
-            borderTop: '1px solid #D72229', 
-            transform: 'rotate(-90deg)',
-            opacity: 1 
-          }}
-        />
-          <Link href="https://bo-eg.online/PrivacyCenter.html" className="hover:underline text-[#D72229]">
-            مركز الخصوصية
-          </Link>
-          {/* <span className="opacity-60">|</span> */}
-              <span 
-          className="inline-block" 
-          style={{ 
-            width: '23px', 
-            height: '0px', 
-            borderTop: '1px solid #D72229', 
-            transform: 'rotate(-90deg)',
-            opacity: 1 
-          }}
-        />
-          <Link href="https://bo-eg.online/ContactUs.html" className="hover:underline text-[#D72229]">
-            اتصل بنا
-          </Link>
-          {/* /\<span className="opacity-60">|</span> */}
-           <span
-          style={{
-            display: "block",
-            width: "23px",
-            height: "0px",
-            borderTop: "1px solid #D72229",
-            transform: "rotate(-90deg)",
-            margin: 0,
-            padding: 0,
-            lineHeight: 0,
-          }}
-        />
-          <Link href="https://bo-eg.online/SocialGuiedLines.html" className="hover:underline text-[#D72229]">
-            إرشادات المجتمع
-          </Link>
-          {/* <span className="opacity-60">|</span> */}
-              <span 
-          className="inline-block" 
-          style={{ 
-            width: '23px', 
-            height: '0px', 
-            borderTop: '1px solid #D72229', 
-            transform: 'rotate(-90deg)',
-            opacity: 1 
-          }}
-        />
-          <p className="text-xs opacity-100  text-[#000000] text-[16px]">
-            Powered by <span className="font-semibold text-[#D72229]">panda oracle</span>
-          </p>
-        </div>
-      </div>
+<div className={`space-y-3 text-sm text-black/70 mt-auto mr-3 ${userId ? 'pb-10' : 'pb-20'}`}>
+  <div className="flex flex-wrap items-center gap-x-1 gap-y-1">  
+    <Link
+      href="https://bo-eg.online/PrivacyPolicies.html"
+        target="_blank"
+      className="hover:underline text-[#D72229] whitespace-nowrap"  
+      style={{
+        fontFamily: 'Cairo, sans-serif',
+        fontSize: '14px',        
+        lineHeight: '1.2',   
+        fontWeight: 400,
+        textAlign: 'center',
+      }}
+    >
+      سياسة الخصوصية
+    </Link>
+
+    <span
+      className="inline-block"
+      style={{
+        width: '18px',         
+        height: '0px',
+        borderTop: '1px solid #D72229',
+        transform: 'rotate(-90deg)',
+        opacity: 1,
+      }}
+    />
+
+    <Link
+      href="https://bo-eg.online/PrivacyCenter.html"
+        target="_blank"
+      className="hover:underline text-[#D72229] whitespace-nowrap"
+      style={{
+        fontFamily: 'Cairo, sans-serif',
+        fontSize: '14px',
+        lineHeight: '1.2',
+        fontWeight: 400,
+        textAlign: 'center',
+      }}
+    >
+      مركز الخصوصية
+    </Link>
+
+    <span
+      className="inline-block"
+      style={{
+        width: '18px',
+        height: '0px',
+        borderTop: '1px solid #D72229',
+        transform: 'rotate(-90deg)',
+        opacity: 1,
+      }}
+    />
+
+    <Link
+      href="https://bo-eg.online/ContactUs.html"
+        target="_blank"
+      className="hover:underline text-[#D72229] whitespace-nowrap"
+      style={{
+        fontFamily: 'Cairo, sans-serif',
+        fontSize: '14px',
+        lineHeight: '1.2',
+        fontWeight: 400,
+        textAlign: 'center',
+      }}
+    >
+      اتصل بنا
+    </Link>
+
+    <span
+      className="inline-block"
+      style={{
+        width: '18px',
+        height: '0px',
+        borderTop: '1px solid #D72229',
+        transform: 'rotate(-90deg)',
+        opacity: 1,
+      }}
+    />
+
+    <Link
+      href="https://bo-eg.online/SocialGuiedLines.html"
+        target="_blank"
+      className="hover:underline text-[#D72229] whitespace-nowrap"
+      style={{
+        fontFamily: 'Cairo, sans-serif',
+        fontSize: '14px',
+        lineHeight: '1.2',
+        fontWeight: 400,
+        textAlign: 'center',
+      }}
+    >
+      إرشادات المجتمع
+    </Link>
+
+    <span
+      className="inline-block"
+      style={{
+        width: '18px',
+        height: '0px',
+        borderTop: '1px solid #D72229',
+        transform: 'rotate(-90deg)',
+        opacity: 1,
+      }}
+    />
+
+    <p
+      className="text-xs opacity-100 text-[#000000] whitespace-nowrap"
+      style={{
+        fontFamily: 'Cairo, sans-serif',
+        fontSize: '14px',         
+        fontWeight: 400,
+        lineHeight: '1.2',
+      }}
+    >
+      Powered by <span className="font-semibold text-[#D72229]">panda oracle</span>
+    </p>
+  </div>
+</div>
     </aside>
   );
 }
