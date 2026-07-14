@@ -27,7 +27,16 @@
   font-weight: 600;
   font-style: normal;
 }
+@font-face {
+  font-family: "Cairo";
+  src: url("/fonts/Cairo-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}
 
+body {
+  font-family: "Cairo", sans-serif;
+}
 body {
   background-color: var(--background);
   font-family: Cairo !important;
