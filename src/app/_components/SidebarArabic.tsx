@@ -437,14 +437,344 @@
 
 
 /* eslint-disable @next/next/no-img-element */
+// "use client";
+
+// import Link from "next/link";
+// import { useMemo, useEffect, useState } from "react";
+// import { usePathname } from "next/navigation";
+// import { useLoginModal } from "@/contexts/LoginModalContext";
+
+// type ItemId = "home" | "videos" | "messages" | "notifications" | "settings" | "profile";
+
+// type MenuItem = {
+//   id: ItemId;
+//   label: string;
+//   href?: string;
+//   icon: JSX.Element;
+//   badgeCount?: number;
+//   dot?: boolean;
+// };
+
+// export default function SidebarArabic({
+//   unreadMessages = 2,
+// }: {
+//   unreadMessages?: number;
+// }) {
+//   const pathname = usePathname();
+//   const { openLoginModal } = useLoginModal();
+//   const [userId, setUserId] = useState<string | null>(null);
+//   const [mounted, setMounted] = useState(false);
+
+//   // useEffect الجديد مع المراقبة التلقائية
+//   useEffect(() => {
+//     setMounted(true);
+
+//     const updateUserData = () => {
+//       const storedUserData = localStorage.getItem("userData");
+//       if (storedUserData) {
+//         try {
+//           const user = JSON.parse(storedUserData);
+//           setUserId(user?._id || null);
+//         } catch (error) {
+//           console.error("Failed to parse userData", error);
+//           setUserId(null);
+//         }
+//       } else {
+//         setUserId(null);
+//       }
+//     };
+
+//     updateUserData();
+//     window.addEventListener("userDataUpdated", updateUserData);
+
+//     const handleStorage = (e: StorageEvent) => {
+//       if (e.key === "userData") {
+//         updateUserData();
+//       }
+//     };
+//     window.addEventListener("storage", handleStorage);
+
+//     // المراقبة الدورية (الحل السحري)
+//     const interval = setInterval(() => {
+//       const storedUserData = localStorage.getItem("userData");
+//       let newUserId = null;
+//       if (storedUserData) {
+//         try {
+//           const user = JSON.parse(storedUserData);
+//           newUserId = user?._id || null;
+//         } catch (e) {}
+//       }
+//       setUserId((prev) => (prev !== newUserId ? newUserId : prev));
+//     }, 1000);
+
+//     return () => {
+//       window.removeEventListener("userDataUpdated", updateUserData);
+//       window.removeEventListener("storage", handleStorage);
+//       clearInterval(interval);
+//     };
+//   }, []);
+
+//   const active = pathname === "/"
+//     ? "home"
+//     : pathname?.startsWith?.("/videos")
+//     ? "videos"
+//     : pathname?.startsWith?.("/chats")
+//     ? "chats"
+//     : pathname?.startsWith?.("/profile")
+//     ? "profile"
+//     : undefined;
+
+//   const icons = {
+//     home: <img src="/icons/home.svg" width={"25px"} alt="home" />,
+//     play: <img src="/icons/videos.svg" width={"20px"} alt="videos" />,
+//     mail: <img src="/icons/messages.svg" width={"20px"} alt="chats" />,
+//     bell: <img src="/icons/notfications.svg" width={"20px"} alt="notfications" />,
+//     gear: <img src="/icons/settings.svg" width={"20px"} alt="settings" />,
+//     user: <img src="/icons/user.svg" width={"20px"} alt="user" />,
+//   };
+
+//   const allItems: MenuItem[] = useMemo(
+//     () => [
+//       { id: "home", label: "الصفحة الرئيسية", href: "/", icon: icons.home },
+//       {
+//         id: "videos",
+//         label: "الريلز",
+//         href: "/videos",
+//         icon: icons.play,
+//       },
+//       {
+//         id: "chats",
+//         label: "الرسائل",
+//         href: userId ? "/chats" : "#",
+//         icon: icons.mail,
+//         badgeCount: unreadMessages,
+//       },
+//       {
+//         id: "profile",
+//         label: "الدرج الشخصي",
+//         href: userId ? `/profile/${userId}` : "#",
+//         icon: icons.user,
+//       },
+//     ],
+//     [unreadMessages, userId]
+//   );
+
+//   const visibleItems = useMemo(() => {
+//     if (userId) {
+//       return allItems;
+//     }
+//     return allItems.filter(item => item.id === "home" || item.id === "videos");
+//   }, [allItems, userId]);
+
+//   const activeClass =
+//     "bg-gradient-to-l from-white to-[#D72229] text-white rounded-tl-[24px] rounded-bl-[24px] py-3 flex items-center gap-2";
+
+//   if (!mounted) {
+//     return (
+//       <aside
+//         dir="rtl"
+//         className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden"
+//         style={{ height: "calc(100vh - 90px)" }}
+//       >
+//         <nav className="space-y-2 mb-1">
+//           <div className="h-10 rounded bg-gray-100 animate-pulse" />
+//           <div className="h-10 rounded bg-gray-100 animate-pulse" />
+//           <div className="h-10 rounded bg-gray-100 animate-pulse" />
+//         </nav>
+//       </aside>
+//     );
+//   }
+
+//   return (
+//     <aside
+//       dir="rtl"
+//       className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden flex flex-col"
+//       style={{ height: "calc(100vh - 90px)" }}
+//     >
+//       <nav className="space-y-2 mb-1">
+//         {visibleItems.map((item) => {
+//           const isActive = active === item.id;
+//           const isProtected = (item.id === "chats" || item.id === "profile" || item.id === "videos") && !userId;
+
+//           return (
+//             <Link
+//               key={item.id}
+//               href={item.href ?? "#"}
+//               onClick={(e) => {
+//                 if (isProtected) {
+//                   e.preventDefault();
+//                   openLoginModal();
+//                 }
+//               }}
+//               className={`${isActive ? activeClass : ""} flex justify-between !pr-10`}
+//             >
+//               <span className="flex items-center">
+//                 <span
+//                   className={[
+//                     "relative inline-flex h-9 w-9 items-center justify-center",
+//                     "rounded-[26px]",
+//                   ].join(" ")}
+//                 >
+//                   <span className={`${isActive ? "text-white filter invert" : "text-black"}`}>
+//                     {item.icon}
+//                   </span>
+//                   {item.dot && (
+//                     <span
+//                       className="
+//                         absolute bottom-[-5px] left-[50%] -translate-x-1/2
+//                         h-[8px] w-[8px]
+//                         rounded-full bg-[#D72229]
+//                       "
+//                     />
+//                   )}
+//                 </span>
+//                 {item.label}
+//               </span>
+//               {item.badgeCount ? (
+//                 <span className="grid h-[28px] w-[26px] place-items-center ml-3 rounded-[11px] bg-[#D72229] text-sm text-white">
+//                   {item.badgeCount}
+//                 </span>
+//               ) : null}
+//             </Link>
+//           );
+//         })}
+//       </nav>
+//       <div className="max-w-[380px] mb-2">{/* banner */}</div>
+// <div className={`space-y-3 text-sm text-black/70 mt-auto mr-3 ${userId ? 'pb-10' : 'pb-20'}`}>
+//   <div className="flex flex-wrap items-center gap-x-1 gap-y-1">  
+//     <Link
+//       href="https://bo-eg.online/PrivacyPolicies.html"
+//         target="_blank"
+//       className="hover:underline text-[#D72229] whitespace-nowrap"  
+//       style={{
+//         fontFamily: 'Cairo, sans-serif',
+//         fontSize: '14px',        
+//         lineHeight: '1.2',   
+//         fontWeight: 400,
+//         textAlign: 'center',
+//       }}
+//     >
+//       سياسة الخصوصية
+//     </Link>
+
+//     <span
+//       className="inline-block"
+//       style={{
+//         width: '18px',         
+//         height: '0px',
+//         borderTop: '1px solid #D72229',
+//         transform: 'rotate(-90deg)',
+//         opacity: 1,
+//       }}
+//     />
+
+//     <Link
+//       href="https://bo-eg.online/PrivacyCenter.html"
+//         target="_blank"
+//       className="hover:underline text-[#D72229] whitespace-nowrap"
+//       style={{
+//         fontFamily: 'Cairo, sans-serif',
+//         fontSize: '14px',
+//         lineHeight: '1.2',
+//         fontWeight: 400,
+//         textAlign: 'center',
+//       }}
+//     >
+//       مركز الخصوصية
+//     </Link>
+
+//     <span
+//       className="inline-block"
+//       style={{
+//         width: '18px',
+//         height: '0px',
+//         borderTop: '1px solid #D72229',
+//         transform: 'rotate(-90deg)',
+//         opacity: 1,
+//       }}
+//     />
+
+//     <Link
+//       href="https://bo-eg.online/ContactUs.html"
+//         target="_blank"
+//       className="hover:underline text-[#D72229] whitespace-nowrap"
+//       style={{
+//         fontFamily: 'Cairo, sans-serif',
+//         fontSize: '14px',
+//         lineHeight: '1.2',
+//         fontWeight: 400,
+//         textAlign: 'center',
+//       }}
+//     >
+//       اتصل بنا
+//     </Link>
+
+//     <span
+//       className="inline-block"
+//       style={{
+//         width: '18px',
+//         height: '0px',
+//         borderTop: '1px solid #D72229',
+//         transform: 'rotate(-90deg)',
+//         opacity: 1,
+//       }}
+//     />
+
+//     <Link
+//       href="https://bo-eg.online/SocialGuiedLines.html"
+//         target="_blank"
+//       className="hover:underline text-[#D72229] whitespace-nowrap"
+//       style={{
+//         fontFamily: 'Cairo, sans-serif',
+//         fontSize: '14px',
+//         lineHeight: '1.2',
+//         fontWeight: 400,
+//         textAlign: 'center',
+//       }}
+//     >
+//       إرشادات المجتمع
+//     </Link>
+
+//     <span
+//       className="inline-block"
+//       style={{
+//         width: '18px',
+//         height: '0px',
+//         borderTop: '1px solid #D72229',
+//         transform: 'rotate(-90deg)',
+//         opacity: 1,
+//       }}
+//     />
+
+//     <p
+//       className="text-xs opacity-100 text-[#000000] whitespace-nowrap"
+//       style={{
+//         fontFamily: 'Cairo, sans-serif',
+//         fontSize: '14px',         
+//         fontWeight: 400,
+//         lineHeight: '1.2',
+//       }}
+//     >
+//       Powered by <span className="font-semibold text-[#D72229]">panda oracle</span>
+//     </p>
+//   </div>
+// </div>
+//     </aside>
+//   );
+// }
+
+
+// ////////////////////////ADD Translate
 "use client";
 
 import Link from "next/link";
 import { useMemo, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useLoginModal } from "@/contexts/LoginModalContext";
+// 🌟 استيراد الـ Context الخاص بالترجمة
+import { useTranslation } from "@/contexts/TranslationContext";
 
-type ItemId = "home" | "videos" | "messages" | "notifications" | "settings" | "profile";
+type ItemId = "home" | "videos" | "messages" | "notifications" | "settings" | "profile" | "chats";
 
 type MenuItem = {
   id: ItemId;
@@ -455,7 +785,7 @@ type MenuItem = {
   dot?: boolean;
 };
 
-export default function SidebarArabic({
+export default function Sidebar({
   unreadMessages = 2,
 }: {
   unreadMessages?: number;
@@ -465,7 +795,10 @@ export default function SidebarArabic({
   const [userId, setUserId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // useEffect الجديد مع المراقبة التلقائية
+  // 🌟 استهلاك اللغة الحالية من الـ Context
+  const { language } = useTranslation();
+  const isAr = language === "ar";
+
   useEffect(() => {
     setMounted(true);
 
@@ -494,7 +827,6 @@ export default function SidebarArabic({
     };
     window.addEventListener("storage", handleStorage);
 
-    // المراقبة الدورية (الحل السحري)
     const interval = setInterval(() => {
       const storedUserData = localStorage.getItem("userData");
       let newUserId = null;
@@ -525,38 +857,42 @@ export default function SidebarArabic({
     : undefined;
 
   const icons = {
-    home: <img src="/icons/home.svg" width={"25px"} alt="home" />,
-    play: <img src="/icons/videos.svg" width={"20px"} alt="videos" />,
-    mail: <img src="/icons/messages.svg" width={"20px"} alt="chats" />,
-    bell: <img src="/icons/notfications.svg" width={"20px"} alt="notfications" />,
-    gear: <img src="/icons/settings.svg" width={"20px"} alt="settings" />,
-    user: <img src="/icons/user.svg" width={"20px"} alt="user" />,
+    home: <img src="/icons/home.svg" className="w-[25px]" alt="home" />,
+    play: <img src="/icons/videos.svg" className="w-[20px]" alt="videos" />,
+    mail: <img src="/icons/messages.svg" className="w-[20px]" alt="chats" />,
+    user: <img src="/icons/user.svg" className="w-[20px]" alt="user" />,
   };
 
+  // 🌟 ترجمة العناصر بناءً على اللغة الحالية
   const allItems: MenuItem[] = useMemo(
     () => [
-      { id: "home", label: "الصفحة الرئيسية", href: "/", icon: icons.home },
+      { 
+        id: "home", 
+        label: isAr ? "الصفحة الرئيسية" : "Home", 
+        href: "/", 
+        icon: icons.home 
+      },
       {
         id: "videos",
-        label: "الفيديوهات",
+        label: isAr ? "الريلز" : "Reels",
         href: "/videos",
         icon: icons.play,
       },
       {
         id: "chats",
-        label: "الرسائل",
+        label: isAr ? "الرسائل" : "Messages",
         href: userId ? "/chats" : "#",
         icon: icons.mail,
         badgeCount: unreadMessages,
       },
       {
         id: "profile",
-        label: "الدرج الشخصي",
+        label: isAr ? "الدرج الشخصي" : "Profile",
         href: userId ? `/profile/${userId}` : "#",
         icon: icons.user,
       },
     ],
-    [unreadMessages, userId]
+    [unreadMessages, userId, isAr]
   );
 
   const visibleItems = useMemo(() => {
@@ -566,14 +902,16 @@ export default function SidebarArabic({
     return allItems.filter(item => item.id === "home" || item.id === "videos");
   }, [allItems, userId]);
 
-  const activeClass =
-    "bg-gradient-to-l from-white to-[#D72229] text-white rounded-tl-[24px] rounded-bl-[24px] py-3 flex items-center gap-2";
+  // 🌟 جعل الانحناءات مرنة لتتوافق مع اتجاه الـ RTL والـ LTR
+  const activeClass = isAr
+    ? "bg-gradient-to-l from-white to-[#D72229] text-white rounded-tl-[24px] rounded-bl-[24px] py-3 flex items-center gap-2"
+    : "bg-gradient-to-r from-white to-[#D72229] text-white rounded-tr-[24px] rounded-br-[24px] py-3 flex items-center gap-2";
 
   if (!mounted) {
     return (
       <aside
-        dir="rtl"
-        className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden"
+        dir={isAr ? "rtl" : "ltr"}
+        className={`select-none text-right text-[#111] overflow-y-auto scrollbar-hidden ${isAr ? "text-right" : "text-left"}`}
         style={{ height: "calc(100vh - 90px)" }}
       >
         <nav className="space-y-2 mb-1">
@@ -587,8 +925,8 @@ export default function SidebarArabic({
 
   return (
     <aside
-      dir="rtl"
-      className="select-none text-right text-[#111] overflow-y-auto scrollbar-hidden flex flex-col"
+      dir={isAr ? "rtl" : "ltr"}
+      className={`select-none text-[#111] overflow-y-auto scrollbar-hidden flex flex-col ${isAr ? "text-right" : "text-left"}`}
       style={{ height: "calc(100vh - 90px)" }}
     >
       <nav className="space-y-2 mb-1">
@@ -606,32 +944,21 @@ export default function SidebarArabic({
                   openLoginModal();
                 }
               }}
-              className={`${isActive ? activeClass : ""} flex justify-between !pr-10`}
+              className={`${isActive ? activeClass : ""} flex justify-between ${isAr ? "!pr-10 !pl-4" : "!pl-10 !pr-4"}`}
             >
-              <span className="flex items-center">
-                <span
-                  className={[
-                    "relative inline-flex h-9 w-9 items-center justify-center",
-                    "rounded-[26px]",
-                  ].join(" ")}
-                >
+              <span className="flex items-center gap-2">
+                <span className="relative inline-flex h-9 w-9 items-center justify-center rounded-[26px]">
                   <span className={`${isActive ? "text-white filter invert" : "text-black"}`}>
                     {item.icon}
                   </span>
                   {item.dot && (
-                    <span
-                      className="
-                        absolute bottom-[-5px] left-[50%] -translate-x-1/2
-                        h-[8px] w-[8px]
-                        rounded-full bg-[#D72229]
-                      "
-                    />
+                    <span className="absolute bottom-[-5px] left-[50%] -translate-x-1/2 h-[8px] w-[8px] rounded-full bg-[#D72229]" />
                   )}
                 </span>
                 {item.label}
               </span>
               {item.badgeCount ? (
-                <span className="grid h-[28px] w-[26px] place-items-center ml-3 rounded-[11px] bg-[#D72229] text-sm text-white">
+                <span className={`grid h-[28px] w-[26px] place-items-center rounded-[11px] bg-[#D72229] text-sm text-white ${isAr ? "ml-3" : "mr-3"}`}>
                   {item.badgeCount}
                 </span>
               ) : null}
@@ -639,126 +966,64 @@ export default function SidebarArabic({
           );
         })}
       </nav>
+
       <div className="max-w-[380px] mb-2">{/* banner */}</div>
-<div className={`space-y-3 text-sm text-black/70 mt-auto mr-3 ${userId ? 'pb-10' : 'pb-20'}`}>
-  <div className="flex flex-wrap items-center gap-x-1 gap-y-1">  
-    <Link
-      href="https://bo-eg.online/PrivacyPolicies.html"
-        target="_blank"
-      className="hover:underline text-[#D72229] whitespace-nowrap"  
-      style={{
-        fontFamily: 'Cairo, sans-serif',
-        fontSize: '14px',        
-        lineHeight: '1.2',   
-        fontWeight: 400,
-        textAlign: 'center',
-      }}
-    >
-      سياسة الخصوصية
-    </Link>
+      
+      {/* أسفل القائمة: روابط سياسة الخصوصية والحقوق */}
+      <div className={`space-y-3 text-sm text-black/70 mt-auto ${isAr ? "mr-3 ml-2" : "ml-3 mr-2"} ${userId ? 'pb-10' : 'pb-20'}`}>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">  
+          <Link
+            href="https://bo-eg.online/PrivacyPolicies.html"
+            target="_blank"
+            className="hover:underline text-[#D72229] whitespace-nowrap text-[14px] font-normal leading-[1.2]"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+          >
+            {isAr ? "سياسة الخصوصية" : "Privacy Policy"}
+          </Link>
 
-    <span
-      className="inline-block"
-      style={{
-        width: '18px',         
-        height: '0px',
-        borderTop: '1px solid #D72229',
-        transform: 'rotate(-90deg)',
-        opacity: 1,
-      }}
-    />
+          <span className="inline-block h-3 border-r border-[#D72229] opacity-100" />
 
-    <Link
-      href="https://bo-eg.online/PrivacyCenter.html"
-        target="_blank"
-      className="hover:underline text-[#D72229] whitespace-nowrap"
-      style={{
-        fontFamily: 'Cairo, sans-serif',
-        fontSize: '14px',
-        lineHeight: '1.2',
-        fontWeight: 400,
-        textAlign: 'center',
-      }}
-    >
-      مركز الخصوصية
-    </Link>
+          <Link
+            href="https://bo-eg.online/PrivacyCenter.html"
+            target="_blank"
+            className="hover:underline text-[#D72229] whitespace-nowrap text-[14px] font-normal leading-[1.2]"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+          >
+            {isAr ? "مركز الخصوصية" : "Privacy Center"}
+          </Link>
 
-    <span
-      className="inline-block"
-      style={{
-        width: '18px',
-        height: '0px',
-        borderTop: '1px solid #D72229',
-        transform: 'rotate(-90deg)',
-        opacity: 1,
-      }}
-    />
+          <span className="inline-block h-3 border-r border-[#D72229] opacity-100" />
 
-    <Link
-      href="https://bo-eg.online/ContactUs.html"
-        target="_blank"
-      className="hover:underline text-[#D72229] whitespace-nowrap"
-      style={{
-        fontFamily: 'Cairo, sans-serif',
-        fontSize: '14px',
-        lineHeight: '1.2',
-        fontWeight: 400,
-        textAlign: 'center',
-      }}
-    >
-      اتصل بنا
-    </Link>
+          <Link
+            href="https://bo-eg.online/ContactUs.html"
+            target="_blank"
+            className="hover:underline text-[#D72229] whitespace-nowrap text-[14px] font-normal leading-[1.2]"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+          >
+            {isAr ? "اتصل بنا" : "Contact Us"}
+          </Link>
 
-    <span
-      className="inline-block"
-      style={{
-        width: '18px',
-        height: '0px',
-        borderTop: '1px solid #D72229',
-        transform: 'rotate(-90deg)',
-        opacity: 1,
-      }}
-    />
+          <span className="inline-block h-3 border-r border-[#D72229] opacity-100" />
 
-    <Link
-      href="https://bo-eg.online/SocialGuiedLines.html"
-        target="_blank"
-      className="hover:underline text-[#D72229] whitespace-nowrap"
-      style={{
-        fontFamily: 'Cairo, sans-serif',
-        fontSize: '14px',
-        lineHeight: '1.2',
-        fontWeight: 400,
-        textAlign: 'center',
-      }}
-    >
-      إرشادات المجتمع
-    </Link>
+          <Link
+            href="https://bo-eg.online/SocialGuiedLines.html"
+            target="_blank"
+            className="hover:underline text-[#D72229] whitespace-nowrap text-[14px] font-normal leading-[1.2]"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+          >
+            {isAr ? "إرشادات المجتمع" : "Community Guidelines"}
+          </Link>
 
-    <span
-      className="inline-block"
-      style={{
-        width: '18px',
-        height: '0px',
-        borderTop: '1px solid #D72229',
-        transform: 'rotate(-90deg)',
-        opacity: 1,
-      }}
-    />
+          <span className="inline-block h-3 border-r border-[#D72229] opacity-100" />
 
-    <p
-      className="text-xs opacity-100 text-[#000000] whitespace-nowrap"
-      style={{
-        fontFamily: 'Cairo, sans-serif',
-        fontSize: '14px',         
-        fontWeight: 400,
-        lineHeight: '1.2',
-      }}
-    >
-      Powered by <span className="font-semibold text-[#D72229]">panda oracle</span>
-    </p>
-  </div>
-</div>
+          <p
+            className="text-[14px] font-normal leading-[1.2] text-[#000000] whitespace-nowrap"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+          >
+            {isAr ? "مشغل بواسطة" : "Powered by"} <span className="font-semibold text-[#D72229]">panda oracle</span>
+          </p>
+        </div>
+      </div>
     </aside>
   );
 }

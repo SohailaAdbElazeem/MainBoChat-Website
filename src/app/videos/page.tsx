@@ -1,14 +1,4 @@
-// // app/videos/page.tsx
-// import ReelsFeed from "@/app/_components/ReelsFeed";
-
-// export default function VideosPage() {
-//   return (
-//     <div className="p-4">
-//       <ReelsFeed />
-//     </div>
-//   );
-// }
-
+ 
 // app/videos/page.tsx
 "use client";
 
@@ -105,3 +95,5 @@ export default function VideosPage() {
     </div>
   );
 }
+
+

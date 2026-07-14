@@ -1,3 +1,342 @@
+// // // app/components/GlobalSearch.tsx
+// // 'use client';
+// // import React, { useEffect, useMemo, useRef, useState } from 'react';
+// // import Link from 'next/link';
+// // import { SearchResult } from '@/types/search-result';
+// // import { SearchProvider } from '@/types/search-provider';
+// // import { useRouter } from 'next/navigation';
+
+// // export type GlobalSearchProps = {
+// //   providers: SearchProvider[];
+// //   placeholder?: string;
+// //   dir?: 'rtl' | 'ltr';
+// //   className?: string;
+// // };
+
+// // // ============== Helpers ==================
+// // function cn(...classes: Array<string | undefined | false>) {
+// //   return classes.filter(Boolean).join(' ');
+// // }
+
+// // export const Magnifier = () => (
+// //   <svg viewBox="0 0 24 24" className="w-8 h-8" aria-hidden>
+// //     <path
+// //       fill="#C5C6C6"
+// //       d="M10 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0-2a8 8 0 0 0 0 16 7.95 7.95 0 0 0 4.9-1.64l4.37 4.38 1.42-1.42-4.38-4.37A7.95 7.95 0 0 0 18 10a8 8 0 0 0-8-8Z"
+// //     />
+// //   </svg>
+// // );
+
+// // const LogoutIcon = () => (
+// //   <img src="/imgs/Group (2).svg" alt="Logout Button" width={22} height={22} />
+// // );
+
+// // // Debounce hook
+// // function useDebounced<T>(value: T, delay = 250) {
+// //   const [v, setV] = useState(value);
+// //   useEffect(() => {
+// //     const id = setTimeout(() => setV(value), delay);
+// //     return () => clearTimeout(id);
+// //   }, [value, delay]);
+// //   return v;
+// // }
+
+// // // ============= Component =================
+// // export default function Header({ providers, placeholder }: GlobalSearchProps) {
+// //   const [query, setQuery] = useState('');
+// //   const [open, setOpen] = useState(false);
+// //   const [activeIndex, setActiveIndex] = useState<number>(-1);
+// //   const [results, setResults] = useState<Record<string, SearchResult[]>>({});
+// //   const [loading, setLoading] = useState(false);
+// //   const debounced = useDebounced(query, 200);
+// //   const panelRef = useRef<HTMLDivElement>(null);
+
+// //   const [isLoggedIn, setIsLoggedIn] = useState(false);
+// //   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+// //   const router = useRouter();
+
+// //   // ✅ دالة تحديث حالة تسجيل الدخول من localStorage
+// //   const updateLoginStatus = () => {
+// //     const userData = localStorage.getItem('userData');
+// //     setIsLoggedIn(!!userData);
+// //   };
+
+// //   // ✅ التحقق من حالة تسجيل الدخول عند التحميل + الاستماع للأحداث
+// //   useEffect(() => {
+// //     // قراءة أولية
+// //     updateLoginStatus();
+
+// //     // الاستماع لحدث مخصص (يُطلق عند تسجيل الدخول/الخروج في نفس التبويب)
+// //     window.addEventListener('userDataUpdated', updateLoginStatus);
+
+// //     // الاستماع لتغييرات localStorage من التبويبات الأخرى
+// //     const handleStorage = (e: StorageEvent) => {
+// //       if (e.key === 'userData') {
+// //         updateLoginStatus();
+// //       }
+// //     };
+// //     window.addEventListener('storage', handleStorage);
+
+// //     return () => {
+// //       window.removeEventListener('userDataUpdated', updateLoginStatus);
+// //       window.removeEventListener('storage', handleStorage);
+// //     };
+// //   }, []);
+
+// //   const confirmLogout = () => {
+// //     localStorage.clear();
+// //     setIsLoggedIn(false);
+// //     // 🔔 إطلاق الحدث لتحديث المكونات الأخرى (اختياري)
+// //     window.dispatchEvent(new Event('userDataUpdated'));
+// //     router.push('/login');
+// //     setShowLogoutDialog(false);
+// //   };
+
+// //   const cancelLogout = () => {
+// //     setShowLogoutDialog(false);
+// //   };
+
+// //   const flatResults = useMemo(
+// //     () =>
+// //       Object.entries(results).flatMap(([key, arr]) =>
+// //         arr.map((r) => ({ section: key, ...r }))
+// //       ),
+// //     [results]
+// //   );
+
+// //   const goToProfile = () => {
+// //     const userData = localStorage.getItem('userData');
+// //     if (!userData) return;
+// //     const user = JSON.parse(userData);
+// //     router.push(`/profile/${user._id}`);
+// //   };
+
+// //   const handleLogout = () => {
+// //     setShowLogoutDialog(true);
+// //   };
+
+// //   // Effect للبحث عند تغيير النص (نفس الكود)
+// //   useEffect(() => {
+// //     if (!debounced.trim()) {
+// //       setResults({});
+// //       setOpen(false);
+// //       return;
+// //     }
+// //     let cancelled = false;
+// //     (async () => {
+// //       setLoading(true);
+// //       const sections: Record<string, SearchResult[]> = {};
+// //       await Promise.all(
+// //         providers.map(async (p) => {
+// //           try {
+// //             const out = await p.search(debounced);
+// //             if (!cancelled) sections[p.label] = out.slice(0, 5);
+// //           } catch (e) {
+// //             if (!cancelled)
+// //               sections[p.label] = [
+// //                 { id: `${p.key}-err`, title: 'Error loading', subtitle: String(e) },
+// //               ];
+// //           }
+// //         })
+// //       );
+// //       if (!cancelled) {
+// //         setResults(sections);
+// //         setOpen(true);
+// //         setActiveIndex(-1);
+// //       }
+// //       setLoading(false);
+// //     })();
+// //     return () => {
+// //       cancelled = true;
+// //     };
+// //   }, [debounced, providers]);
+
+// //   // إغلاق القائمة عند النقر خارجها (نفس الكود)
+// //   useEffect(() => {
+// //     const handler = (e: MouseEvent) => {
+// //       if (!panelRef.current) return;
+// //       if (!panelRef.current.contains(e.target as Node)) setOpen(false);
+// //     };
+// //     document.addEventListener('click', handler);
+// //     return () => document.removeEventListener('click', handler);
+// //   }, []);
+
+// //   const onKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+// //     if (!open) return;
+// //     if (e.key === 'ArrowDown') {
+// //       e.preventDefault();
+// //       setActiveIndex((i) => Math.min(i + 1, flatResults.length - 1));
+// //     }
+// //     if (e.key === 'ArrowUp') {
+// //       e.preventDefault();
+// //       setActiveIndex((i) => Math.max(i - 1, 0));
+// //     }
+// //     if (e.key === 'Enter') {
+// //       const r = flatResults[activeIndex];
+// //       if (r?.href) {
+// //         e.preventDefault();
+// //         router.push(r.href);
+// //         setOpen(false);
+// //       }
+// //     }
+// //     if (e.key === 'Escape') setOpen(false);
+// //   };
+
+// //   return (
+// //     <div className={cn('w-full px-[30px] py-[15px]')}>
+// //       <div className="flex items-center justify-between gap-3">
+// //         <Link href="/" className="">
+// //           <img src="/logo-red.png" width={35} alt="logo" />
+// //         </Link>
+
+// //         <div className="ml-auto flex items-center gap-3">
+// //           {/* زر الخروج يظهر فقط عند تسجيل الدخول */}
+// //           {isLoggedIn && (
+// //             <button
+// //               onClick={handleLogout}
+// //               title="تسجيل الخروج"
+// //               className="w-[80px] h-[60px] rounded-[27px] bg-[#F2F2F2] flex items-center justify-center cursor-pointer border-0"
+// //             >
+// //               <LogoutIcon />
+// //             </button>
+// //           )}
+
+// //           {/* Search (نفس الكود) */}
+// //           <div className="relative z-[9998]" ref={panelRef} dir="rtl">
+// //             <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[23vw] max-w-[500px]">
+// //               <Magnifier />
+// //               <input
+// //                 value={query}
+// //                 onChange={(e) => setQuery(e.target.value)}
+// //                 onKeyDown={onKeyDown}
+// //                 placeholder={placeholder || 'اكتب ما تبحث عنه هنا'}
+// //                 className="bg-transparent outline-none w-full text-[15px] placeholder:text-[#C5C6C6]"
+// //                 autoComplete="off"
+// //               />
+// //             </div>
+
+// //             {/* نتائج البحث (نفس الكود) */}
+// //             {open && (
+// //               <div className="absolute mt-2 right-0 z-50 w-[62vw] max-w-[760px] rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl overflow-hidden">
+// //                 {loading && (
+// //                   <div className="px-4 py-3 text-sm text-neutral-500">جاري البحث…</div>
+// //                 )}
+// //                 {!loading && Object.keys(results).length === 0 && (
+// //                   <div className="px-4 py-3 text-sm text-neutral-500">لا توجد نتائج</div>
+// //                 )}
+// //                 {!loading &&
+// //                   Object.entries(results).map(([label, items]) => (
+// //                     <div key={label}>
+// //                       <div className="px-4 pt-4 pb-2 text-xs font-medium uppercase tracking-wider text-neutral-500">
+// //                         {label}
+// //                       </div>
+// //                       <ul className="max-h-[52vh] overflow-y-auto">
+// //                         {items.map((r) => {
+// //                           const flatIndex = Object.entries(results)
+// //                             .flatMap(([k, arr]) =>
+// //                               k === label
+// //                                 ? arr.map((_, i) => ({ k, i }))
+// //                                 : arr.map((_, i) => ({ k, i }))
+// //                             )
+// //                             .slice(
+// //                               0,
+// //                               Object.entries(results)
+// //                                 .flatMap(([, arr]) => arr)
+// //                                 .indexOf(r) + 1
+// //                             ).length - 1;
+// //                           const isActive = activeIndex === flatIndex;
+// //                           const ItemContent = (
+// //                             <div
+// //                               className={cn(
+// //                                 'px-4 py-3 flex items-center gap-3',
+// //                                 isActive && 'bg-red-50/80 dark:bg-red-900/20'
+// //                               )}
+// //                             >
+// //                               <div className="text-red-600">
+// //                                 {r.icon ?? <Magnifier />}
+// //                               </div>
+// //                               <div className="min-w-0">
+// //                                 <div className="text-sm font-medium truncate">
+// //                                   {r.title}
+// //                                 </div>
+// //                                 {r.subtitle && (
+// //                                   <div className="text-xs text-neutral-500 truncate">
+// //                                     {r.subtitle}
+// //                                   </div>
+// //                                 )}
+// //                               </div>
+// //                               {r.meta && (
+// //                                 <div className="ms-auto text-[11px] text-neutral-500">
+// //                                   {r.meta}
+// //                                 </div>
+// //                               )}
+// //                             </div>
+// //                           );
+// //                           return (
+// //                             <li key={r.id} onMouseEnter={() => setActiveIndex(flatIndex)}>
+// //                               {r.href ? (
+// //                                 <Link
+// //                                   href={r.href}
+// //                                   className="block"
+// //                                   onClick={(e) => {
+// //                                     e.preventDefault();
+// //                                     if (r.href) {
+// //                                       router.push(r.href);
+// //                                       setOpen(false);
+// //                                     }
+// //                                   }}
+// //                                 >
+// //                                   {ItemContent}
+// //                                 </Link>
+// //                               ) : (
+// //                                 <button className="w-full text-start">{ItemContent}</button>
+// //                               )}
+// //                             </li>
+// //                           );
+// //                         })}
+// //                       </ul>
+// //                     </div>
+// //                   ))}
+// //               </div>
+// //             )}
+// //           </div>
+
+// //           {/* Logout confirmation dialog */}
+// //           {showLogoutDialog && (
+// //             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+// //               <div
+// //                 dir="rtl"
+// //                 className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-neutral-200/60 text-center"
+// //               >
+// //                 <h3 className="text-lg font-semibold mb-2">تأكيد تسجيل الخروج</h3>
+// //                 <p className="text-neutral-600 text-sm mb-6">
+// //                   هل أنت متأكد من رغبتك في تسجيل الخروج؟
+// //                 </p>
+// //                 <div className="flex gap-3 justify-center">
+// //                   <button
+// //                     onClick={cancelLogout}
+// //                     className="px-4 py-2 rounded-xl bg-[#F2F2F2] text-neutral-700 hover:bg-neutral-200 transition"
+// //                   >
+// //                     إلغاء
+// //                   </button>
+// //                   <button
+// //                     onClick={confirmLogout}
+// //                     className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition"
+// //                   >
+// //                     تسجيل الخروج
+// //                   </button>
+// //                 </div>
+// //               </div>
+// //             </div>
+// //           )}
+// //         </div>
+// //       </div>
+// //     </div>
+// //   );
+// // }
+// // ظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظ
+
 // // app/components/GlobalSearch.tsx
 // 'use client';
 // import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -56,21 +395,17 @@
 
 //   const router = useRouter();
 
-//   // ✅ دالة تحديث حالة تسجيل الدخول من localStorage
-//   const updateLoginStatus = () => {
-//     const userData = localStorage.getItem('userData');
-//     setIsLoggedIn(!!userData);
-//   };
-
-//   // ✅ التحقق من حالة تسجيل الدخول عند التحميل + الاستماع للأحداث
+//   // ========== تحديث حالة تسجيل الدخول (مع المراقبة الدورية) ==========
 //   useEffect(() => {
-//     // قراءة أولية
+//     const updateLoginStatus = () => {
+//       const userData = localStorage.getItem('userData');
+//       setIsLoggedIn(!!userData);
+//     };
+
 //     updateLoginStatus();
 
-//     // الاستماع لحدث مخصص (يُطلق عند تسجيل الدخول/الخروج في نفس التبويب)
 //     window.addEventListener('userDataUpdated', updateLoginStatus);
 
-//     // الاستماع لتغييرات localStorage من التبويبات الأخرى
 //     const handleStorage = (e: StorageEvent) => {
 //       if (e.key === 'userData') {
 //         updateLoginStatus();
@@ -78,16 +413,23 @@
 //     };
 //     window.addEventListener('storage', handleStorage);
 
+//     // 🕒 مؤقت احتياطي لتحديث الحالة تلقائياً كل ثانية
+//     const interval = setInterval(() => {
+//       const userData = localStorage.getItem('userData');
+//       const newLoggedIn = !!userData;
+//       setIsLoggedIn((prev) => (prev !== newLoggedIn ? newLoggedIn : prev));
+//     }, 1000);
+
 //     return () => {
 //       window.removeEventListener('userDataUpdated', updateLoginStatus);
 //       window.removeEventListener('storage', handleStorage);
+//       clearInterval(interval);
 //     };
 //   }, []);
 
 //   const confirmLogout = () => {
 //     localStorage.clear();
 //     setIsLoggedIn(false);
-//     // 🔔 إطلاق الحدث لتحديث المكونات الأخرى (اختياري)
 //     window.dispatchEvent(new Event('userDataUpdated'));
 //     router.push('/login');
 //     setShowLogoutDialog(false);
@@ -116,7 +458,7 @@
 //     setShowLogoutDialog(true);
 //   };
 
-//   // Effect للبحث عند تغيير النص (نفس الكود)
+//   // Effect للبحث (نفس الكود)
 //   useEffect(() => {
 //     if (!debounced.trim()) {
 //       setResults({});
@@ -152,7 +494,7 @@
 //     };
 //   }, [debounced, providers]);
 
-//   // إغلاق القائمة عند النقر خارجها (نفس الكود)
+//   // إغلاق القائمة عند النقر خارجها
 //   useEffect(() => {
 //     const handler = (e: MouseEvent) => {
 //       if (!panelRef.current) return;
@@ -202,7 +544,7 @@
 //             </button>
 //           )}
 
-//           {/* Search (نفس الكود) */}
+//           {/* Search */}
 //           <div className="relative z-[9998]" ref={panelRef} dir="rtl">
 //             <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[23vw] max-w-[500px]">
 //               <Magnifier />
@@ -216,7 +558,7 @@
 //               />
 //             </div>
 
-//             {/* نتائج البحث (نفس الكود) */}
+//             {/* نتائج البحث */}
 //             {open && (
 //               <div className="absolute mt-2 right-0 z-50 w-[62vw] max-w-[760px] rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl overflow-hidden">
 //                 {loading && (
@@ -335,15 +677,16 @@
 //     </div>
 //   );
 // }
-// ظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظظ
 
-// app/components/GlobalSearch.tsx
+
+// // AddTranslate
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { SearchResult } from '@/types/search-result';
 import { SearchProvider } from '@/types/search-provider';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation'; 
+import { useTranslation } from "@/contexts/TranslationContext";
 
 export type GlobalSearchProps = {
   providers: SearchProvider[];
@@ -370,7 +713,12 @@ const LogoutIcon = () => (
   <img src="/imgs/Group (2).svg" alt="Logout Button" width={22} height={22} />
 );
 
-// Debounce hook
+const TranslateIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#555" className="w-6 h-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
+  </svg>
+);
+
 function useDebounced<T>(value: T, delay = 250) {
   const [v, setV] = useState(value);
   useEffect(() => {
@@ -392,28 +740,28 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  
+  const { language, setLanguage } = useTranslation(); 
+  const currentLang = language || 'ar'; 
+  
+  const layoutDirection = currentLang === 'ar' ? 'ltr': 'rtl' ;
 
   const router = useRouter();
 
-  // ========== تحديث حالة تسجيل الدخول (مع المراقبة الدورية) ==========
   useEffect(() => {
-    const updateLoginStatus = () => {
+    const updateStates = () => {
       const userData = localStorage.getItem('userData');
       setIsLoggedIn(!!userData);
     };
 
-    updateLoginStatus();
-
-    window.addEventListener('userDataUpdated', updateLoginStatus);
+    updateStates();
+    window.addEventListener('userDataUpdated', updateStates);
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'userData') {
-        updateLoginStatus();
-      }
+      if (e.key === 'userData') updateStates();
     };
     window.addEventListener('storage', handleStorage);
 
-    // 🕒 مؤقت احتياطي لتحديث الحالة تلقائياً كل ثانية
     const interval = setInterval(() => {
       const userData = localStorage.getItem('userData');
       const newLoggedIn = !!userData;
@@ -421,11 +769,19 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
     }, 1000);
 
     return () => {
-      window.removeEventListener('userDataUpdated', updateLoginStatus);
+      window.removeEventListener('userDataUpdated', updateStates);
       window.removeEventListener('storage', handleStorage);
       clearInterval(interval);
     };
   }, []);
+
+  const handleToggleLanguage = () => {
+    const nextLang = currentLang === 'ar' ? 'en' : 'ar';
+    if (typeof setLanguage === 'function') {
+      setLanguage(nextLang); 
+    }
+    localStorage.setItem('siteLanguage', nextLang);
+  };
 
   const confirmLogout = () => {
     localStorage.clear();
@@ -447,18 +803,10 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
     [results]
   );
 
-  const goToProfile = () => {
-    const userData = localStorage.getItem('userData');
-    if (!userData) return;
-    const user = JSON.parse(userData);
-    router.push(`/profile/${user._id}`);
-  };
-
   const handleLogout = () => {
     setShowLogoutDialog(true);
   };
 
-  // Effect للبحث (نفس الكود)
   useEffect(() => {
     if (!debounced.trim()) {
       setResults({});
@@ -487,14 +835,13 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
         setOpen(true);
         setActiveIndex(-1);
       }
-      setLoading(false);
+      loading && setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
   }, [debounced, providers]);
 
-  // إغلاق القائمة عند النقر خارجها
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (!panelRef.current) return;
@@ -526,46 +873,68 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
   };
 
   return (
-    <div className={cn('w-full px-[30px] py-[15px]')}>
-      <div className="flex items-center justify-between gap-3">
-        <Link href="/" className="">
+    <div className={cn('w-full px-[30px] py-[15px]')} dir={layoutDirection}>
+      {/* 🌟 تم تعديل الفئات هنا لتسمح بالانعطاف الكامل والحر للعناصر حسب خاصية dir */}
+      <div className="flex items-center justify-between w-full gap-3">
+        <Link href="/">
           <img src="/logo-red.png" width={35} alt="logo" />
         </Link>
 
-        <div className="ml-auto flex items-center gap-3">
-          {/* زر الخروج يظهر فقط عند تسجيل الدخول */}
+        {/* 🌟 الحاوية التي تحمل أدوات البحث والتحكم تتحاذى الآن تلقائياً للطرف الآخر */}
+        <div className="flex items-center gap-3">
+          
+          {/* زر الترجمة */}
+          <button
+            onClick={handleToggleLanguage}
+            title={currentLang === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
+            className="w-[80px] h-[60px] rounded-[27px] bg-[#F2F2F2] flex flex-col items-center justify-center cursor-pointer border-0 gap-0.5 hover:bg-neutral-200/80 transition"
+          >
+            <TranslateIcon />
+            <span className="text-[10px] font-bold text-neutral-600 uppercase">
+              {currentLang === 'ar' ? 'EN' : 'AR'}
+            </span>
+          </button>
+
           {isLoggedIn && (
             <button
               onClick={handleLogout}
-              title="تسجيل الخروج"
-              className="w-[80px] h-[60px] rounded-[27px] bg-[#F2F2F2] flex items-center justify-center cursor-pointer border-0"
+              title={currentLang === 'en' ? 'Logout' : 'تسجيل الخروج'}
+              className="w-[80px] h-[60px] rounded-[27px] bg-[#F2F2F2] flex items-center justify-center cursor-pointer border-0 hover:bg-neutral-200/80 transition"
             >
               <LogoutIcon />
             </button>
           )}
 
           {/* Search */}
-          <div className="relative z-[9998]" ref={panelRef} dir="rtl">
-            <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[23vw] max-w-[500px]">
+          <div className="relative z-[9998]" ref={panelRef}>
+                <div className="flex items-center gap-2 bg-[#F2F2F2] rounded-[20px] px-4 h-[50px] w-[23vw] max-w-[500px]">
               <Magnifier />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder={placeholder || 'اكتب ما تبحث عنه هنا'}
+                placeholder={placeholder || (currentLang === 'en' ? 'Search here...' : 'اكتب ما تبحث عنه هنا')}
                 className="bg-transparent outline-none w-full text-[15px] placeholder:text-[#C5C6C6]"
                 autoComplete="off"
+                dir={currentLang === 'ar' ? 'rtl' : 'ltr'}
+                style={{
+                  textAlign: currentLang === 'ar' ? 'right' : 'left',
+                }}
               />
             </div>
-
             {/* نتائج البحث */}
             {open && (
-              <div className="absolute mt-2 right-0 z-50 w-[62vw] max-w-[760px] rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl overflow-hidden">
+              /* 🌟 تم تعديل التموضع هنا إلى end-0 ليصبح متناسقاً ومحاذياً للجهة الداخلية للهيدر دائماً بدون الخروج عن الشاشة */
+              <div className="absolute mt-2 end-0 z-50 w-[62vw] max-w-[760px] rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl overflow-hidden">
                 {loading && (
-                  <div className="px-4 py-3 text-sm text-neutral-500">جاري البحث…</div>
+                  <div className="px-4 py-3 text-sm text-neutral-500">
+                    {currentLang === 'en' ? 'Searching...' : 'جاري البحث…'}
+                  </div>
                 )}
                 {!loading && Object.keys(results).length === 0 && (
-                  <div className="px-4 py-3 text-sm text-neutral-500">لا توجد نتائج</div>
+                  <div className="px-4 py-3 text-sm text-neutral-500">
+                    {currentLang === 'en' ? 'No results found' : 'لا توجد نتائج'}
+                  </div>
                 )}
                 {!loading &&
                   Object.entries(results).map(([label, items]) => (
@@ -576,11 +945,7 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
                       <ul className="max-h-[52vh] overflow-y-auto">
                         {items.map((r) => {
                           const flatIndex = Object.entries(results)
-                            .flatMap(([k, arr]) =>
-                              k === label
-                                ? arr.map((_, i) => ({ k, i }))
-                                : arr.map((_, i) => ({ k, i }))
-                            )
+                            .flatMap(([k, arr]) => arr.map((_, i) => ({ k, i })))
                             .slice(
                               0,
                               Object.entries(results)
@@ -618,9 +983,8 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
                           return (
                             <li key={r.id} onMouseEnter={() => setActiveIndex(flatIndex)}>
                               {r.href ? (
-                                <Link
-                                  href={r.href}
-                                  className="block"
+                                <button
+                                  className="block w-full text-start border-0 bg-transparent p-0"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     if (r.href) {
@@ -630,9 +994,9 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
                                   }}
                                 >
                                   {ItemContent}
-                                </Link>
+                                </button>
                               ) : (
-                                <button className="w-full text-start">{ItemContent}</button>
+                                <button className="w-full text-start border-0 bg-transparent p-0">{ItemContent}</button>
                               )}
                             </li>
                           );
@@ -648,25 +1012,29 @@ export default function Header({ providers, placeholder }: GlobalSearchProps) {
           {showLogoutDialog && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
               <div
-                dir="rtl"
+                dir={layoutDirection}
                 className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-neutral-200/60 text-center"
               >
-                <h3 className="text-lg font-semibold mb-2">تأكيد تسجيل الخروج</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  {currentLang === 'en' ? 'Confirm Logout' : 'تأكيد تسجيل الخروج'}
+                </h3>
                 <p className="text-neutral-600 text-sm mb-6">
-                  هل أنت متأكد من رغبتك في تسجيل الخروج؟
+                  {currentLang === 'en'
+                    ? 'Are you sure you want to log out?'
+                    : 'هل أنت متأكد من رغبتك في تسجيل الخروج؟'}
                 </p>
                 <div className="flex gap-3 justify-center">
                   <button
                     onClick={cancelLogout}
                     className="px-4 py-2 rounded-xl bg-[#F2F2F2] text-neutral-700 hover:bg-neutral-200 transition"
                   >
-                    إلغاء
+                    {currentLang === 'en' ? 'Cancel' : 'إلغاء'}
                   </button>
                   <button
                     onClick={confirmLogout}
                     className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition"
                   >
-                    تسجيل الخروج
+                    {currentLang === 'en' ? 'Logout' : 'تسجيل الخروج'}
                   </button>
                 </div>
               </div>
