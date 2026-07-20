@@ -18,6 +18,9 @@ interface FullscreenOverlayProps {
   onBlock?: () => void;
   onReport?: () => void;
   t?: any;
+  // ✅ جديد: حالة المتابعة ودالة التبديل
+  isFollowing?: boolean;
+  onFollowToggle?: () => void;
 }
 
 export function FullscreenOverlay({
@@ -33,7 +36,9 @@ export function FullscreenOverlay({
   onShare,
   onBlock,
   onReport,
-  t = { views: "مشاهدات" },
+  t = { views: "مشاهدات", follow: "متابعة", unfollow: "إلغاء المتابعة" },
+  isFollowing = false,
+  onFollowToggle,
 }: FullscreenOverlayProps) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -106,7 +111,7 @@ export function FullscreenOverlay({
       className="fixed inset-0 bg-black/90 z-[10000] flex items-center justify-center"
       onClick={onClose}
     >
-      {/* الأزرار في الخلفية   ) */}
+      {/* الأزرار الجانبية (إغلاق، سابق، تالي) */}
       <div
         className="absolute top-1/2 right-8 transform -translate-y-1/2 flex flex-col gap-4 z-10"
         onClick={(e) => e.stopPropagation()}
@@ -156,18 +161,39 @@ export function FullscreenOverlay({
           }}
         />
 
-        {/* معلومات المستخدم */}
+        {/* ✅ معلومات المستخدم + زر المتابعة (بنفس التصميم المطلوب) */}
         <div className="absolute top-5 right-4 flex items-center gap-3 bg-black/30 rounded-[19px] px-3 py-2">
-          <img src={video.userimg} alt={video.name} className="w-10 h-10 rounded-full border border-white/30" />
-          <div className="text-white">
-            <p className="font-semibold">{video.name}</p>
-            <p className="text-sm text-gray-300">{timeAgo(video.createdAt)}</p>
+          <img
+            src={video.userimg}
+            alt={video.name}
+            className="w-10 h-10 rounded-[17px] border border-white/30"
+          />
+          <div>
+            <p className="text-white font-semibold">{video.name}</p>
+            <p className="text-gray-300 text-sm">{timeAgo(video.createdAt)}</p>
           </div>
+          {onFollowToggle && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                onFollowToggle();
+              }}
+              className={`w-[50px] h-[45px] rounded-[19px] flex items-center justify-center cursor-pointer ${
+                isFollowing ? "bg-transparent" : "bg-white"
+              }`}
+            >
+              <img
+                src={isFollowing ? "/imgs/unFollow.svg" : "/imgs/Follow.svg"}
+                className="w-[19px] h-[19px]"
+                alt={isFollowing ? t.unfollow : t.follow}
+              />
+            </div>
+          )}
         </div>
 
-        {/* الأزرار الجانبية  -   */}
+        {/* الأزرار الجانبية (تشغيل، إعجاب، تعليق، مشاركة، تقديم/تأخير) */}
         <div className="absolute top-20 right-2 flex flex-col items-center gap-2 py-5">
-          {/* 1. الخيارات  */}
+          {/* 1. الخيارات */}
           <div className="relative">
             <button
               onClick={() => setShowOptionsMenu(!showOptionsMenu)}
@@ -192,7 +218,7 @@ export function FullscreenOverlay({
             )}
           </div>
 
-          {/* 2. تشغيل / إيقاف */}
+          {/* 2. تشغيل/إيقاف */}
           <button
             onClick={togglePlay}
             className="bg-[#000000]/15 backdrop-blur-md p-3 rounded-full w-[45px] h-[45px] flex items-center justify-center"
@@ -204,7 +230,7 @@ export function FullscreenOverlay({
             />
           </button>
 
-          {/* 3. الإعجاب */}
+          {/* 3. إعجاب */}
           <button
             onClick={onLike}
             className={`bg-[#000000]/15 backdrop-blur-md p-3 rounded-full w-[45px] h-[45px] flex items-center justify-center ${
@@ -214,7 +240,7 @@ export function FullscreenOverlay({
             <img src="/icons/like-white.svg" className="w-5 h-5" alt="like" />
           </button>
 
-          {/* 4. التعليق */}
+          {/* 4. تعليق */}
           <button
             onClick={onComment}
             className="bg-[#000000]/15 backdrop-blur-md p-3 rounded-full w-[45px] h-[45px] flex items-center justify-center"
@@ -222,7 +248,7 @@ export function FullscreenOverlay({
             <img src="/icons/comment-white.svg" className="w-5 h-5" alt="comment" />
           </button>
 
-          {/* 5. المشاركة */}
+          {/* 5. مشاركة */}
           <button
             onClick={onShare}
             className="bg-[#000000]/15 backdrop-blur-md p-3 rounded-full w-[45px] h-[45px] flex items-center justify-center"
@@ -241,7 +267,7 @@ export function FullscreenOverlay({
           {/* 7. تأخير 10 ثواني */}
           <button
             onClick={seekBackward}
-            className="bg-[#000000]/15 backdrop-blur-md p-3 rounded-full w-[45px] h-[45px] flex items-center justify-center "
+            className="bg-[#000000]/15 backdrop-blur-md p-3 rounded-full w-[45px] h-[45px] flex items-center justify-center"
           >
             <img src="/imgs/pre (1).svg" className="w-5 h-5" alt="backward" />
           </button>
