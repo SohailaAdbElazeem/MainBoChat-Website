@@ -73,6 +73,7 @@
 "use client";
 import ActiveUsersCarousel from "@/app/_components/ActiveUsers";
 import ReelsFeed from "@/app/_components/ReelsFeed";
+import SuggestionsPage from "@/app/suggestions/page"; 
 import { usePathname } from "next/navigation";
 import AllUsersGrid from "./AllUsersGrid";
 import ChatListFromApi from "../app/chats/_components/ChatList";
@@ -98,7 +99,8 @@ export default function LayoutRightSideClient() {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const isProfile = pathname.startsWith("/profile");
-  const [userId, setUserId] = useState<string | null>(null);
+  const isVideos = pathname.startsWith("/videos"); 
+   const [userId, setUserId] = useState<string | null>(null);
 
   const activeChatId = pathname.startsWith("/chats/")
     ? pathname.split("/chats/")[1]
@@ -130,6 +132,14 @@ export default function LayoutRightSideClient() {
             <ReelsFeed />
           </div>
         </>
+      )}
+       {isVideos && (
+        <div className="px-2">
+           <h1 dir={t.dir} className="mb-2 text-2xl">
+            الاقتراحات
+          </h1>
+              <SuggestionsPage />
+        </div>
       )}
 
       {isProfile && (

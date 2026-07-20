@@ -216,8 +216,7 @@ function LayoutContent({ children, isLogin, searchProviders }: { children: React
             style={{
                 height: !isLogin ? "calc(100vh - 83px)" : "100vh",
             }}           
-            // يتغير الاتجاه تلقائياً بناءً على لغة الموقع الحالية
-            dir={language === "ar" ? "rtl" : "ltr"}
+             dir={language === "ar" ? "rtl" : "ltr"}
         >
             {
                 !isLogin &&
@@ -267,7 +266,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     
     return (
         <html lang="en" suppressHydrationWarning>
-            <body className="bg-white select-none">
+            <body className="bg-white select-none" >
                 {/* 2. تغليف التطبيق بالكامل بـ TranslationProvider لتصل الكهرباء لكل الصفحات */}
                 <TranslationProvider>
                     <LoginModalProvider>
