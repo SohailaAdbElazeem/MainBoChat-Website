@@ -1,7 +1,6 @@
-// components/suggestions/SuggestionsFeed.tsx
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Video } from "@/types/video";
 import { SuggestionCard } from "./SuggestionCard";
@@ -9,12 +8,18 @@ import Loader from "@/components/Loader";
 import { useLike } from "@/hooks/useLike";
 import { useLoginModal } from "@/contexts/LoginModalContext";
 import { useVideoStore } from "@/store/videoStore";
+import { useSearchStore } from "@/store/searchStore";
 
-const LIMIT = 20; 
+const LIMIT = 20;
 
-export function SuggestionsFeed() {
+interface SuggestionsFeedProps {
+  onVideoSelect?: (video: Video) => void; 
+}
+
+export function SuggestionsFeed({ onVideoSelect }: SuggestionsFeedProps) {
   const router = useRouter();
-  const setSelectedVideo = useVideoStore((state) => state.setSelectedVideo);
+  const { setSelectedVideo } = useVideoStore((state) => state);
+  const { searchQuery } = useSearchStore();
 
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +30,19 @@ export function SuggestionsFeed() {
   const { openLoginModal } = useLoginModal();
   const { likedStatus, likesCount, handleLike } = useLike(videos);
 
-   const observerRef = useRef<IntersectionObserver | null>(null);
+  // تصفية الفيديوهات بناءً على searchQuery
+  const filteredVideos = useMemo(() => {
+    if (!searchQuery.trim()) return videos;
+    const lowerQuery = searchQuery.toLowerCase().trim();
+    return videos.filter((v) => {
+      const desc = (v.description || '').toLowerCase();
+      const name = (v.name || '').toLowerCase();
+      const username = (v.username || '').toLowerCase();
+      return desc.includes(lowerQuery) || name.includes(lowerQuery) || username.includes(lowerQuery);
+    });
+  }, [videos, searchQuery]);
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
   const lastVideoRef = useCallback(
     (node: HTMLDivElement | null) => {
       if (loading || loadingMore) return;
@@ -45,7 +62,7 @@ export function SuggestionsFeed() {
     [loading, loadingMore, hasMore]
   );
 
-   const fetchSuggestions = async (pageNum: number, append: boolean = false) => {
+  const fetchSuggestions = async (pageNum: number, append: boolean = false) => {
     if (append) setLoadingMore(true);
     else setLoading(true);
 
@@ -68,7 +85,7 @@ export function SuggestionsFeed() {
         setVideos(newVideos);
       }
 
-       setHasMore(newVideos.length === LIMIT);
+      setHasMore(newVideos.length === LIMIT);
     } catch (error) {
       console.error("Error fetching suggestions:", error);
     } finally {
@@ -77,13 +94,13 @@ export function SuggestionsFeed() {
     }
   };
 
-   useEffect(() => {
+  useEffect(() => {
     fetchSuggestions(1, false);
-     setPage(1);
+    setPage(1);
     setHasMore(true);
   }, []);
 
-   useEffect(() => {
+  useEffect(() => {
     if (page > 1) {
       fetchSuggestions(page, true);
     }
@@ -96,25 +113,62 @@ export function SuggestionsFeed() {
       </div>
     );
   }
-
-  if (videos.length === 0 && !loading) {
-    return (
-      <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-        لا توجد مقترحات حالياً
-      </div>
-    );
-  }
+ 
+if (filteredVideos.length === 0 && !loading) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
+      {searchQuery.trim() ? (
+        <>
+           <div
+            className="w-[180px]   text-black flex items-center justify-center rounded-[8px]"
+            style={{ fontFamily: 'Cairo, sans-serif',    fontWeight: 500,fontSize: '30px',lineHeight: '100%',
+              letterSpacing: '0%',
+              textAlign: 'center',
+            }}
+          >
+            لم نجد أي نتائج
+          </div>
+          
+           <p
+            className="mt-6"
+            style={{
+              fontFamily: 'Cairo, sans-serif',
+              fontWeight: 400,
+              fontSize: '20px',
+              lineHeight: '27px',
+              letterSpacing: '0%',
+              textAlign: 'center',
+              color: '#000000',
+              width: '403px',
+              height: '54px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+                تأكد من كتابة الكلمات بشكل صحيح أو حاول البحث
+                عن شيء آخر          </p>
+        </>
+      ) : (
+        <p className="text-gray-500 dark:text-gray-400 text-center">لا توجد مقترحات حالياً</p>
+      )}
+    </div>
+  );
+}
 
   const handlePlayVideo = (video: Video) => {
     setSelectedVideo(video);
-    router.push("/videos");
+    if (onVideoSelect) {
+      onVideoSelect(video);
+    } else {
+      router.push("/videos");
+    }
   };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-2">
-      {videos.map((video, index) => {
-        // ربط آخر عنصر بـ lastVideoRef لبدء تحميل المزيد
-        const isLast = index === videos.length - 1;
+      {filteredVideos.map((video, index) => {
+        const isLast = index === filteredVideos.length - 1;
         return (
           <div key={video._id} ref={isLast ? lastVideoRef : null}>
             <SuggestionCard
@@ -128,15 +182,13 @@ export function SuggestionsFeed() {
         );
       })}
 
-      {/* مؤشر تحميل المزيد */}
       {loadingMore && (
         <div className="col-span-1 md:col-span-2 flex justify-center py-4">
           <Loader />
         </div>
       )}
 
-      {/* رسالة انتهاء القائمة */}
-      {!hasMore && videos.length > 0 && (
+      {!hasMore && filteredVideos.length > 0 && (
         <div className="col-span-1 md:col-span-2 text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
           تم تحميل جميع الفيديوهات
         </div>

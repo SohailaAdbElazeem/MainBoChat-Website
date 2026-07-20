@@ -13,12 +13,7 @@ export default function SuggestionsPage() {
       <div className="w-full max-w-6xl">
          {selectedVideo ? (
            <div className="w-full mb-10">
-              <button 
-                onClick={() => setSelectedVideo(null)}
-                className="mb-4 px-4 py-2 bg-gray-200 rounded-lg dark:bg-gray-800"
-              >
-                إغلاق وعرض الكل
-              </button>
+                 <SuggestionsFeed onVideoSelect={setSelectedVideo} />
                <div className="w-full flex justify-center">
                </div>
            </div>
