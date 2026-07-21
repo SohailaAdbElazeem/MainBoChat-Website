@@ -161,8 +161,7 @@ export function FullscreenOverlay({
           }}
         />
 
-        {/* ✅ معلومات المستخدم + زر المتابعة (بنفس التصميم المطلوب) */}
-        <div className="absolute top-5 right-4 flex items-center gap-3 bg-black/30 rounded-[19px] px-3 py-2">
+         <div className="absolute top-5 right-4 flex items-center gap-3 bg-black/30 rounded-[19px] px-3 py-2">
           <img
             src={video.userimg}
             alt={video.name}
@@ -191,8 +190,7 @@ export function FullscreenOverlay({
           )}
         </div>
 
-        {/* الأزرار الجانبية (تشغيل، إعجاب، تعليق، مشاركة، تقديم/تأخير) */}
-        <div className="absolute top-20 right-2 flex flex-col items-center gap-2 py-5">
+         <div className="absolute top-20 right-2 flex flex-col items-center gap-2 py-5">
           {/* 1. الخيارات */}
           <div className="relative">
             <button
