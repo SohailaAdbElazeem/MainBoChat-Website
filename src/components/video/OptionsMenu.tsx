@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 interface OptionsMenuProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function OptionsMenu({
   className = "",
 }: OptionsMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations('OptionsMenu');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -45,18 +47,18 @@ export function OptionsMenu({
           className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2] disabled:opacity-50"
         >
           <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
-            <img src="/icons/eye.svg" className="w-5 h-5 invert-0 transform" style={{ filter: "brightness(0) saturate(100%)" }} alt="block" />
+            <img src="/icons/eye.svg" className="w-5 h-5 invert-0 transform" style={{ filter: "brightness(0) saturate(100%)" }} alt={t('block')} />
           </div>
-          <span className="text-black">{isBlocking ? "جاري الحظر..." : "لا أريد مشاهدة هذا"}</span>
+          <span className="text-black">{isBlocking ? t('blocking') : t('block')}</span>
         </button>
         <button
           onClick={onReport}
           className="w-full bg-white rounded-[20px] py-3 px-4 text-right flex items-center gap-2 cursor-pointer hover:bg-[#F2F2F2]"
         >
           <div className="h-8 w-8 bg-[#D8D8D8] flex items-center justify-center rounded-full">
-            <img src="/icons/flag.svg" className="w-4 h-4" alt="report" />
+            <img src="/icons/flag.svg" className="w-4 h-4" alt={t('report')} />
           </div>
-          <span className="text-black">إبلاغ عن المنشور</span>
+          <span className="text-black">{t('report')}</span>
         </button>
       </div>
     </div>

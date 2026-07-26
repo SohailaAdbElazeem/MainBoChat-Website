@@ -1,7 +1,9 @@
+// src/components/suggestions/SuggestionsFeed.tsx
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Video } from "@/types/video";
 import { SuggestionCard } from "./SuggestionCard";
 import Loader from "@/components/Loader";
@@ -17,6 +19,7 @@ interface SuggestionsFeedProps {
 }
 
 export function SuggestionsFeed({ onVideoSelect }: SuggestionsFeedProps) {
+  const t = useTranslations('SuggestionsFeed');
   const router = useRouter();
   const { setSelectedVideo } = useVideoStore((state) => state);
   const { searchQuery } = useSearchStore();
@@ -114,47 +117,43 @@ export function SuggestionsFeed({ onVideoSelect }: SuggestionsFeedProps) {
     );
   }
  
-if (filteredVideos.length === 0 && !loading) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
-      {searchQuery.trim() ? (
-        <>
-           <div
-            className="w-[180px]   text-black flex items-center justify-center rounded-[8px]"
-            style={{ fontFamily: 'Cairo, sans-serif',    fontWeight: 500,fontSize: '30px',lineHeight: '100%',
-              letterSpacing: '0%',
-              textAlign: 'center',
-            }}
-          >
-            لم نجد أي نتائج
-          </div>
-          
-           <p
-            className="mt-6"
-            style={{
-              fontFamily: 'Cairo, sans-serif',
-              fontWeight: 400,
-              fontSize: '20px',
-              lineHeight: '27px',
-              letterSpacing: '0%',
-              textAlign: 'center',
-              color: '#000000',
-              width: '403px',
-              height: '54px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-                تأكد من كتابة الكلمات بشكل صحيح أو حاول البحث
-                عن شيء آخر          </p>
-        </>
-      ) : (
-        <p className="text-gray-500 dark:text-gray-400 text-center">لا توجد مقترحات حالياً</p>
-      )}
-    </div>
-  );
-}
+  if (filteredVideos.length === 0 && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
+        {searchQuery.trim() ? (
+          <>
+            <div
+              className="w-[180px] text-black flex items-center justify-center rounded-[8px]"
+              style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 500, fontSize: '30px', lineHeight: '100%', letterSpacing: '0%', textAlign: 'center' }}
+            >
+              {t('no_results')}
+            </div>
+            <p
+              className="mt-6"
+              style={{
+                fontFamily: 'Cairo, sans-serif',
+                fontWeight: 400,
+                fontSize: '20px',
+                lineHeight: '27px',
+                letterSpacing: '0%',
+                textAlign: 'center',
+                color: '#000000',
+                width: '403px',
+                height: '54px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {t('no_results_message')}
+            </p>
+          </>
+        ) : (
+          <p className="text-gray-500 dark:text-gray-400 text-center">{t('no_suggestions')}</p>
+        )}
+      </div>
+    );
+  }
 
   const handlePlayVideo = (video: Video) => {
     setSelectedVideo(video);
@@ -190,7 +189,7 @@ if (filteredVideos.length === 0 && !loading) {
 
       {!hasMore && filteredVideos.length > 0 && (
         <div className="col-span-1 md:col-span-2 text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
-          تم تحميل جميع الفيديوهات
+          {t('all_loaded')}
         </div>
       )}
     </div>

@@ -1,8 +1,9 @@
-// app/videos/page.tsx
+// src/app/videos/page.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import toast from "react-hot-toast";
 import Loader from "@/components/Loader";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
@@ -17,6 +18,7 @@ import { useVideoStore } from "@/store/videoStore";
 import { getToken, getUserId } from "@/lib/auth-client";
 
 export default function VideosPage() {
+  const t = useTranslations('VideosPage');
   const router = useRouter();
   const { selectedVideo, setSelectedVideo } = useVideoStore((state) => state);
 
@@ -138,13 +140,13 @@ export default function VideosPage() {
           }
         });
         closeUnfollowModal();
-        toast.success(modalType === "follow" ? "تم المتابعة" : "تم إلغاء المتابعة");
+        toast.success(modalType === "follow" ? t('follow_success') : t('unfollow_success'));
       } else {
-        toast.error(data.message || "حدث خطأ");
+        toast.error(data.message || t('error_occurred'));
       }
     } catch (err) {
       console.error("Follow error:", err);
-      toast.error("خطأ في الاتصال");
+      toast.error(t('connection_error'));
     } finally {
       setIsUnfollowing(false);
     }
@@ -244,7 +246,7 @@ export default function VideosPage() {
   if (!displayVideo) {
     return (
       <div className="text-center mt-20 text-gray-500 dark:text-gray-400">
-        لا توجد فيديوهات
+        {t('no_videos')}
       </div>
     );
   }
@@ -254,13 +256,13 @@ export default function VideosPage() {
   return (
     <div className="min-h-screen pt-1 flex justify-center">
       <div className="w-fit">
-        <h2 className="mb-4 text-xl font-bold ml-2">الريلز</h2>
+        <h2 className="mb-4 text-xl font-bold ml-2">{t('reels_title')}</h2>
         <div className="flex items-start gap-4">
           <VideoPlayer
             ref={videoRef}
             src={video.video?.[0]?.video || ""}
             username={video.username || "username"}
-            description={video.description || "لا يوجد وصف"}
+            description={video.description || t('no_description')}
             progress={progress}
             onTimeUpdate={handleTimeUpdate}
             onSeek={handleSeek}
@@ -353,12 +355,12 @@ export default function VideosPage() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50">
           <div className="w-[237px] h-[271px] rounded-[26px] flex flex-col items-center justify-between py-6" style={{ background: "#00000080", backdropFilter: "blur(15px)" }}>
             <h2 className={`${modalType === "unfollow" ? "text-[#F92429]" : "text-white"} font-semibold text-[18px] text-center mt-4`}>
-              {modalType === "unfollow" ? "إلغاء المتابعة" : "متابعة"}
+              {modalType === "unfollow" ? t('unfollow') : t('follow')}
             </h2>
             <p className="text-white font-semibold text-[12px] text-center w-[226px] mt-5">
               {modalType === "unfollow" 
-                ? "لن ترى تحديثات هذا المستخدم في صفحتك بعد الآن" 
-                : "ستظهر تحديثات هذا المستخدم في صفحتك"}
+                ? t('unfollow_message')
+                : t('follow_message')}
             </p>
             <button 
               onClick={confirmAction} 
@@ -366,12 +368,12 @@ export default function VideosPage() {
               className="w-[185px] h-[50px] rounded-[19px] border border-[#D72229] flex items-center justify-center bg-transparent mt-7"
             >
               <span className="text-[#D72229] font-semibold">
-                {isUnfollowing ? "جاري..." : (modalType === "unfollow" ? "إلغاء المتابعة" : "متابعة")}
+                {isUnfollowing ? t('loading') : (modalType === "unfollow" ? t('unfollow') : t('follow'))}
               </span>
             </button>
             <div className="w-[239px] h-[0px] border-t border-[#70707033] my-2" />
             <button onClick={closeUnfollowModal} className="w-[185px] h-[50px] rounded-[19px] border border-[#D72229] flex items-center justify-center bg-[#D72229]">
-              <span className="text-white font-semibold">إلغاء</span>
+              <span className="text-white font-semibold">{t('cancel')}</span>
             </button>
           </div>
         </div>

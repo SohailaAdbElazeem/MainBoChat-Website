@@ -18,8 +18,7 @@ interface FullscreenOverlayProps {
   onBlock?: () => void;
   onReport?: () => void;
   t?: any;
-  // ✅ جديد: حالة المتابعة ودالة التبديل
-  isFollowing?: boolean;
+   isFollowing?: boolean;
   onFollowToggle?: () => void;
 }
 

@@ -1,0 +1,100 @@
+{
+     "GlobalSearch": {
+    "search_placeholder": "اكتب ما تبحث عنه هنا",
+    "clear_all": "حذف الكل",
+    "recent_searches": "سجل البحث",
+    "loading": "جاري التحميل...",
+    "no_recent_searches": "لا توجد عمليات بحث حديثة",
+    "you_might_like": "قد يعجبك",
+    "loading_suggestions": "جاري تحميل الاقتراحات...",
+    "no_suggestions": "لا توجد اقتراحات",
+    "searching": "جاري البحث…",
+    "no_results": "لا توجد نتائج",
+    "view_more_results": "مشاهدة المزيد من النتائج",
+    "confirm_logout": "تأكيد تسجيل الخروج",
+    "logout_confirm_message": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+    "cancel": "إلغاء",
+    "logout": "خروج"
+  },
+ "SideButtons": {
+    "user_avatar": "صورة المستخدم",
+    "following": "متابع",
+    "not_following": "غير متابع",
+    "comment": "تعليق",
+    "share": "مشاركة",
+    "fullscreen": "شاشة كاملة",
+    "options": "خيارات",
+    "play": "تشغيل",
+    "pause": "إيقاف",
+    "previous": "السابق",
+    "next": "التالي"
+  },
+   "VideosPage": {
+    "reels_title": "الريلز",
+    "no_videos": "لا توجد فيديوهات",
+    "no_description": "لا يوجد وصف",
+    "follow": "متابعة",
+    "unfollow": "إلغاء المتابعة",
+    "follow_message": "ستظهر تحديثات هذا المستخدم في صفحتك",
+    "unfollow_message": "لن ترى تحديثات هذا المستخدم في صفحتك بعد الآن",
+    "follow_success": "تم المتابعة بنجاح",
+    "unfollow_success": "تم إلغاء المتابعة بنجاح",
+    "error_occurred": "حدث خطأ",
+    "connection_error": "خطأ في الاتصال",
+    "cancel": "إلغاء",
+    "loading": "جاري..."
+  },
+ "ShareOverlay": {
+    "title": "شارك الفيديو",
+    "placeholder": "اكتب نصاً مشاركاً (اختياري)",
+    "share_button": "شارك",
+    "sharing": "جاري الشير...",
+    "close": "إغلاق"
+  },
+  "CommentOverlay": {
+    "title": "التعليقات",
+    "close": "إغلاق",
+    "no_comments": "لا توجد تعليقات",
+    "be_first": "كن أول من يعلق!",
+    "write_comment": "اكتب تعليقك...",
+    "post": "نشر",
+    "user": "مستخدم",
+    "user_avatar": "صورة المستخدم",
+    "like": "إعجاب",
+    "menu": "القائمة",
+    "reply": "رد",
+    "block": "حجب",
+    "report": "إبلاغ",
+    "now": "الآن",
+    "minutes_ago": "{count} دقائق مضت",
+    "hours_ago": "{count} ساعات مضت",
+    "days_ago": "{count} أيام مضت",
+    "months_ago": "{count} شهور مضت"
+  },
+   "OptionsMenu": {
+    "block": "لا أريد مشاهدة هذا",
+    "blocking": "جاري الحظر...",
+    "report": "إبلاغ عن المنشور"
+  },
+  "SuggestionCard": {
+    "user": "مستخدم",
+    "views": "مشاهدات",
+    "now": "الآن",
+    "minutes_ago": "منذ {count} دقيقة",
+    "hours_ago": "منذ {count} ساعة",
+    "days_ago": "منذ {count} يوم",
+    "months_ago": "منذ {count} شهر",
+    "years_ago": "منذ {count} سنة"
+  },
+  "SuggestionsFeed": {
+    "no_results": "لم نجد أي نتائج",
+    "no_results_message": "تأكد من كتابة الكلمات بشكل صحيح أو حاول البحث عن شيء آخر",
+    "no_suggestions": "لا توجد مقترحات حالياً",
+    "all_loaded": "تم تحميل جميع الفيديوهات"
+  },
+  "LayoutRightSide": {
+    "reels": "الريلز",
+    "suggestions": "الاقتراحات"
+  }
+}
+

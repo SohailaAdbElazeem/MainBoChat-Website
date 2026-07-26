@@ -1,0 +1,100 @@
+{
+    "GlobalSearch": {
+    "search_placeholder": "Search here...",
+    "clear_all": "Clear All",
+    "recent_searches": "Recent Searches",
+    "loading": "Loading...",
+    "no_recent_searches": "No recent searches",
+    "you_might_like": "You might like",
+    "loading_suggestions": "Loading suggestions...",
+    "no_suggestions": "No suggestions",
+    "searching": "Searching...",
+    "no_results": "No results found",
+    "view_more_results": "View More Results",
+    "confirm_logout": "Confirm Logout",
+    "logout_confirm_message": "Are you sure you want to log out?",
+    "cancel": "Cancel",
+    "logout": "Logout"
+  },
+
+    "SideButtons": {
+    "user_avatar": "User Avatar",
+    "following": "Following",
+    "not_following": "Not Following",
+    "comment": "Comment",
+    "share": "Share",
+    "fullscreen": "Fullscreen",
+    "options": "Options",
+    "play": "Play",
+    "pause": "Pause",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "VideosPage": {
+    "reels_title": "Reels",
+    "no_videos": "No videos found",
+    "no_description": "No description",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "follow_message": "You will see this user's updates on your page",
+    "unfollow_message": "You will no longer see this user's updates on your page",
+    "follow_success": "Followed successfully",
+    "unfollow_success": "Unfollowed successfully",
+    "error_occurred": "An error occurred",
+    "connection_error": "Connection error",
+    "cancel": "Cancel",
+    "loading": "Loading..."
+  },
+ "ShareOverlay": {
+    "title": "Share Video",
+    "placeholder": "Write a sharing message (optional)",
+    "share_button": "Share",
+    "sharing": "Sharing...",
+    "close": "Close"
+  },
+   "CommentOverlay": {
+    "title": "Comments",
+    "close": "Close",
+    "no_comments": "No comments yet",
+    "be_first": "Be the first to comment!",
+    "write_comment": "Write your comment...",
+    "post": "Post",
+    "user": "User",
+    "user_avatar": "User avatar",
+    "like": "Like",
+    "menu": "Menu",
+    "reply": "Reply",
+    "block": "Block",
+    "report": "Report",
+    "now": "Now",
+    "minutes_ago": "{count} minutes ago",
+    "hours_ago": "{count} hours ago",
+    "days_ago": "{count} days ago",
+    "months_ago": "{count} months ago"
+  },
+   "OptionsMenu": {
+    "block": "I don't want to see this",
+    "blocking": "Blocking...",
+    "report": "Report this post"
+  },
+  "SuggestionCard": {
+    "user": "User",
+    "views": "Views",
+    "now": "Now",
+    "minutes_ago": "{count} minutes ago",
+    "hours_ago": "{count} hours ago",
+    "days_ago": "{count} days ago",
+    "months_ago": "{count} months ago",
+    "years_ago": "{count} years ago"
+  },
+  "SuggestionsFeed": {
+    "no_results": "No results found",
+    "no_results_message": "Check your spelling or try searching for something else",
+    "no_suggestions": "No suggestions available",
+    "all_loaded": "All videos loaded"
+  },
+ "LayoutRightSide": {
+    "reels": "Reels",
+    "suggestions": "Suggestions"
+  }
+}

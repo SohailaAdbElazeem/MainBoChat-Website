@@ -1,156 +1,134 @@
-// "use client";
-// import React, { createContext, useContext, useState, ReactNode } from "react";
+ // src/contexts/TranslationContext.tsx
+"use client";
 
-// type TranslationContextType = {
-//   language: string;
-//   translate: (text: string) => Promise<string>;
-//   changeLanguage: (lang: string) => void;
-// };
-
-// const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
-
-// export function TranslationProvider({ children }: { children: ReactNode }) {
-//   const [language, setLanguage] = useState<string>("ar"); // اللغة الافتراضية
-
-//   const changeLanguage = (lang: string) => {
-//     setLanguage(lang);
-//   };
-
-//   const translate = async (textToTranslate: string): Promise<string> => {
-//     // إذا كانت اللغة الحالية عربية، لا تترجم وأعد النص الأصلي فوراً
-//     if (language === "ar") return textToTranslate;
-//     if (!textToTranslate.trim()) return textToTranslate;
-
-//     try {
-//       // نفس الطلب الذي قمتِ بتجربته في Postman تماماً
-//       const response = await fetch("https://bo-chat.space/api/translate", {
-//         method: "POST",
-//         headers: { 
-//           "Content-Type": "application/json" 
-//         },
-//         body: JSON.stringify({
-//           text: textToTranslate,
-//           to: language, // ستكون "en" عند التحويل
-//         }),
-//       });
-
-//       if (!response.ok) return textToTranslate;
-      
-//       const data = await response.json();
-
-//       // هنا نلتقط الـ translatedText كما ظهر لكِ في Postman
-//       if (data.success && data.translatedText) {
-//         return data.translatedText; 
-//       }
-      
-//       return textToTranslate;
-//     } catch (error) {
-//       console.error("Translation API Error:", error);
-//       return textToTranslate; // حماية للموقع: إذا فشل الـ API يعود النص العربي كما هو
-//     }
-//   };
-
-//   return (
-//     <TranslationContext.Provider value={{ language, translate, changeLanguage }}>
-//       {children}
-//     </TranslationContext.Provider>
-//   );
-// }
-
-// export function useTranslation() {
-//   const context = useContext(TranslationContext);
-//   if (!context) throw new Error("useTranslation must be used within a TranslationProvider");
-//   return context;
-// }
-
-
-// import React, { createContext, useContext, useState, useEffect } from 'react';
-
-// type Language = 'ar' | 'en';
-
-// type TranslationContextType = {
-//   language: Language;
-//   setLanguage: (lang: Language) => void;
-// };
-
-// const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
-
-// export const TranslationProvider = ({ children }: { children: React.ReactNode }) => {
-//   const [language, setLanguage] = useState<Language>('ar');
-
-//   // التأكد من جلب اللغة المحفوظة فور تحميل المتصفح للملف
-//   useEffect(() => {
-//     const savedLang = localStorage.getItem('siteLanguage') as Language;
-//     if (savedLang) {
-//       setLanguage(savedLang);
-//     }
-//   }, []);
-
-//   const handleSetLanguage = (lang: Language) => {
-//     setLanguage(lang);
-//     localStorage.setItem('siteLanguage', lang);
-//   };
-
-//   return (
-//     <TranslationContext.Provider value={{ language, setLanguage: handleSetLanguage }}>
-//       {children}
-//     </TranslationContext.Provider>
-//   );
-// };
-
-// export const useTranslation = () => {
-//   const context = useContext(TranslationContext);
-//   if (!context) throw new Error('useTranslation must be used within TranslationProvider');
-//   return context;
-// };
-
-
-
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 type Language = 'ar' | 'en';
 
 type TranslationContextType = {
   language: Language;
   setLanguage: (lang: Language) => void;
-  translate: (text: string) => Promise<string>;
+  translate: (text: string, targetLang?: Language) => Promise<string>;
+  isTranslating: boolean;
+  clearCache: () => void;
 };
 
-// 1. التعريف يجب أن يكون هنا (خارج المكون)
+// 🗂️ Cache للترجمات لتجنب الطلبات المتكررة
+const translationCache = new Map<string, string>();
+
 const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
 
 export const TranslationProvider = ({ children }: { children: React.ReactNode }) => {
   const [language, setLanguage] = useState<Language>('ar');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
+  // تحميل اللغة المحفوظة
   useEffect(() => {
-    const savedLang = localStorage.getItem('siteLanguage') as Language;
-    if (savedLang) setLanguage(savedLang);
+    try {
+      const savedLang = localStorage.getItem('siteLanguage') as Language;
+      if (savedLang && (savedLang === 'ar' || savedLang === 'en')) {
+        setLanguage(savedLang);
+      }
+    } catch (error) {
+      console.error('Failed to load language from localStorage:', error);
+    }
   }, []);
 
-  const handleSetLanguage = (lang: Language) => {
+  // حفظ اللغة عند تغييرها
+  const handleSetLanguage = useCallback((lang: Language) => {
     setLanguage(lang);
-    localStorage.setItem('siteLanguage', lang);
-  };
-
-  const translate = async (text: string): Promise<string> => {
     try {
-      const res = await fetch('https://bo-chat.space/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, to: language }),
-      });
-      const data = await res.json();
-      return data.translatedText || text;
-    } catch (e) {
-      console.error("Translation error:", e);
-      return text;
+      localStorage.setItem('siteLanguage', lang);
+      // تحديث اتجاه الصفحة إذا لزم الأمر
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = lang;
+    } catch (error) {
+      console.error('Failed to save language to localStorage:', error);
     }
-  };
+  }, []);
 
-  // 2. استخدام TranslationContext هنا بشكل صحيح
+  // دالة الترجمة مع تحسينات
+  const translate = useCallback(
+    async (text: string, targetLang?: Language): Promise<string> => {
+      // 1️⃣ التحقق من صحة النص
+      if (!text || text.trim().length === 0) {
+        return text;
+      }
+
+      // 2️⃣ تحديد اللغة المستهدفة
+      const target = targetLang || language;
+
+      // 3️⃣ التحقق من cache
+      const cacheKey = `${text}_${target}`;
+      if (translationCache.has(cacheKey)) {
+        return translationCache.get(cacheKey)!;
+      }
+
+      // 4️⃣ إلغاء الطلب السابق إذا كان موجوداً
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      setIsTranslating(true);
+
+      try {
+        const res = await fetch('https://bo-chat.space/api/translate', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            text, 
+            to: target 
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error(`Translation API error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        const translatedText = data.translatedText || text;
+
+        // حفظ في cache
+        translationCache.set(cacheKey, translatedText);
+        
+        return translatedText;
+      } catch (error) {
+        // تجاهل أخطاء الإلغاء (AbortError)
+        if (error instanceof Error && error.name === 'AbortError') {
+          return text;
+        }
+        console.error('Translation error:', error);
+        return text;
+      } finally {
+        setIsTranslating(false);
+        abortControllerRef.current = null;
+      }
+    },
+    [language]
+  );
+
+  // مسح الـ Cache
+  const clearCache = useCallback(() => {
+    translationCache.clear();
+  }, []);
+
   return (
-    <TranslationContext.Provider value={{ language, setLanguage: handleSetLanguage, translate }}>
+    <TranslationContext.Provider
+      value={{
+        language,
+        setLanguage: handleSetLanguage,
+        translate,
+        isTranslating,
+        clearCache,
+      }}
+    >
       {children}
     </TranslationContext.Provider>
   );
@@ -158,6 +136,8 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
 
 export const useTranslation = () => {
   const context = useContext(TranslationContext);
-  if (!context) throw new Error('useTranslation must be used within TranslationProvider');
+  if (!context) {
+    throw new Error('useTranslation must be used within TranslationProvider');
+  }
   return context;
 };
