@@ -2,7 +2,7 @@ export type SearchResult = {
   id: string;
   title: string;
   subtitle?: string;
-  href?: string; // if provided, Enter will navigate
+  href?: string; 
   icon?: React.ReactNode;
   meta?: string;
 };

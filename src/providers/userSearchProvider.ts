@@ -7,28 +7,22 @@ export const userSearchProvider: SearchProvider = {
   label: 'المستخدمون',
   search: async (query: string): Promise<SearchResult[]> => {
     if (!query.trim()) {
-      // console.log('🔍 [userSearch] النص فارغ، نعيد []');
-      return [];
+       return [];
     }
 
     if (typeof window === 'undefined') {
-      // console.warn('⚠️ [userSearch] ليس في بيئة متصفح');
-      return [];
+       return [];
     }
 
-    console.log('📋 [userSearch] محتويات localStorage بالكامل:');
-    const allKeys = Object.keys(localStorage);
+     const allKeys = Object.keys(localStorage);
     if (allKeys.length === 0) {
-      // console.log('  (localStorage فارغ تماماً!)');
-    } else {
+     } else {
       allKeys.forEach(key => {
         const value = localStorage.getItem(key);
         const displayValue = value ? value.substring(0, 60) + (value.length > 60 ? '...' : '') : '(فارغ)';
-        // console.log(`  🔑 "${key}": ${displayValue}`);
-      });
+       });
     }
 
-    // استخراج userData و accessToken
     let userDataRaw = null;
     let accessToken = null;
 
@@ -37,8 +31,7 @@ export const userSearchProvider: SearchProvider = {
       const value = localStorage.getItem(key);
       if (value) {
         userDataRaw = value;
-        // console.log(`✅ [userSearch] تم العثور على userData في المفتاح: "${key}"`);
-        break;
+         break;
       }
     }
 
@@ -47,14 +40,12 @@ export const userSearchProvider: SearchProvider = {
       const value = localStorage.getItem(key);
       if (value) {
         accessToken = value;
-        // console.log(`✅ [userSearch] تم العثور على التوكن في المفتاح: "${key}"`);
-        break;
+         break;
       }
     }
 
     if (!userDataRaw || !accessToken) {
-      // console.warn('⚠️ [userSearch] بيانات المصادقة غير موجودة');
-      return [{
+       return [{
         id: 'login-required',
         title: 'سجل دخولك للبحث عن المستخدمين',
         subtitle: 'تسجيل الدخول يمنحك نتائج أكثر',
@@ -66,28 +57,17 @@ export const userSearchProvider: SearchProvider = {
     try {
       user = JSON.parse(userDataRaw);
     } catch (parseError) {
-      // console.error('❌ [userSearch] فشل تحليل userData:', parseError);
-      return [];
+       return [];
     }
 
     const userId = user._id || user.id || user.userId;
     if (!userId) {
-      // console.warn('⚠️ [userSearch] معرف المستخدم غير موجود');
-      return [];
+       return [];
     }
-
-    // // console.log('✅ [userSearch] تم العثور على بيانات المستخدم:', {
-    //   userId,
-    //   name: user.name || user.username || user.displayName,
-    // });
-
     const url = `https://bo-chat.space/search?userid=${userId}&value=${encodeURIComponent(query)}`;
-    // console.log(`🔍 [userSearch] إرسال طلب إلى: ${url}`);
-    // console.log("🔑 accessToken =", accessToken);
-
+     
     try {
-      // 🔥 التغيير الجوهري: إضافة "Bearer " قبل التوكن
-      const res = await fetch(url, {
+       const res = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -104,29 +84,22 @@ export const userSearchProvider: SearchProvider = {
         } catch (_) {
           errorText = 'تعذر قراءة نص الخطأ';
         }
-        // console.error(`❌ [userSearch] استجابة غير ناجحة: ${res.status}`, errorText);
-
-        // ✅ معالجة 401: تسجيل الخروج التلقائي
+       
         if (res.status === 401) {
-          // console.warn('⛔ [userSearch] انتهت صلاحية الجلسة (401)');
-          localStorage.clear(); // مسح جميع البيانات
-          alert('انتهت صلاحية الجلسة، سيتم تسجيل الخروج'); // أو استخدم toast
-          // إعادة التوجيه إلى صفحة تسجيل الدخول
-          setTimeout(() => {
+           localStorage.clear(); 
+          alert('انتهت صلاحية الجلسة، سيتم تسجيل الخروج'); 
+           setTimeout(() => {
             if (typeof window !== 'undefined') {
               window.location.href = '/login';
             }
           }, 500);
-          return []; // لا نعرض أي نتيجة بحث
+          return [];  
         }
         return [];
       }
-
       const data = await res.json();
-      console.log('✅ [userSearch] البيانات المستلمة:', data);
-
-      // استخراج المصفوفة (نتأكد من وجود users)
-      let items: any[] = [];
+ 
+       let items: any[] = [];
       if (Array.isArray(data)) {
         items = data;
       } else if (data.users && Array.isArray(data.users)) {
@@ -138,19 +111,13 @@ export const userSearchProvider: SearchProvider = {
       } else if (data.response && Array.isArray(data.response)) {
         items = data.response;
       } else {
-        // console.warn('⚠️ [userSearch] لم نجد مصفوفة في الاستجابة، الهيكل:', Object.keys(data));
-        return [];
+         return [];
       }
 
       if (items.length === 0) {
-        // console.log('📭 [userSearch] المصفوفة فارغة، لا نتائج');
-        return [];
+         return [];
       }
-
-      console.log(`📊 [userSearch] عدد النتائج: ${items.length}`);
-
-      // عرض أول 5 نتائج فقط (كما طلبت)
-      return items.slice(0, 5).map((item: any) => ({
+       return items.slice(0, 5).map((item: any) => ({
         id: item._id || item.id || `user-${Math.random()}`,
         title: item.name || item.username || 'مستخدم',
         subtitle: item.email || item.bio || '',
@@ -158,8 +125,7 @@ export const userSearchProvider: SearchProvider = {
         meta: item.followers ? `${item.followers} متابع` : '',
       }));
     } catch (fetchError) {
-      // console.error('❌ [userSearch] خطأ في طلب الشبكة:', fetchError);
-      return [];
+       return [];
     }
   },
 };

@@ -7,14 +7,12 @@ export const generalPostsProvider: SearchProvider = {
   label: 'المنشورات العامة',
   search: async (query: string): Promise<SearchResult[]> => {
     if (!query.trim()) {
-      console.log('🔍 البحث عن المنشورات: النص فارغ، نعيد []');
-      return [];
+       return [];
     }
 
     const GENERAL_USER_ID = '686695a04211804ef3875339';
     const url = `https://bo-chat.space/homepage/posts/GetPosts/${GENERAL_USER_ID}?page=1&limit=1000&value=${encodeURIComponent(query)}`;
-    console.log(`🔍 [generalPosts] إرسال طلب إلى: ${url}`);
-
+ 
     try {
       const res = await fetch(url);
 
@@ -25,22 +23,16 @@ export const generalPostsProvider: SearchProvider = {
         } catch (_) {
           errorText = 'تعذر قراءة نص الخطأ';
         }
-        console.error(`❌ [generalPosts] استجابة غير ناجحة: ${res.status} ${res.statusText}`, errorText);
-        return [];
+         return [];
       }
 
       let data;
       try {
         data = await res.json();
       } catch (jsonError) {
-        console.error('❌ [generalPosts] فشل تحليل JSON:', jsonError);
-        const rawText = await res.text();
-        console.error('📄 [generalPosts] النص الخام المستلم:', rawText);
-        return [];
+         const rawText = await res.text();
+         return [];
       }
-
-      console.log('✅ [generalPosts] البيانات المستلمة:', data);
-
       // استخراج المصفوفة من عدة مفاتيح محتملة
       let items: any[] = [];
       if (Array.isArray(data)) {
@@ -54,12 +46,11 @@ export const generalPostsProvider: SearchProvider = {
       } else if (data.data && Array.isArray(data.data)) {
         items = data.data;
       } else {
-        console.warn('⚠️ [generalPosts] لم نجد مصفوفة في الاستجابة، الهيكل:', Object.keys(data));
-        return [];
+         return [];
       }
 
       if (items.length === 0) {
-        console.log('📭 [generalPosts] المصفوفة فارغة، لا نتائج');
+        // console.log('📭 [generalPosts] المصفوفة فارغة، لا نتائج');
       }
 
       return items.slice(0, 5).map((item: any) => ({
@@ -70,10 +61,7 @@ export const generalPostsProvider: SearchProvider = {
         meta: item.createdAt ? new Date(item.createdAt).toLocaleDateString('ar-EG') : '',
       }));
     } catch (fetchError) {
-      console.error('❌ [generalPosts] خطأ في طلب الشبكة:', fetchError);
-      return [];
+       return [];
     }
   },
 };
-
- 

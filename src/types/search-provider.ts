@@ -1,6 +1,6 @@
 export type SearchProvider = {
-  key: string;               // unique key: e.g., 'products', 'pages'
-  label: string;             // section header
+  key: string;               
+  label: string;             
   search: (q: string) => Promise<SearchResult[]> | SearchResult[];
 };
 
