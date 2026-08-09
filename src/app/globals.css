@@ -117,10 +117,12 @@ body {
 
 /* إخفاء شريط التمرير لجميع العناصر في جميع الصفحات */
 *::-webkit-scrollbar {
-  display: none;  /* لمتصفحات WebKit (Chrome, Safari, Edge) */
+  display: none;  
 }
 
 * {
-  -ms-overflow-style: none;  /* لـ Internet Explorer و Edge القديم */
-  scrollbar-width: none;     /* لـ Firefox */
+  -ms-overflow-style: none;  
+  scrollbar-width: none;     
 }
+
+/*  */
