@@ -1,4 +1,155 @@
 {
+   "Common": {
+    "dir": "rtl",
+    "loading": "جاري التحميل...",
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "error": "حدث خطأ",
+    "success": "تم بنجاح",
+    "save": "حفظ",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "view": "عرض",
+    "share": "مشاركة",
+    "copy": "نسخ",
+    "copied": "تم النسخ",
+    "download": "تنزيل",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق"
+   },
+  "LoginPage": {
+    "loading": "استني شوية... جاري تحميل البيانات",
+    "encrypted": "الشات بتاعك مشفر من الأول للآخر",
+    "qrError": "فشل في تحميل QR Code",
+    "scanNow": "امسح الكود الآن",
+    "welcome": "أهلاً بيك في بو شات Web",
+    "subWelcome": "ادخل على حسابك بسهولة ومن غير ما تكتب كلمة سر",
+    "stepsTitle": "علشان تسجّل دخولك:",
+    "step1": " افتح تطبيق بو شات على موبايلك",
+    "step2": " روح للإعدادات",
+    "step3": "  اختار تسجيل الدخول من الويب",
+    "step4": "  امسح الكود بالكاميرا",
+    "step5": "  هتلاقي حسابك فتح تلقائي",
+    "changeLang": "English"
+  },
+
+   "Profile": {
+    "privateBox": "درج خاص",
+    "loading": "جارى التحميل",
+    "noPosts": "لا يوجد فضفضات",
+    "post": "فضفضة",
+    "viewImage": "عرض الصورة",
+    "qrCode": "إجراء الكود",
+    "downloadCard": "تنزيل البطاقة",
+    "share": "مشاركة",
+    "close": "إغلاق",
+    "closeQR": "إغلاق الكود",
+    "friendsHere": "صاحبي هنا",
+    "following": "متابعين",
+    "views": "مشاهدة",
+    "viewAllFollowers": "اطلع الان علي جميع المتابعين",
+    "stars": "نجوم",
+    "hasStars": "حصل هذا الدرج علي",
+    "noRatings": "لم يحصل هذا الدرج علي اي تقييم",
+     "userNotFound": "المستخدم غير موجود أو حدث خطأ.",
+    "aboutDefault": "أنا هنا لأتواصل وأكتشف عوالم جديدة مع أشخاص يشبهونني",
+    "privateFallback": "مرحبا هذا الدرج خاص الآن فقط من اقبل متابعتهم يمكنهم رؤية فضفضاتي",
+    "copyUsername": "انسخ اسم المستخدم أو امسح الكود لتضيفني",
+    "joinMe": "انضم إلي في رحلتي على بو شات",
+    "checkProfile": "تفقد الملف الشخصي الخاص بي الآن",
+    "cardNotReady": "البطاقة غير جاهزة",
+    "preparingCard": "جاري إعداد البطاقة للتحميل...",
+    "downloadSuccess": "تم تنزيل البطاقة بنجاح",
+    "downloadFailed": "فشل التنزيل",
+    "unknownError": "خطأ غير معروف",
+    "mustLogin": "يجب تسجيل الدخول أولاً",
+    "userNotFound2": "لم يتم العثور على معرف المستخدم",
+    "blockSuccess": "تم حظر {userName} بنجاح",
+    "blockFailed": "حدث خطأ أثناء محاولة الحظر",
+    "reportSuccess": "تم الإبلاغ عن {userName} بنجاح",
+    "reportFailed": "حدث خطأ أثناء إرسال البلاغ",
+     "rateSuccess": "تم تقييم المستخدم بنجاح",
+    "rateFailed": "حدث خطأ أثناء التقييم",
+    "invalidUserId": "معرّف المستخدم غير موجود",
+    "copyLinkSuccess": "تم نسخ الرابط إلى الحافظة",
+    "copyLinkFailed": "فشل النسخ",
+    "accountCopied": "تم نسخ الحساب: {username}",
+    "followers": "متابعين",
+    "followingCount": "متابع",
+    "noDescription": "لا يوجد وصف",
+    "1000posts": "1000+ فضفضة"
+  },
+
+   "ActionMenu": {
+    "rate": "تقييم",
+    "report": "ابلاغ",
+    "block": "حجب",
+    "reportTitle": "ابلاغ عن الدرج",
+    "reportQuestion": "ليه بتبلغ عن الدرج ده؟",
+    "noRatings": "مافيش تقييمات لسه",
+    "noRatingsSub": "ماحدش قيّم لسه خليك أنت أول واحد يكسر الصمت",
+    "loadingRatings": "جاري تحميل التقييمات...",
+    "writeComment": "اكتب تقييمك هنا",
+    "submitRating": "تقييم",
+    "submitting": "جاري...",
+    "delete": "حذف",
+    "reportUser": "ابلاغ",
+    "successTitle": "ابلاغ عن الدرج",
+    "successMessage": "تم استلام بلاغك\nهيساعدنا بلاغك في مراجعة المحتوى والتأكد إن كل حاجة ماشية بشكل آمن وصحيح",
+      "reportReasons": {
+      "inappropriate": "محتوى غير لائق",
+      "misleading": "معلومات مضللة",
+      "spam": "رسائل مزعجة أو إعلان",
+      "harmful": "خطاب كراهية أو تمييز",
+      "personal_info": "نشر معلومات شخصية"
+    },
+   "mustLogin": "يرجى تسجيل الدخول أولاً",
+    "noUserTarget": "لا يوجد مستخدم مستهدف للتقييم",
+    "rateSuccess": "تم إرسال تقييمك بنجاح",
+    "rateError": "حدث خطأ أثناء إرسال التقييم",
+    "deleteSuccess": "تم حذف التقييم",
+    "deleteError": "حدث خطأ أثناء حذف التقييم",
+    "reportSuccess": "تم الإبلاغ عن {userName}",
+    "reportError": "حدث خطأ أثناء الإبلاغ",
+    "blockSuccess": "تم حجب {userName}",
+    "blockError": "حدث خطأ أثناء الحجب",
+    "reportSent": "تم إرسال البلاغ بنجاح",
+    "reportFailed": "حدث خطأ أثناء إرسال البلاغ",
+    "cannotLoadRatings": "لا يمكن تحميل التقييمات: معرّف المستخدم غير متوفر",
+    "userDataIncomplete": "بيانات المستخدم غير مكتملة"
+  },
+  "BlockConfirmModal": {
+    "title": "حجب المستخدم",
+    "body": "بعد ما تحظر المستخدم مش هيقدر يشوف ملفك الخاص ولا تفضيلاتك ولا يبعتلك رسائل، ولو كان متابع هيتشال من عندك تلقائي.",
+    "confirm": "حجب",
+    "canceling": "جاري الحجب...",
+    "cancel": "إلغاء",
+    "blockPrefix": "هتعمل حظر لـ {username}"
+  },
+  "FollowButton": {
+    "following": "إلغاء",
+    "requested": "إلغاء الإرسال",
+    "follow": "متابعة",
+    "loading": "...",
+    "userNotFound": "لم يتم العثور على معرف المستخدم.",
+    "errorOccurred": "حدث خطأ. حاول مرة أخرى."
+  },
+
+   "NetworkMonitor": {
+    "onlineTitle": "تم استعادة الاتصال",
+    "onlineSubtitle": "شبكة الإنترنت تعمل بشكل طبيعي",
+    "offlineTitle": "لا يوجد اتصال",
+    "offlineSubtitle": "يرجى التحقق من الإنترنت",
+    "slowTitle": "شبكة ضعيفة",
+    "slowSubtitle": "الاتصال بالإنترنت بطيء",
+    "improvedTitle": "تحسن الاتصال",
+    "improvedSubtitle": "الإنترنت عاد لطبيعته",
+    "latencyTitle": "بطء في الاستجابة",
+    "latencySubtitle": "الإنترنت غير مستقر"
+  },
+
+  
      "GlobalSearch": {
     "search_placeholder": "اكتب ما تبحث عنه هنا",
     "clear_all": "حذف الكل",
@@ -16,6 +167,7 @@
     "cancel": "إلغاء",
     "logout": "خروج"
   },
+
  "SideButtons": {
     "user_avatar": "صورة المستخدم",
     "following": "متابع",
@@ -29,6 +181,7 @@
     "previous": "السابق",
     "next": "التالي"
   },
+
    "VideosPage": {
     "reels_title": "الريلز",
     "no_videos": "لا توجد فيديوهات",
@@ -44,6 +197,7 @@
     "cancel": "إلغاء",
     "loading": "جاري..."
   },
+
  "ShareOverlay": {
     "title": "شارك الفيديو",
     "placeholder": "اكتب نصاً مشاركاً (اختياري)",
@@ -51,6 +205,7 @@
     "sharing": "جاري الشير...",
     "close": "إغلاق"
   },
+
   "CommentOverlay": {
     "title": "التعليقات",
     "close": "إغلاق",
@@ -71,11 +226,13 @@
     "days_ago": "{count} أيام مضت",
     "months_ago": "{count} شهور مضت"
   },
+
    "OptionsMenu": {
     "block": "لا أريد مشاهدة هذا",
     "blocking": "جاري الحظر...",
     "report": "إبلاغ عن المنشور"
   },
+
   "SuggestionCard": {
     "user": "مستخدم",
     "views": "مشاهدات",
@@ -92,6 +249,7 @@
     "no_suggestions": "لا توجد مقترحات حالياً",
     "all_loaded": "تم تحميل جميع الفيديوهات"
   },
+  
   "LayoutRightSide": {
     "reels": "الريلز",
     "suggestions": "الاقتراحات"

@@ -1,4 +1,154 @@
 {
+   "Common": {
+    "dir": "ltr",
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "close": "Close",
+    "error": "An error occurred",
+    "success": "Success",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "share": "Share",
+    "copy": "Copy",
+    "copied": "Copied",
+    "download": "Download",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous"
+  },
+  "LoginPage": {
+    "loading": "Wait a moment... Loading data",
+    "encrypted": "Your chats are end-to-end encrypted",
+    "qrError": "Failed to load QR Code",
+    "scanNow": "Scan the code now",
+    "welcome": "Welcome to Bo Chat Web",
+    "subWelcome": "Log in to your account easily without a password",
+    "stepsTitle": "To log in:",
+    "step1": "Open Bo Chat app on your phone",
+    "step2": "Go to Settings",
+    "step3": "Choose 'Web Login'",
+    "step4": "Scan the QR code with your camera",
+    "step5": "Your account will open automatically",
+    "changeLang": "العربية"
+  },
+  
+   "Profile": {
+    "privateBox": "Private Box",
+    "loading": "Loading...",
+    "noPosts": "No posts",
+    "post": "post",
+    "viewImage": "View image",
+    "qrCode": "QR Code",
+    "downloadCard": "Download card",
+    "share": "Share",
+    "close": "Close",
+    "closeQR": "Close QR",
+    "friendsHere": "Friends here",
+    "following": "Following",
+    "views": "Views",
+    "viewAllFollowers": "View all followers",
+    "stars": "stars",
+    "hasStars": "This box has",
+    "noRatings": "This box has no ratings yet",
+     "userNotFound": "User not found or an error occurred.",
+    "aboutDefault": "I'm here to connect and discover new worlds with people like me",
+    "privateFallback": "Hello, this box is private now, only accepted followers can see my posts",
+    "copyUsername": "Copy username or scan QR to add me",
+    "joinMe": "Join me on Bo Chat",
+    "checkProfile": "Check out my profile now",
+    "cardNotReady": "Card is not ready",
+    "preparingCard": "Preparing card for download...",
+    "downloadSuccess": "Card downloaded successfully",
+    "downloadFailed": "Download failed",
+    "unknownError": "Unknown error",
+    "mustLogin": "You must login first",
+    "userNotFound2": "User ID not found",
+    "blockSuccess": "Blocked {userName} successfully",
+    "blockFailed": "An error occurred while trying to block",
+    "reportSuccess": "Reported {userName} successfully",
+    "reportFailed": "An error occurred while sending report",
+    "rateSuccess": "User rated successfully",
+     "rateFailed": "An error occurred while rating",
+    "invalidUserId": "User ID not found",
+    "copyLinkSuccess": "Link copied to clipboard",
+    "copyLinkFailed": "Copy failed",
+    "accountCopied": "Account copied: {username}",
+    "followers": "Followers",
+    "followingCount": "Following",
+    "noDescription": "No description",
+    "1000posts": "1000+ posts"
+  },
+  "ActionMenu": {
+    "rate": "Rate",
+    "report": "Report",
+    "block": "Block",
+    "reportTitle": "Report this box",
+    "reportQuestion": "Why are you reporting this box?",
+    "noRatings": "No ratings yet",
+    "noRatingsSub": "No one has rated yet, be the first to break the silence",
+    "loadingRatings": "Loading ratings...",
+    "writeComment": "Write your rating here",
+    "submitRating": "Submit",
+    "submitting": "Submitting...",
+    "delete": "Delete",
+    "reportUser": "Report",
+    "successTitle": "Report Submitted",
+    "successMessage": "Your report has been received\nYour report will help us review the content and ensure everything is safe and appropriate",
+    "reportReasons": {
+      "inappropriate": "Inappropriate content",
+      "misleading": "Misleading information",
+      "spam": "Spam or advertising",
+      "harmful": "Hate speech or discrimination",
+      "personal_info": "Personal information disclosure"
+    },
+    "mustLogin": "Please login first",
+    "noUserTarget": "No target user for rating",
+    "rateSuccess": "Your rating has been submitted successfully",
+    "rateError": "An error occurred while submitting rating",
+    "deleteSuccess": "Rating deleted successfully",
+     "deleteError": "An error occurred while deleting rating",
+    "reportSuccess": "Reported {userName}",
+    "reportError": "An error occurred while reporting",
+    "blockSuccess": "Blocked {userName}",
+    "blockError": "An error occurred while blocking",
+    "reportSent": "Report sent successfully",
+    "reportFailed": "An error occurred while sending report",
+    "cannotLoadRatings": "Cannot load ratings: User ID not available",
+    "userDataIncomplete": "User data incomplete"
+  },
+   "BlockConfirmModal": {
+    "title": "Block User",
+    "body": "After blocking, this user will no longer be able to see your profile or preferences, send you messages, and they will be automatically removed from your followers.",
+    "confirm": "Block",
+    "canceling": "Blocking...",
+    "cancel": "Cancel",
+    "blockPrefix": "You are blocking {username}"
+  },
+   "FollowButton": {
+    "following": "Unfollow",
+    "requested": "Cancel Request",
+    "follow": "Follow",
+    "loading": "...",
+    "userNotFound": "User ID not found.",
+    "errorOccurred": "An error occurred. Please try again."
+  },
+  
+   "NetworkMonitor": {
+    "onlineTitle": "Connection Restored",
+    "onlineSubtitle": "Internet is working normally",
+    "offlineTitle": "No Connection",
+    "offlineSubtitle": "Please check your internet",
+    "slowTitle": "Slow Network",
+    "slowSubtitle": "Internet connection is slow",
+    "improvedTitle": "Connection Improved",
+    "improvedSubtitle": "Internet is back to normal",
+    "latencyTitle": "Slow Response",
+    "latencySubtitle": "Internet is unstable"
+  },
+
+  
     "GlobalSearch": {
     "search_placeholder": "Search here...",
     "clear_all": "Clear All",
@@ -30,6 +180,7 @@
     "previous": "Previous",
     "next": "Next"
   },
+
   "VideosPage": {
     "reels_title": "Reels",
     "no_videos": "No videos found",
@@ -45,6 +196,7 @@
     "cancel": "Cancel",
     "loading": "Loading..."
   },
+
  "ShareOverlay": {
     "title": "Share Video",
     "placeholder": "Write a sharing message (optional)",
@@ -52,6 +204,7 @@
     "sharing": "Sharing...",
     "close": "Close"
   },
+
    "CommentOverlay": {
     "title": "Comments",
     "close": "Close",
@@ -72,11 +225,13 @@
     "days_ago": "{count} days ago",
     "months_ago": "{count} months ago"
   },
+  
    "OptionsMenu": {
     "block": "I don't want to see this",
     "blocking": "Blocking...",
     "report": "Report this post"
   },
+
   "SuggestionCard": {
     "user": "User",
     "views": "Views",
@@ -87,12 +242,14 @@
     "months_ago": "{count} months ago",
     "years_ago": "{count} years ago"
   },
+
   "SuggestionsFeed": {
     "no_results": "No results found",
     "no_results_message": "Check your spelling or try searching for something else",
     "no_suggestions": "No suggestions available",
     "all_loaded": "All videos loaded"
   },
+  
  "LayoutRightSide": {
     "reels": "Reels",
     "suggestions": "Suggestions"
