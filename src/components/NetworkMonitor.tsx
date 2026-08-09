@@ -1,349 +1,96 @@
- 
-// // src/components/NetworkMonitor.tsx
-// 'use client';
-
-// import React, { useEffect, useState, useRef } from 'react';
-// import { toast } from 'react-hot-toast';
-
-// export default function NetworkMonitor() {
-//   const [isSlow, setIsSlow] = useState(false);
-//   // const [isOnline, setIsOnline] = useState(navigator.onLine);
-//   const [isOnline, setIsOnline] = useState(true);
-//   const lastNotifiedRef = useRef<'offline' | 'slow' | 'online' | 'latency' | null>(null);
-//   const abortControllerRef = useRef<AbortController | null>(null);
-
-//    const showNotification = (
-//     title: string,
-//     subtitle: string,
-//     bgColor: string,
-//     iconSrc: string = "/imgs/Vector (8).svg",
-//     duration: number = 6000
-//   ) => {
-//     toast(
-//       (t) => (
-//         <div
-//           onClick={() => toast.dismiss(t.id)}
-//           style={{
-//             width: "359px",
-//             height: "71px",
-//             borderRadius: "20px",
-//             background: bgColor,
-//             display: "flex",
-//             alignItems: "center",
-//             justifyContent: "flex-start",
-//             padding: "12px 16px",
-//             direction: "rtl",
-//             cursor: "pointer",
-//             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-//             gap: "12px",
-//           }}
-//         >
-//           <div
-//             style={{
-//               display: "flex",
-//               flexDirection: "column",
-//               alignItems: "flex-start",
-//               flex: 1,
-//               paddingRight: "0",
-//             }}
-//           >
-//             <span
-//               style={{
-//                 fontFamily: "Cairo",
-//                 fontWeight: 600,
-//                 fontSize: "20px",
-//                 lineHeight: "100%",
-//                 textAlign: "right",
-//                 color: "#FFFFFF",
-//                 marginBottom: "8px",
-//                 width: "100%",
-//               }}
-//             >
-//               {title}
-//             </span>
-//             <span
-//               style={{
-//                 fontFamily: "Cairo",
-//                 fontWeight: 600,
-//                 fontSize: "12px",
-//                 lineHeight: "100%",
-//                 textAlign: "right",
-//                 color: "#FFFFFF",
-//                 width: "100%",
-//               }}
-//             >
-//               {subtitle}
-//             </span>
-//           </div>
-
-//           <div
-//             style={{
-//               width: "44px",
-//               minWidth: "44px",
-//               height: "44px",
-//               borderRadius: "50%",
-//               background: "#FFFFFF",
-//               display: "flex",
-//               alignItems: "center",
-//               justifyContent: "center",
-//             }}
-//           >
-//             <img
-//               src={iconSrc}
-//               alt=""
-//               width="23"
-//               height="23"
-//               onError={(e) => {
-//                  e.currentTarget.style.display = 'none';
-//               }}
-//             />
-//           </div>
-//         </div>
-//       ),
-//       {
-//         duration,
-//         position: 'top-left',
-//         style: {
-//           background: "transparent",
-//           boxShadow: "none",
-//           padding: 0,
-//           maxWidth: "359px",
-//           marginRight: "20px",
-//           marginTop: "20px",
-//         },
-//       }
-//     );
-//   };
-
-//    useEffect(() => {
-//     const handleOnline = () => {
-//     setIsOnline(true);
-//       if (lastNotifiedRef.current !== 'online') {
-//         showNotification(
-//           'تم استعادة الاتصال',
-//           'شبكة الواي فاي لديك تعمل بشكل طبيعي',
-//           '#28A745CC',
-//           '/imgs/Vector (8).svg',
-//           3000
-//         );
-//         lastNotifiedRef.current = 'online';
-//       }
-//     };
-
-//     const handleOffline = () => {
-//       setIsOnline(false);
-//       setIsSlow(false);
-//       showNotification(
-//         'لا يوجد اتصال',
-//         'يرجى التحقق من اتصالك بالإنترنت',
-//         '#D72229CC',
-//         '/imgs/Vector (8).svg',
-//         5000
-//       );
-//       lastNotifiedRef.current = 'offline';
-//     };
-
-//     window.addEventListener('online', handleOnline);
-//     window.addEventListener('offline', handleOffline);
-//     return () => {
-//       window.removeEventListener('online', handleOnline);
-//       window.removeEventListener('offline', handleOffline);
-//     };
-//   }, []);
-
-//   // 2. كشف ضعف الشبكة (عبر Network Information API)
-//   useEffect(() => {
-//     if (!('connection' in navigator)) return;
-//     const connection = (navigator as any).connection;
-
-//     const handleChange = () => {
-//       if (!isOnline) return;
-//       const isSlowNow =
-//         (connection.downlink && connection.downlink < 0.8) ||
-//         (connection.rtt && connection.rtt > 300);
-
-//       if (isSlowNow && !isSlow) {
-//         setIsSlow(true);
-//         showNotification(
-//           'مشكلة في الاتصال',
-//           'شبكة الواي فاي لديك ضعيفة حاول مجدداً',
-//           '#D72229CC',
-//           '/imgs/Vector (8).svg',
-//           6000
-//         );
-//         lastNotifiedRef.current = 'slow';
-//       } else if (!isSlowNow && isSlow) {
-//         setIsSlow(false);
-//         showNotification(
-//           'استعاد الاتصال سرعته',
-//           'شبكة الواي فاي لديك تعمل بشكل طبيعي',
-//           '#28A745CC',
-//           '/imgs/Vector (8).svg',
-//           2000
-//         );
-//         lastNotifiedRef.current = 'online';
-//       }
-//     };
-
-//     connection.addEventListener('change', handleChange);
-//     handleChange();
-//     return () => connection.removeEventListener('change', handleChange);
-//   }, [isSlow, isOnline]);
-
-//   // 3. قياس زمن الاستجابة (Latency) – مع تحسينات لتجنب أخطاء الشبكة
-//   useEffect(() => {
-//     if (!isOnline) return; // لا نرسل طلباً إذا كنا غير متصلين
-
-//     const checkLatency = async () => {
-//       // تحقق إضافي قبل الطلب
-//       if (!navigator.onLine) return;
-
-//       // إلغاء أي طلب سابق
-//       if (abortControllerRef.current) {
-//         abortControllerRef.current.abort();
-//       }
-//       const controller = new AbortController();
-//       abortControllerRef.current = controller;
-//       const signal = controller.signal;
-
-//       const start = Date.now();
-//       try {
-//         // مهلة 5 ثوانٍ
-//         const timeoutId = setTimeout(() => controller.abort(), 5000);
-//         await fetch('/', { 
-//           method: 'HEAD', 
-//           cache: 'no-store',
-//           signal,
-//         });
-//         clearTimeout(timeoutId);
-
-//         const latency = Date.now() - start;
-
-//         if (latency > 1000 && !isSlow) {
-//           if (lastNotifiedRef.current !== 'latency') {
-//             showNotification(
-//               'استجابة بطيئة',
-//               'يرجى التحقق من اتصالك بالإنترنت',
-//               '#FFC107CC', 
-//               '/imgs/Vector (8).svg',
-//               5000
-//             );
-//             lastNotifiedRef.current = 'latency';
-//           }
-//         } else if (latency <= 1000 && lastNotifiedRef.current === 'latency') {
-//           lastNotifiedRef.current = null;
-//         }
-//       } catch (error) {
-       
-//         if (error instanceof Error && error.name === 'AbortError') {
-//          } else {
-//          }
-//       } finally {
-//         if (abortControllerRef.current === controller) {
-//           abortControllerRef.current = null;
-//         }
-//       }
-//     };
-
-//     const interval = setInterval(checkLatency, 30000);
-//     checkLatency();
-
-//     return () => {
-//       clearInterval(interval);
-//       if (abortControllerRef.current) {
-//         abortControllerRef.current.abort();
-//         abortControllerRef.current = null;
-//       }
-//     };
-//   }, [isOnline, isSlow]);
-
-//   return null;
-// }
-
-
 // src/components/NetworkMonitor.tsx
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
+import { useLanguage } from '@/contexts/TranslationContext';
 
 export default function NetworkMonitor() {
+  const t = useTranslations('NetworkMonitor');
+  const { isRTL } = useLanguage();
+  
   const [isSlow, setIsSlow] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
   const lastNotifiedRef = useRef<'offline' | 'slow' | 'online' | 'latency' | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const showNotification = (
-    title: string,
-    subtitle: string,
-    bgColor: string,
-    iconSrc: string = "/imgs/Vector (8).svg",
-    duration: number = 6000
-  ) => {
-    toast(
-      (t) => (
-        <div
-          onClick={() => toast.dismiss(t.id)}
-          style={{
-            width: "359px",
-            height: "71px",
-            borderRadius: "20px",
-            background: bgColor,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            padding: "12px 16px",
-            direction: "rtl",
-            cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            gap: "12px",
-          }}
-        >
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <span style={{ fontWeight: 600, fontSize: "20px", color: "#fff" }}>
-              {title}
-            </span>
-            <span style={{ fontWeight: 600, fontSize: "12px", color: "#fff" }}>
-              {subtitle}
-            </span>
-          </div>
-
+  // استخدام useCallback لتثبيت الدالة
+  const showNotification = useCallback(
+    (
+      title: string,
+      subtitle: string,
+      bgColor: string,
+      iconSrc: string = "/imgs/Vector (8).svg",
+      duration: number = 6000
+    ) => {
+      toast(
+        (toastId) => (
           <div
+            onClick={() => toast.dismiss(toastId.id)}
             style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "50%",
-              background: "#fff",
+              width: "359px",
+              height: "71px",
+              borderRadius: "20px",
+              background: bgColor,
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
+              justifyContent: "flex-start",
+              padding: "12px 16px",
+              direction: isRTL ? "rtl" : "ltr",
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              gap: "12px",
             }}
           >
-            <img
-              src={iconSrc}
-              alt=""
-              width="23"
-              height="23"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <span style={{ fontWeight: 600, fontSize: "20px", color: "#fff" }}>
+                {title}
+              </span>
+              <span style={{ fontWeight: 600, fontSize: "12px", color: "#fff" }}>
+                {subtitle}
+              </span>
+            </div>
+
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "50%",
+                background: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
               }}
-            />
+            >
+              <img
+                src={iconSrc}
+                alt=""
+                width="23"
+                height="23"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
           </div>
-        </div>
-      ),
-      {
-        duration,
-        position: 'top-left',
-        style: {
-          background: "transparent",
-          boxShadow: "none",
-          padding: 0,
-          maxWidth: "359px",
-        },
-      }
-    );
-  };
+        ),
+        {
+          duration,
+          position: isRTL ? 'top-left' : 'top-right',
+          style: {
+            background: "transparent",
+            boxShadow: "none",
+            padding: 0,
+            maxWidth: "359px",
+          },
+        }
+      );
+    },
+    [isRTL]
+  );
 
   // 1. Online / Offline detection
   useEffect(() => {
@@ -356,8 +103,8 @@ export default function NetworkMonitor() {
 
       if (lastNotifiedRef.current !== 'online') {
         showNotification(
-          'تم استعادة الاتصال',
-          'شبكة الإنترنت تعمل بشكل طبيعي',
+          t('onlineTitle'),
+          t('onlineSubtitle'),
           '#28A745CC'
         );
         lastNotifiedRef.current = 'online';
@@ -369,8 +116,8 @@ export default function NetworkMonitor() {
       setIsSlow(false);
 
       showNotification(
-        'لا يوجد اتصال',
-        'يرجى التحقق من الإنترنت',
+        t('offlineTitle'),
+        t('offlineSubtitle'),
         '#D72229CC'
       );
 
@@ -384,7 +131,7 @@ export default function NetworkMonitor() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [t, showNotification]);
 
   // 2. Slow network detection
   useEffect(() => {
@@ -404,8 +151,8 @@ export default function NetworkMonitor() {
         setIsSlow(true);
 
         showNotification(
-          'شبكة ضعيفة',
-          'الاتصال بالإنترنت بطيء',
+          t('slowTitle'),
+          t('slowSubtitle'),
           '#D72229CC'
         );
 
@@ -414,8 +161,8 @@ export default function NetworkMonitor() {
         setIsSlow(false);
 
         showNotification(
-          'تحسن الاتصال',
-          'الإنترنت عاد لطبيعته',
+          t('improvedTitle'),
+          t('improvedSubtitle'),
           '#28A745CC'
         );
 
@@ -429,7 +176,7 @@ export default function NetworkMonitor() {
     return () => {
       connection.removeEventListener('change', handleChange);
     };
-  }, [isOnline, isSlow]);
+  }, [isOnline, isSlow, t, showNotification]);
 
   // 3. Latency check
   useEffect(() => {
@@ -464,8 +211,8 @@ export default function NetworkMonitor() {
         if (latency > 1000 && !isSlow) {
           if (lastNotifiedRef.current !== 'latency') {
             showNotification(
-              'بطء في الاستجابة',
-              'الإنترنت غير مستقر',
+              t('latencyTitle'),
+              t('latencySubtitle'),
               '#FFC107CC'
             );
 
@@ -477,7 +224,8 @@ export default function NetworkMonitor() {
           }
         }
       } catch (error) {
-       } finally {
+        // Silent fail - no need to show error for latency check
+      } finally {
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
         }
@@ -493,7 +241,7 @@ export default function NetworkMonitor() {
         abortControllerRef.current.abort();
       }
     };
-  }, [isOnline, isSlow]);
+  }, [isOnline, isSlow, t, showNotification]);
 
   return null;
 }

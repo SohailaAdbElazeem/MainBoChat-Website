@@ -14,10 +14,8 @@ export function useVideos() {
         `https://bo-chat.space/bestvideosTest/null?page=1&limit=20`
       );
       const data = await res.json();
-      console.log("🔍 [API] Data received:", data);
-      data.forEach((video: any) => {
-        console.log(`📹 [API] Video ${video._id} likes:`, video.likes);
-        if (video.likes) {
+       data.forEach((video: any) => {
+         if (video.likes) {
           console.log(
             `👤 [API] User IDs in likes:`,
             video.likes.map((l: any) => l.userid)
@@ -36,7 +34,7 @@ export function useVideos() {
         setVideos(formattedData);
       }
     } catch (error) {
-      console.error("Error fetching videos:", error);
+      // console.error("Error fetching videos:", error);
     } finally {
       setLoading(false);
     }

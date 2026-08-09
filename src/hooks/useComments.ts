@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { getToken, getUserId } from "@/lib/auth-client";
-import toast from "react-hot-toast"; // أو أي مكتبة للتنبيهات
+import toast from "react-hot-toast";    
 
 interface Comment {
   _id: string;
@@ -8,7 +8,7 @@ interface Comment {
   username?: string;
   userimg?: string;
   comment: string;
-  reacts?: string[]; // مصفوفة من userid
+  reacts?: string[];  
   createdAt?: string;
 }
 
@@ -16,7 +16,7 @@ export function useComments(videoId: string, openLoginModal: () => void) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const [showMenu, setShowMenu] = useState<string | null>(null); // commentId for menu
+  const [showMenu, setShowMenu] = useState<string | null>(null); 
 
   const token = getToken();
   const userId = getUserId();
@@ -77,7 +77,7 @@ export function useComments(videoId: string, openLoginModal: () => void) {
 
       setCommentText("");
       toast.success("تم إضافة التعليق");
-      await fetchComments(); // تحديث القائمة
+      await fetchComments(); 
     } catch (error) {
       console.error(error);
       toast.error("فشل إضافة التعليق");
@@ -119,8 +119,7 @@ export function useComments(videoId: string, openLoginModal: () => void) {
           }),
         });
       } catch {
-        // في حال فشل، نعيد جلب التعليقات لاستعادة الحالة الصحيحة
-        await fetchComments();
+         await fetchComments();
         toast.error("حدث خطأ في الإعجاب");
       }
     },

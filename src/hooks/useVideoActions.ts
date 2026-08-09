@@ -56,7 +56,7 @@ export function useVideoActions(videos: Video[], openLoginModal: () => void) {
     setLikesCount(initialLikesCounts);
     setLikedStatus(initialLikedStatus);
     setCommentCounts(initialCommentCounts);
-        setShareCounts(initialShareCounts); // ← تهيئة
+    setShareCounts(initialShareCounts);  
 
   }, [videos]);
 
