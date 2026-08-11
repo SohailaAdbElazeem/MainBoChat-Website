@@ -7,6 +7,8 @@ import SuggestionsPage from "@/app/suggestions/page";
 import { usePathname } from "next/navigation";
 import AllUsersGrid from "./AllUsersGrid";
 import ChatListFromApi from "../app/chats/_components/ChatList";
+// import ChatList from "../app/chats/_components/ChatList";  
+
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/contexts/TranslationContext";
 import { useTranslations } from "next-intl";  
@@ -84,6 +86,16 @@ export default function LayoutRightSideClient() {
           />
         </div>
       )}
+
+      {/* {pathname.startsWith("/chats") && (
+  <div className="">
+    <ChatList
+      userId={userId}
+      apiBase="https://bo-chat.space"
+      activeChatId={activeChatId}
+    />
+  </div>
+)} */}
     </aside>
   );
 }

@@ -74,7 +74,3 @@ export default function MessageBubble({ msg, isMe }: { msg: any; isMe: boolean }
     </div>
   );
 }
-
-
-
-
