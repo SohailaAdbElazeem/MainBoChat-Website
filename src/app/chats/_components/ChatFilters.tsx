@@ -4,7 +4,7 @@
 import { useState } from 'react';
 
 
-type FilterType = 'all' | 'read' | 'unread' | 'favorite' | 'groups' | 'calls';
+type FilterType = 'all' | 'read' | 'unread' | 'starred' | 'groups' | 'calls';;
 
 //   Props
 type ChatFiltersProps = {
@@ -14,7 +14,7 @@ type ChatFiltersProps = {
     all: number;
     read: number;
     unread: number;
-    favorite: number;
+    starred: number;
     groups: number;
     calls: number;
   };
@@ -25,7 +25,7 @@ const filters: { key: FilterType; label: string }[] = [
   { key: 'all', label: 'الكل' },
   { key: 'read', label: 'مقروء' },
   { key: 'unread', label: 'غير مقروء' },
-  { key: 'favorite', label: 'مميز' },
+  { key: 'starred', label: 'مميز' },
   { key: 'groups', label: 'المجموعات' },
   { key: 'calls', label: 'المكالمات' },
  
@@ -75,7 +75,7 @@ export default function ChatFilters({
             }}
           >
             <span style={{ fontSize: '10px' }}>{filter.label}</span>
-            {count > 0 && (
+            {/* {count > 0 && (
               <span
                 style={{
                   fontSize: '8px',
@@ -88,7 +88,7 @@ export default function ChatFilters({
               >
                 {count}
               </span>
-            )}
+            )} */}
           </button>
         );
       })}
