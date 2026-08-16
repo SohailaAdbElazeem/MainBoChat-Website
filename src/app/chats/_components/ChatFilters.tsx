@@ -52,7 +52,9 @@ export default function ChatFilters({
             onMouseEnter={() => setHoveredFilter(filter.key)}
             onMouseLeave={() => setHoveredFilter(null)}
             style={{
-              width: '50px',
+              // width: '50px',
+              width: 'auto',
+              padding: '0 10px',  
               height: '31px',
               borderRadius: '9px',
               fontFamily: 'Cairo, sans-serif',
