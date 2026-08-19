@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import wsService from "@/lib/websocketService";
 import { isChatSeen, markChatSeen } from "@/lib/seenGuard";
 import { ChatItem, Message } from "@/types/types";
-import { Search, X, ChevronDown, Flag, Search as SearchIcon, Archive, Trash2, LogOut } from "lucide-react";
+import { Search, X, ChevronDown, Flag, Search as SearchIcon, Archive, Trash2, LogOut, Check } from "lucide-react";
 import { usePathname } from "next/navigation";
 import ChatFilters from './ChatFilters';
 
@@ -17,6 +17,7 @@ type Props = {
   userId?: string | null;
   apiBase: string;
   activeChatId?: string | null;
+//  onSelectionChange?: (isSelecting: boolean, count: number) => void; // إضافة هذ
 };
 
 /* ================= NORMALIZE ================= */
@@ -46,6 +47,7 @@ function normalizeChats(rawChats: any[], myId: string): ChatItem[] {
       chatType: chat.chatType || 'private',
       name: chat.name || 'مستخدم',
       avatar: chat.avatar || '',
+      description: chat.description || '',
       userinfo: {
         _id: otherId,
         name: chat.name || 'مستخدم',
@@ -58,6 +60,7 @@ function normalizeChats(rawChats: any[], myId: string): ChatItem[] {
       isGroup: chat.chatType === 'group',
       isFavorite: chat.isStarred || false,
       typing: false,
+      members: chat.members || [],
     };
   });
 
@@ -119,6 +122,11 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   const [filteredChats, setFilteredChats] = useState<ChatItem[]>([]);
   const [filterLoading, setFilterLoading] = useState(false);
 
+  // ================= SELECTION MODE =================
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedChats, setSelectedChats] = useState<string[]>([]);
+  const longPressTimer = useRef<any>(null);
+
   // Group Creation Modal States
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -127,11 +135,24 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   const [groupSearchTerm, setGroupSearchTerm] = useState("");
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
 
+  // Transfer Ownership Modal States
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [newOwnerId, setNewOwnerId] = useState<string>('');
+
   // Dropdown States
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const typingTimers = useRef<Record<string, any>>({});
+
+  // Get token from localStorage
+  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  const pathname = usePathname();
+  const activeChatId = propActiveChatId || pathname?.split("/").pop();
+
+
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -146,6 +167,95 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openDropdown]);
+
+  // ================= SELECTION MODE HANDLERS =================
+  const toggleChatSelection = (chatId: string) => {
+    setSelectedChats(prev => {
+      if (prev.includes(chatId)) {
+        const newSelected = prev.filter(id => id !== chatId);
+        if (newSelected.length === 0) {
+          setSelectionMode(false);
+        }
+        return newSelected;
+      } else {
+        return [...prev, chatId];
+      }
+    });
+  };
+
+  const selectAllChats = () => {
+    const allIds = searchedChats.map(chat => chat.chatId);
+    setSelectedChats(allIds);
+    setSelectionMode(true);
+  };
+
+  const clearSelection = () => {
+    setSelectedChats([]);
+    setSelectionMode(false);
+  };
+
+  // ================= BULK ACTIONS =================
+  const handleBulkDelete = async () => {
+    if (selectedChats.length === 0) return;
+    const confirmDelete = window.confirm(`هل أنت متأكد من رغبتك في حذف ${selectedChats.length} محادثة؟`);
+    if (!confirmDelete) return;
+    
+    for (const chatId of selectedChats) {
+      const chat = chats.find(c => c.chatId === chatId);
+      if (chat) {
+        await handleDeleteChat(chatId, chat.chatType);
+      }
+    }
+    clearSelection();
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedChats.length === 0) return;
+    
+    for (const chatId of selectedChats) {
+      const chat = chats.find(c => c.chatId === chatId);
+      if (chat) {
+        await handleArchiveChat(chatId, chat.chatType);
+      }
+    }
+    clearSelection();
+  };
+
+  const handleBulkCall = () => {
+    if (selectedChats.length === 0) return;
+    alert(`جاري إنشاء مكالمة جماعية مع ${selectedChats.length} محادثة`);
+    clearSelection();
+  };
+
+  const handleBulkGroupMessage = () => {
+    if (selectedChats.length === 0) return;
+    alert(`جاري إنشاء رسالة جماعية مع ${selectedChats.length} محادثة`);
+    clearSelection();
+  };
+
+  // ================= MOUSE EVENTS FOR LONG PRESS =================
+  const handleMouseDown = (chatId: string, e: React.MouseEvent) => {
+    if (e.button === 0 && !selectionMode) {
+      longPressTimer.current = setTimeout(() => {
+        setSelectionMode(true);
+        setSelectedChats([chatId]);
+      }, 500);
+    }
+  };
+
+  const handleMouseUp = () => {
+    clearTimeout(longPressTimer.current);
+  };
+
+  const handleMouseLeave = () => {
+    clearTimeout(longPressTimer.current);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(longPressTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (propUserId) {
@@ -163,10 +273,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       console.error("Invalid userData in localStorage");
     }
   }, [propUserId]);
-
-  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  const pathname = usePathname();
-  const activeChatId = propActiveChatId || pathname?.split("/").pop();
 
   const markMessageAsSeen = async (messageId: string) => {
     if (!token || !messageId) return false;
@@ -186,6 +292,25 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       return false;
     }
   };
+   // ================= FETCH GROUP DETAILS =================
+  const fetchGroupDetails = async (groupId: string) => {
+    if (!token) return null;
+    try {
+      const url = `${apiBase}/chats/groups/GetGroup/${groupId}`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.response || null;
+    } catch (error) {
+      console.error('Error fetching group details:', error);
+      return null;
+    }
+  };
 
   const fetchChats = async (category: FilterType = 'all') => {
     if (!myUserId || !token) return null;
@@ -200,9 +325,28 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       const rawList = data.response || data.userchats || [];
-      const normalizedChats = normalizeChats(rawList, myUserId);
+      
+      const enrichedList = await Promise.all(
+        rawList.map(async (chat: any) => {
+          if (chat.chatType === 'group' && chat.id) {
+            const groupDetails = await fetchGroupDetails(chat.id);
+            if (groupDetails) {
+              return {
+                ...chat,
+                description: groupDetails.description || '',
+                name: groupDetails.name || chat.name,
+                members: groupDetails.members || [],
+              };
+            }
+          }
+          return chat;
+        })
+      );
+      
+      const normalizedChats = normalizeChats(enrichedList, myUserId);
       return normalizedChats;
     } catch (error) {
+      console.error('Error fetching chats:', error);
       return null;
     }
   };
@@ -351,6 +495,9 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   });
 
   const getSectionTitle = () => {
+    if (selectionMode) {
+      return '';
+    }
     switch(activeFilter) {
       case 'all': return 'قسم الرسائل العام';
       case 'read': return 'قسم الرسائل المقروء';
@@ -432,25 +579,423 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
     );
   };
 
-  // Dropdown menu actions
-  const handleDropdownAction = (action: string, chatId: string) => {
+  // ================= GROUP AVATAR RENDERER =================
+  const renderGroupAvatar = (chat: ChatItem) => {
+    let members = chat.members || [];
+    
+    if (members.length === 0) {
+      const otherMember = {
+        _id: chat.chatId,
+        name: chat.name,
+        img: chat.userinfo?.img || chat.avatar || '/imgs/user.png',
+        avatar: chat.userinfo?.avatar || chat.avatar || '/imgs/user.png',
+      };
+      
+      let currentUserImg = '/imgs/user.png';
+      try {
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        currentUserImg = userData.img || userData.avatar || '/imgs/user.png';
+      } catch (e) {
+        currentUserImg = '/imgs/user.png';
+      }
+      
+      const currentUser = {
+        _id: myUserId,
+        name: 'أنت',
+        img: currentUserImg,
+        avatar: currentUserImg,
+      };
+      members = [currentUser, otherMember];
+    }
+    
+    const memberCount = members.length;
+    
+    const getMemberImage = (index: number) => {
+      const member = members[index];
+      return member?.img || member?.avatar || '/imgs/user.png';
+    };
+
+    const GroupIcon = () => (
+      <div 
+        style={{
+          position: 'absolute',
+          width: '19px',
+          height: '19px',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          borderRadius: '8px',
+          background: '#FFFFFF',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10,
+          pointerEvents: 'none',
+          boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
+        }}
+      >
+        <img 
+          src="/imgs/Group.svg" 
+          alt="Group" 
+          style={{
+            width: '10.909222602844238px',
+            height: '10.909222602844238px',
+          }}
+        />
+      </div>
+    );
+
+    if (memberCount < 2) {
+      return (
+        <div 
+          className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0 flex items-center justify-center bg-gray-200"
+        >
+          <GroupIcon />
+        </div>
+      );
+    }
+
+    if (memberCount === 2) {
+      return (
+        <div
+          className="relative w-[60px] h-[60px] rounded-[25px] overflow-hidden flex-shrink-0"
+        >
+          <img
+            src={getMemberImage(0)}
+            alt="Member 1"
+            className="absolute object-cover"
+            style={{
+              width: '42px',
+              height: '42px',
+              top: '9px',
+              left: '16px',
+              objectFit: 'cover',
+              borderRadius: '50%',
+              zIndex: 1,
+            }}
+          />
+          <img
+            src={getMemberImage(1)}
+            alt="Member 2"
+            className="absolute object-cover"
+            style={{
+              width: '42px',
+              height: '42px',
+              top: '9px',
+              left: '-5px',
+              objectFit: 'cover',
+              borderRadius: '50%',
+              zIndex: 2,
+            }}
+          />
+          <GroupIcon />
+        </div>
+      );
+    }
+
+    if (memberCount === 3) {
+      return (
+        <div
+          className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0"
+        >
+          <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+            <img
+              src={getMemberImage(0)}
+              alt="Member 1"
+              className="w-full h-full object-cover"
+            />
+            <img
+              src={getMemberImage(1)}
+              alt="Member 2"
+              className="w-full h-full object-cover"
+            />
+            <img
+              src={getMemberImage(2)}
+              alt="Member 3"
+              className="w-full h-full object-cover col-span-2"
+            />
+          </div>
+          <GroupIcon />
+        </div>
+      );
+    }
+
+    if (memberCount === 4) {
+      return (
+        <div 
+          className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0"
+        >
+          <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
+            {members.slice(0, 4).map((member: any, index: number) => (
+              <img
+                key={index}
+                src={getMemberImage(index)}
+                alt="Member"
+                className="w-full h-full object-cover"
+              />
+            ))}
+          </div>
+          <GroupIcon />
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0"
+      >
+        <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
+          {members.slice(0, 3).map((member: any, index: number) => {
+            let colSpan = index === 2 ? 'col-span-2' : 'col-span-1';
+            return (
+              <img
+                key={index}
+                src={getMemberImage(index)}
+                alt="Member"
+                className={`w-full h-full object-cover ${colSpan} row-span-1`}
+              />
+            );
+          })}
+          {members.length > 3 && (
+            <div 
+              className="absolute bottom-0 right-0 w-1/2 h-1/2 flex items-center justify-center bg-black/70 text-white text-[10px] font-bold rounded-br-[25px] z-20"
+            >
+              +{members.length - 3}
+            </div>
+          )}
+        </div>
+        <GroupIcon />
+      </div>
+    );
+  };
+
+  // ================= BLOCK USER =================
+  const handleBlockUser = async (chatId: string) => {
+    if (!token) return;
+    
+    const confirmBlock = window.confirm(`هل أنت متأكد من رغبتك في حظر هذا المستخدم؟`);
+    if (!confirmBlock) {
+      setOpenDropdown(null);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${apiBase}/chats/block`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          blocked_user_id: chatId 
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('✅ تم حظر المستخدم بنجاح');
+        setChats(prev => prev.filter(c => c.chatId !== chatId));
+        setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+        
+        if (activeChatId === chatId) {
+          router.push('/chats');
+        }
+        
+        setOpenDropdown(null);
+      } else {
+        alert(`❌ فشل حظر المستخدم: ${data.response || data.message || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      alert('حدث خطأ أثناء محاولة حظر المستخدم');
+    }
+  };
+
+  // ================= ARCHIVE/FAVORITE CHAT =================
+  const handleArchiveChat = async (chatId: string, chatType: string) => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${apiBase}/chats/favorite`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          chatId: chatId,
+          chatType: chatType
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('✅ تمت إضافة المحادثة إلى المفضلة بنجاح');
+        setChats(prev => 
+          prev.map(c => 
+            c.chatId === chatId 
+              ? { ...c, isFavorite: true } 
+              : c
+          )
+        );
+        setFilteredChats(prev => 
+          prev.map(c => 
+            c.chatId === chatId 
+              ? { ...c, isFavorite: true } 
+              : c
+          )
+        );
+        setOpenDropdown(null);
+      } else {
+        alert(`❌ فشل إضافة المحادثة إلى المفضلة: ${data.response || data.message || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error archiving chat:', error);
+      alert('حدث خطأ أثناء محاولة إضافة المحادثة إلى المفضلة');
+    }
+  };
+
+  // ================= DELETE CHAT =================
+  const handleDeleteChat = async (chatId: string, chatType: string) => {
+    if (!token) return;
+    
+    const confirmDelete = window.confirm(`هل أنت متأكد من رغبتك في حذف هذه المحادثة؟`);
+    if (!confirmDelete) {
+      setOpenDropdown(null);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${apiBase}/chats/chats/delete`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          chatId: chatId,
+          chatType: chatType
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('✅ تم حذف المحادثة بنجاح');
+        setChats(prev => prev.filter(c => c.chatId !== chatId));
+        setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+        
+        if (activeChatId === chatId) {
+          router.push('/chats');
+        }
+        
+        setOpenDropdown(null);
+      } else {
+        alert(`❌ فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      alert('حدث خطأ أثناء محاولة حذف المحادثة');
+    }
+  };
+
+  // ================= TRANSFER OWNERSHIP =================
+  const handleTransferOwnership = async (groupId: string, newOwnerId: string) => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${apiBase}/chats/groups/TransferOwnership/${groupId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newOwnerId })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        await handleLeaveGroup(groupId);
+        setShowTransferModal(false);
+        setSelectedGroupId(null);
+        setNewOwnerId('');
+      } else {
+        alert(`فشل تحويل الملكية: ${data.response || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error transferring ownership:', error);
+      alert('حدث خطأ أثناء تحويل الملكية');
+    }
+  };
+
+  // ================= LEAVE GROUP =================
+  const handleLeaveGroup = async (chatId: string) => {
+    if (!token) return;
+    
+    const confirmLeave = window.confirm('هل أنت متأكد من رغبتك في الخروج من هذه المجموعة؟');
+    if (!confirmLeave) {
+      setOpenDropdown(null);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${apiBase}/chats/groups/LeaveGroup/${chatId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setChats(prev => prev.filter(c => c.chatId !== chatId));
+        setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+        
+        if (activeChatId === chatId) {
+          router.push('/chats');
+        }
+        
+        setOpenDropdown(null);
+      } else {
+        if (data.response?.includes('Transfer ownership')) {
+          setSelectedGroupId(chatId);
+          setShowTransferModal(true);
+          setOpenDropdown(null);
+        } else {
+          alert(`❌ فشل الخروج من المجموعة: ${data.response || 'خطأ غير معروف'}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error leaving group:', error);
+      alert('حدث خطأ أثناء محاولة الخروج من المجموعة');
+    }
+  };
+
+  // ================= DROPDOWN ACTIONS =================
+  const handleDropdownAction = (action: string, chatId: string, chatType: string) => {
     setOpenDropdown(null);
     console.log(`Action: ${action} on chat: ${chatId}`);
     switch(action) {
+      case 'block':
+        handleBlockUser(chatId);
+        break;
       case 'report':
-        // Handle report
         break;
       case 'search':
-        // Handle search in chat
         break;
       case 'archive':
-        // Handle archive
+        handleArchiveChat(chatId, chatType);
         break;
       case 'delete':
-        // Handle delete chat
+        handleDeleteChat(chatId, chatType);
         break;
       case 'leave':
-        // Handle leave group
+        handleLeaveGroup(chatId);
         break;
     }
   };
@@ -461,19 +1006,188 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
 
   return (
     <div className="relative h-full flex flex-col">
+      {/* Header */}
       <div className="flex items-center justify-between px-4 mb-5">
         <h1 className="text-[20px] font-semibold text-right text-black leading-[100%] font-[Cairo]">
           {getSectionTitle()}
         </h1>
-        <button
-          onClick={() => setIsCreateGroupOpen(true)}
-          className="flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors bg-transparent border-none p-0 cursor-pointer"
-          aria-label="إنشاء مجموعة"
-        >
-          <img src="/imgs/createGrup.svg" alt="إنشاء مجموعة" className="w-6 h-6 block" />
-        </button>
+        
+        {!selectionMode && (
+          <button
+            onClick={() => setIsCreateGroupOpen(true)}
+            className="flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors bg-transparent border-none p-0 cursor-pointer"
+            aria-label="إنشاء مجموعة"
+          >
+            <img src="/imgs/createGrup.svg" alt="إنشاء مجموعة" className="w-6 h-6 block" />
+          </button>
+        )}
       </div>
 
+      {/* ================= SELECTION MODE TOOLBAR ================= */}
+      {selectionMode && selectedChats.length > 0 && (
+        <div className="w-full px-4 mb-3"  style={{
+      background: 'linear-gradient(0deg, #FFFFFF 0%, #F2F2F2 46.74%)',
+      paddingTop: '8px',
+      paddingBottom: '8px',
+      borderRadius: '12px',
+    }}>
+          {/* السطر الأول: الأزرار الأربعة */}
+          <div className="flex items-center justify-center gap-2">
+           <button
+  onClick={handleBulkDelete}
+  style={{
+    width: '63px',
+    height: '31px',
+    borderRadius: '10px',
+    background: '#FFFFFF',
+    border: 'none',
+    cursor: 'pointer',
+    opacity: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s ease',
+  }}
+  className="hover:bg-[#FFEBEE] hover:scale-105 transition-all"
+>
+  <span 
+    style={{
+      fontFamily: 'Cairo',
+      fontWeight: 600,
+      fontSize: '12px',
+      lineHeight: '100%',
+      textAlign: 'center',
+      color: '#B4B4B9',
+      display: 'inline-block',
+    }}
+  >
+    حذف
+  </span>
+</button>
+                        <button
+              onClick={handleBulkGroupMessage}
+              style={{
+                width: '102px',
+                height: '31px',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}
+              className="hover:bg-[#E8F5E9] hover:scale-105 transition-all"
+            >
+               <span 
+    style={{
+      fontFamily: 'Cairo',
+      fontWeight: 600,
+      fontSize: '12px',
+      lineHeight: '100%',
+      textAlign: 'center',
+      color: '#B4B4B9',
+      display: 'inline-block',
+    }}
+  >
+    رسالة جماعية
+  </span>
+            </button>
+
+            <button
+              onClick={handleBulkCall}
+              style={{
+                width: '102px',
+                height: '31px',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}
+              className="hover:bg-[#E8F4FD] hover:scale-105 transition-all"
+            >
+               <span 
+    style={{
+      fontFamily: 'Cairo',
+      fontWeight: 600,
+      fontSize: '12px',
+      lineHeight: '100%',
+      textAlign: 'center',
+      color: '#B4B4B9',
+      display: 'inline-block',
+    }}
+  >
+    مكالمة جماعية
+  </span>
+            </button>
+
+            <button
+              onClick={handleBulkArchive}
+              style={{
+                width: '63px',
+                height: '31px',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}
+              className="hover:bg-[#FFF8E1] hover:scale-105 transition-all"
+            >
+               <span 
+    style={{
+      fontFamily: 'Cairo',
+      fontWeight: 600,
+      fontSize: '12px',
+      lineHeight: '100%',
+      textAlign: 'center',
+      color: '#B4B4B9',
+      display: 'inline-block',
+    }}
+  >
+    مميز
+  </span>
+            </button>
+
+
+            
+          </div>
+
+          {/* السطر الثاني: تم تحديد X محادثة */}
+          <div className="flex items-center justify-between px-2 mt-2">
+          <div className="flex items-center justify-center px-2 mt-2 mb-1 w-full">
+            <span 
+              style={{
+                width: '100%',
+                opacity: 1,
+                fontFamily: 'Cairo',
+                fontWeight: 600,
+                fontSize: '25px',
+                lineHeight: '100%',
+                textAlign: 'center',
+                color: '#000000',
+                display: 'block'
+              }}
+            >
+              تم تحديد {selectedChats.length} محادثة
+            </span>
+          </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search */}
       <div className="flex items-center justify-center w-full mb-3">
         <div className="w-[95%] bg-[#F2F2F2] flex h-[50px] items-center px-4 gap-1 rounded-[27px]">
           <Search className="text-[#B6B7B7]"/>
@@ -492,6 +1206,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         </div>
       </div>
 
+      {/* Filters */}
       <ChatFilters 
         onFilterChange={handleFilterChange}
         activeFilter={activeFilter}
@@ -501,7 +1216,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       {filterLoading ? (
         <div className="text-center py-10 text-gray-500">جاري تحميل المحادثات...</div>
       ) : (
-        <div className="flex flex-col gap-1 overflow-y-auto flex-1">
+        <div className="flex flex-col gap-1 overflow-y-auto flex-1 pb-24">
           {searchedChats.length === 0 && searchTerm.trim() !== '' && (
             <div className="text-center text-gray-500 py-10">
               لا توجد محادثات مع <span className="font-bold">"{searchTerm}"</span>
@@ -520,12 +1235,17 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
             const hasUnread = chat.unreadCount > 0 && !isLastFromMe;
             const time = formatMessageTime(chat.lastMessage?.timestamp || '');
             const isDropdownOpen = openDropdown === chat.chatId;
+            const isSelected = selectedChats.includes(chat.chatId);
 
             return (
               <div
                 key={chat.chatId}
-                className={`flex items-center gap-3 px-3 py-1 transition cursor-pointer relative group ${
+               className={`flex items-center gap-3 px-3 py-1 transition cursor-pointer relative group ${
                   activeChatId === chat.chatId ? "active-chat" : "hover:bg-gray-100"
+                } ${
+                  isSelected 
+                    ? 'bg-[#FAFAFA] rounded-lg' 
+                    : ''
                 }`}
                 dir="ltr"
                 ref={(el) => {
@@ -533,62 +1253,99 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                     dropdownRefs.current[chat.chatId] = el;
                   }
                 }}
+                onMouseDown={(e) => handleMouseDown(chat.chatId, e)}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseLeave}
               >
+                {/* Checkbox - يظهر فقط في وضع التحديد */}
+                {selectionMode && (
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={isSelected ? "/imgs/check (2).svg" : "/imgs/uncheck.svg"} 
+                      alt={isSelected ? "محدد" : "غير محدد"}
+                      onClick={() => toggleChatSelection(chat.chatId)}
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        opacity: 1,
+                        cursor: 'pointer',
+                      }}
+                    />
+                  </div>
+                )}
+
                 <div 
                   className="flex items-center gap-3 flex-1"
-                  onClick={async () => {
-                    markChatSeen(chat.chatId);
-                    if (isLastFromMe && chat.lastMessage?._id) {
-                      await markMessageAsSeen(chat.lastMessage._id);
+                  onClick={() => {
+                    if (selectionMode) {
+                      toggleChatSelection(chat.chatId);
+                    } else {
+                      markChatSeen(chat.chatId);
+                      if (isLastFromMe && chat.lastMessage?._id) {
+                        markMessageAsSeen(chat.lastMessage._id);
+                      }
+                      setChats(prev =>
+                        prev.map(c =>
+                          c.chatId === chat.chatId ? { ...c, unreadCount: 0 } : c
+                        )
+                      );
+                      router.push(`/chats/${chat.chatId}`);
                     }
-                    setChats(prev =>
-                      prev.map(c =>
-                        c.chatId === chat.chatId ? { ...c, unreadCount: 0 } : c
-                      )
-                    );
-                    router.push(`/chats/${chat.chatId}`);
                   }}
                 >
-                  <img
-                    src={chat.userinfo?.img || "/imgs/user.png"}
-                    className="w-[60px] h-[60px] rounded-[25px] object-cover"
-                    alt={chat.userinfo?.name}
-                  />
+                  {chat.isGroup ? (
+                    renderGroupAvatar(chat)
+                  ) : (
+                    <img
+                      src={chat.userinfo?.img || "/imgs/user.png"}
+                      className="w-[60px] h-[60px] rounded-[25px] object-cover flex-shrink-0"
+                      alt={chat.userinfo?.name}
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '25px',
+                      }}
+                    />
+                  )}
 
                   <div className="flex-1">
                     <div className="font-medium text-black flex items-center justify-between">
-                      <span className="truncate">{chat.userinfo?.name}</span>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="text-[10px] text-gray-400 font-normal whitespace-nowrap">
-                          {time}
+                      <div className="flex flex-col">
+                        <span className="truncate">
+                          {chat.isGroup ? (
+                            <span className="flex items-center gap-1"   
+                            style={{ fontSize: '18px'}} >
+                              <span>{chat.name}</span>
+                            </span>
+                          ) : (
+                            chat.userinfo?.name
+                          )}
                         </span>
-                        {/* {isLastFromMe && ( */}
-                          <span className="text-xs flex items-center">
-                            {isMessageSeen ? (
-                              <img 
-                                src="/imgs/read.svg" 
-                                alt="مقروءة" 
-                                style={{
-                                  width: '13px',
-                                  height: '12px',
-                                  opacity: 1,
-                                }}
-                                className="w-[13px] h-[12px]"
-                              />
-                            ) : (
-                              <img 
-                                src="/imgs/unread.svg" 
-                                alt="غير مقروءة"  
-                                style={{
-                                  width: '13px',
-                                  height: '12px',
-                                  opacity: 1,
-                                }}
-                                className="w-[13px] h-[12px]" 
-                              />
-                            )}
-                          </span>
-                        {/* )} */}
+                        {chat.isGroup && chat.description && chat.description !== 'no' && (
+                        <span 
+                          className="truncate"
+                          style={{
+                            width: '297px',
+                            height: '23px',
+                            opacity: 1,
+                            fontFamily: 'Cairo',
+                            fontWeight: 400,
+                            fontStyle: 'Regular',
+                            fontSize: '15px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            verticalAlign: 'middle',
+                            color: '#000000',
+                            display: 'block',
+                            maxWidth: '150px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {chat.description}
+                        </span>
+                      )}
                       </div>
                     </div>
 
@@ -598,29 +1355,74 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                   </div>
                 </div>
 
-                {/* Dropdown Arrow - Positioned with unread count */}
-                <div className="flex items-center gap-3 mt-6">
-                  {!isLastFromMe && hasUnread && (
-                    <span 
-                      className="text-white text-[10px] font-semibold flex items-center justify-center"
-                      style={{
-                        width: '22px',
-                        height: '15px',
-                        borderRadius: '6px',
-                        background: '#D72229',
-                        fontFamily: 'Cairo',
-                        fontWeight: 600,
-                        fontSize: '10px',
-                        lineHeight: '16px',
-                        textAlign: 'center',
-                        color: '#FFFFFF',
-                      }}
-                    >
-                      {chat.unreadCount}
-                    </span>
-                  )}
-                  
-                  <button
+                {/* العمود الأيمن: الزمن + علامة قراءة - الأرشفة - عدد الرسائل غير المقروءة */}
+                {!selectionMode && (
+                  <div className="flex flex-col items-center gap-1 mt-6">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-400 font-normal whitespace-nowrap">
+                        {time}
+                      </span>
+                      <span className="text-xs flex items-center">
+                        {isMessageSeen ? (
+                          <img 
+                            src="/imgs/read.svg" 
+                            alt="مقروءة" 
+                            style={{
+                              width: '13px',
+                              height: '12px',
+                              opacity: 1,
+                            }}
+                            className="w-[13px] h-[12px]"
+                          />
+                        ) : (
+                          <img 
+                            src="/imgs/unread.svg" 
+                            alt="غير مقروءة"  
+                            style={{
+                              width: '13px',
+                              height: '12px',
+                              opacity: 1,
+                            }}
+                            className="w-[13px] h-[12px]" 
+                          />
+                        )}
+                      </span>
+                    </div>
+                    
+                    {chat.isFavorite && (
+                      <img 
+                        src="/imgs/archive (2).svg" 
+                        alt="مؤرشفة" 
+                        className="flex-shrink-0"
+                        style={{ 
+                          width: '13px', 
+                          height: '13px', 
+                          opacity: 1,
+                        }} 
+                      />
+                    )}
+                    
+                    {!isLastFromMe && hasUnread && (
+                      <span 
+                        className="text-white text-[10px] font-semibold flex items-center justify-center"
+                        style={{
+                          width: '22px',
+                          height: '15px',
+                          borderRadius: '6px',
+                          background: '#D72229',
+                          fontFamily: 'Cairo',
+                          fontWeight: 600,
+                          fontSize: '10px',
+                          lineHeight: '16px',
+                          textAlign: 'center',
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        {chat.unreadCount}
+                      </span>
+                    )}
+                    
+                    <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setOpenDropdown(isDropdownOpen ? null : chat.chatId);
@@ -631,139 +1433,207 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                         : 'opacity-0 group-hover:opacity-100 hover:bg-gray-200'
                     }`}
                   >
-                    <ChevronDown 
-                      className={`w-3 h-3 text-gray-500 transition-transform ${
-                        isDropdownOpen ? 'rotate-180' : ''
-                      }`} 
+                    <img 
+                      src="/imgs/dropdwnBtn.svg" 
+                      alt="قائمة"
+                      style={{
+                        width: '12px',
+                        height: '6px',
+                        opacity: 1,
+                        transition: 'transform 0.3s ease',
+                        transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                      }}
                     />
                   </button>
 
-                  {/* Dropdown Menu */}
-{/* Dropdown Menu */}
-{isDropdownOpen && (
-  <div 
-    className="absolute top-full right-2 mt-1 bg-white rounded-lg shadow-lg z-50 py-1 bg-[#F5F5F5]"
-    style={{
-      width: '154px',
-      borderRadius: '8px',
-      backgroundColor: "#F5F5F5"
-    }}
-    onClick={(e) => e.stopPropagation()}
-  >
-    <button
-      onClick={() => handleDropdownAction('block', chat.chatId)}
-      className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
-      style={{
-        borderBottom: '0.33px solid #3C3C434D',
-      }}
-    >
-      <img src="/imgs/block.svg" alt="حظر" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
-      <span style={{
-        fontFamily: 'Cairo',
-        fontWeight: 600,
-        fontSize: '15px',
-        lineHeight: '100%',
-        textAlign: 'right',
-        color: '#000000',
-      }}>حظر</span>
-    </button>
-    
-    <button
-      onClick={() => handleDropdownAction('report', chat.chatId)}
-      className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
-      style={{
-        borderBottom: '0.33px solid #3C3C434D',
-      }}
-    >
-      <img src="/imgs/report.svg" alt="إبلاغ" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
-      <span style={{
-        fontFamily: 'Cairo',
-        fontWeight: 600,
-        fontSize: '15px',
-        lineHeight: '100%',
-        textAlign: 'right',
-        color: '#000000',
-      }}>إبلاغ</span>
-    </button>
-    
-    <button
-      onClick={() => handleDropdownAction('search', chat.chatId)}
-      className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
-      style={{
-        borderBottom: '0.33px solid #3C3C434D',
-      }}
-    >
-      <img src="/imgs/search.svg" alt="بحث" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
-      <span style={{
-        fontFamily: 'Cairo',
-        fontWeight: 600,
-        fontSize: '15px',
-        lineHeight: '100%',
-        textAlign: 'right',
-        color: '#000000',
-      }}>بحث</span>
-    </button>
-    
-    <button
-      onClick={() => handleDropdownAction('archive', chat.chatId)}
-      className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
-      style={{
-        borderBottom: '0.33px solid #3C3C434D',
-      }}
-    >
-      <img src="/imgs/archive.svg" alt="أرشفة" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
-      <span style={{
-        fontFamily: 'Cairo',
-        fontWeight: 600,
-        fontSize: '15px',
-        lineHeight: '100%',
-        textAlign: 'right',
-        color: '#000000',
-      }}>أرشفة</span>
-    </button>
-    
-    <button
-      onClick={() => handleDropdownAction('delete', chat.chatId)}
-      className="w-full px-2 py-3 text-sm text-red-600 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
-      style={{
-        borderBottom: chat.isGroup ? '0.33px solid #3C3C434D' : 'none',
-      }}
-    >
-      <img src="/imgs/delete.svg" alt="حذف" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
-      <span style={{
-        fontFamily: 'Cairo',
-        fontWeight: 600,
-        fontSize: '15px',
-        lineHeight: '100%',
-        textAlign: 'right',
-        color: '#D72229',
-      }}>حذف الدردشة</span>
-    </button>
-    
-    {chat.isGroup && (
-      <>
-        <button
-          onClick={() => handleDropdownAction('leave', chat.chatId)}
-          className="w-full px-2 py-3 text-sm text-red-600 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
-        >
-          <img src="/imgs/leave.svg" alt="خروج" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
-          <span style={{
-            fontFamily: 'Cairo',
-            fontWeight: 600,
-            fontSize: '15px',
-            lineHeight: '100%',
-            textAlign: 'right',
-            color: '#D72229',
-          }}>خروج</span>
-        </button>
-      </>
-    )}
-  </div>
-)}
-                </div>
+                    {isDropdownOpen && (
+                      <div 
+                        className="absolute top-full right-2 mt-1 bg-white rounded-lg shadow-lg z-50 py-1 bg-[#F5F5F5]"
+                        style={{
+                          width: '154px',
+                          borderRadius: '8px',
+                          backgroundColor: "#F5F5F5"
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => handleDropdownAction('block', chat.chatId, chat.chatType)}
+                          className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
+                          style={{
+                            borderBottom: '0.33px solid #3C3C434D',
+                          }}
+                        >
+                          <img src="/imgs/block.svg" alt="حظر" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
+                          <span style={{
+                            fontFamily: 'Cairo',
+                            fontWeight: 600,
+                            fontSize: '15px',
+                            lineHeight: '100%',
+                            textAlign: 'right',
+                            color: '#000000',
+                          }}>حظر</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDropdownAction('report', chat.chatId, chat.chatType)}
+                          className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
+                          style={{
+                            borderBottom: '0.33px solid #3C3C434D',
+                          }}
+                        >
+                          <img src="/imgs/report.svg" alt="إبلاغ" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
+                          <span style={{
+                            fontFamily: 'Cairo',
+                            fontWeight: 600,
+                            fontSize: '15px',
+                            lineHeight: '100%',
+                            textAlign: 'right',
+                            color: '#000000',
+                          }}>إبلاغ</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDropdownAction('search', chat.chatId, chat.chatType)}
+                          className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
+                          style={{
+                            borderBottom: '0.33px solid #3C3C434D',
+                          }}
+                        >
+                          <img src="/imgs/search.svg" alt="بحث" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
+                          <span style={{
+                            fontFamily: 'Cairo',
+                            fontWeight: 600,
+                            fontSize: '15px',
+                            lineHeight: '100%',
+                            textAlign: 'right',
+                            color: '#000000',
+                          }}>بحث</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDropdownAction('archive', chat.chatId, chat.chatType)}
+                          className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
+                          style={{
+                            borderBottom: '0.33px solid #3C3C434D',
+                          }}
+                        >
+                          <img src="/imgs/archive.svg" alt="أرشفة" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
+                          <span style={{
+                            fontFamily: 'Cairo',
+                            fontWeight: 600,
+                            fontSize: '15px',
+                            lineHeight: '100%',
+                            textAlign: 'right',
+                            color: '#000000',
+                          }}>أرشفة</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDropdownAction('delete', chat.chatId, chat.chatType)}
+                          className="w-full px-2 py-3 text-sm text-red-600 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
+                          style={{
+                            borderBottom: chat.isGroup ? '0.33px solid #3C3C434D' : 'none',
+                          }}
+                        >
+                          <img src="/imgs/delete.svg" alt="حذف" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
+                          <span style={{
+                            fontFamily: 'Cairo',
+                            fontWeight: 600,
+                            fontSize: '15px',
+                            lineHeight: '100%',
+                            textAlign: 'right',
+                            color: '#D72229',
+                          }}>حذف الدردشة</span>
+                        </button>
+                        
+                        {chat.isGroup && (
+                          <button
+                            onClick={() => handleDropdownAction('leave', chat.chatId, chat.chatType)}
+                            className="w-full px-2 py-3 text-sm text-red-600 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
+                          >
+                            <img src="/imgs/leave.svg" alt="خروج" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
+                            <span style={{
+                              fontFamily: 'Cairo',
+                              fontWeight: 600,
+                              fontSize: '15px',
+                              lineHeight: '100%',
+                              textAlign: 'right',
+                              color: '#D72229',
+                            }}>خروج</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ================= TRANSFER OWNERSHIP MODAL ================= */}
+      {showTransferModal && selectedGroupId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold mb-4 text-center">تحويل ملكية المجموعة</h3>
+            <p className="text-gray-600 mb-4 text-center">
+              أنت مالك هذه المجموعة. يرجى اختيار عضو لتحويل الملكية إليه قبل المغادرة.
+            </p>
+            
+            <div className="mb-4 max-h-60 overflow-y-auto">
+              {chats
+                .filter(c => c.chatId !== myUserId && !c.isGroup)
+                .map(member => (
+                  <div
+                    key={member.chatId}
+                    onClick={() => setNewOwnerId(member.chatId)}
+                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition ${
+                      newOwnerId === member.chatId ? 'bg-red-50 border-2 border-red-500' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <img
+                      src={member.userinfo?.img || '/imgs/user.png'}
+                      className="w-10 h-10 rounded-full object-cover"
+                      alt={member.name}
+                    />
+                    <span className="font-medium">{member.name}</span>
+                  </div>
+                ))}
+            </div>
+            
+            {chats.filter(c => c.chatId !== myUserId && !c.isGroup).length === 0 && (
+              <p className="text-center text-gray-500 mb-4">
+                لا يوجد أعضاء متاحين لتحويل الملكية إليهم
+              </p>
+            )}
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowTransferModal(false);
+                  setSelectedGroupId(null);
+                  setNewOwnerId('');
+                }}
+                className="flex-1 py-3 rounded-xl border border-gray-300 hover:bg-gray-50"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={() => {
+                  if (newOwnerId && selectedGroupId) {
+                    handleTransferOwnership(selectedGroupId, newOwnerId);
+                  } else {
+                    alert('يرجى اختيار عضو لتحويل الملكية إليه');
+                  }
+                }}
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!newOwnerId}
+              >
+                تحويل الملكية والمغادرة
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
