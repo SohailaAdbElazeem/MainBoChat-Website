@@ -10,7 +10,8 @@ import { ChatItem, Message } from "@/types/types";
 import { Search, X, ChevronDown, Flag, Search as SearchIcon, Archive, Trash2, LogOut, Check } from "lucide-react";
 import { usePathname } from "next/navigation";
 import ChatFilters from './ChatFilters';
-
+ import { motion } from "framer-motion"; // أضف هذا في أعلى الملف
+ 
 type FilterType = 'all' | 'read' | 'unread' | 'starred' | 'groups' | 'calls';
 
 type Props = {
@@ -134,6 +135,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [groupSearchTerm, setGroupSearchTerm] = useState("");
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
+const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
 
   // Transfer Ownership Modal States
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -152,7 +154,8 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   const activeChatId = propActiveChatId || pathname?.split("/").pop();
 
 
-
+// ////////////////////////////////////////////
+// ////////////////////////////////////////////
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -645,11 +648,19 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       </div>
     );
 
+ 
     if (memberCount < 2) {
       return (
         <div 
-          className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0 flex items-center justify-center bg-gray-200"
+          className="relative w-[60px] h-[60px] rounded-[15px] overflow-hidden flex-shrink-0  flex items-center justify-center"
         >
+          {/* صورة العضو الوحيد متمركزة في المنتصف */}
+          <img 
+            // src={getMemberImage(0)} 
+             src="imgs/person1.svg"
+            alt="Member" 
+            className="w-full h-full object-cover rounded-[15px] p-1" 
+          />
           <GroupIcon />
         </div>
       );
@@ -658,33 +669,35 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
     if (memberCount === 2) {
       return (
         <div
-          className="relative w-[60px] h-[60px] rounded-[25px] overflow-hidden flex-shrink-0"
+          className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0"
         >
           <img
-            src={getMemberImage(0)}
+            // src={getMemberImage(0)}
+            src="imgs/person1.svg"
             alt="Member 1"
             className="absolute object-cover"
             style={{
-              width: '42px',
-              height: '42px',
+              width: '34.0913200378418',
+              height: '34.0913200378418',
               top: '9px',
-              left: '16px',
+              left: '25px',
               objectFit: 'cover',
-              borderRadius: '50%',
+              borderRadius: '15px',
               zIndex: 1,
             }}
           />
           <img
-            src={getMemberImage(1)}
+            // src={getMemberImage(1)}
+            src="imgs/person2.svg"
             alt="Member 2"
             className="absolute object-cover"
             style={{
-              width: '42px',
-              height: '42px',
+              width: '34.0913200378418',
+              height: '34.0913200378418',
               top: '9px',
-              left: '-5px',
+              left: '1px',
               objectFit: 'cover',
-              borderRadius: '50%',
+              borderRadius: '15px',
               zIndex: 2,
             }}
           />
@@ -692,53 +705,159 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         </div>
       );
     }
+ 
 
-    if (memberCount === 3) {
-      return (
-        <div
-          className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0"
-        >
-          <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
-            <img
-              src={getMemberImage(0)}
-              alt="Member 1"
-              className="w-full h-full object-cover"
-            />
-            <img
-              src={getMemberImage(1)}
-              alt="Member 2"
-              className="w-full h-full object-cover"
-            />
-            <img
-              src={getMemberImage(2)}
-              alt="Member 3"
-              className="w-full h-full object-cover col-span-2"
-            />
-          </div>
-          <GroupIcon />
-        </div>
-      );
+    if (memberCount === 3) { 
+      return ( 
+        <div 
+          className="relative w-[60px] h-[60px]  overflow-hidden flex-shrink-0 " 
+        > 
+          {/* الصورة الأولى (أعلى اليمين) */}
+          <img 
+            // src={getMemberImage(0)} 
+            src="imgs/person1.svg" 
+            alt="Member 1" 
+            className="absolute object-cover  rounded-[15px]" 
+            style={{ 
+              width: '34px', 
+              height: '34px', 
+              top: '4px', 
+              right: '6px', 
+              zIndex: 1, 
+            }} 
+          /> 
+
+          {/* الصورة الثانية (أعلى اليسار) */}
+          <img 
+            // src={getMemberImage(1)} 
+            src="imgs/person2.svg" 
+            alt="Member 2" 
+            className="absolute object-cover  rounded-[15px]" 
+            style={{ 
+              width: '34px', 
+              height: '34px', 
+              top: '4px', 
+              left: '-2px', 
+              zIndex: 1, 
+            }} 
+          /> 
+
+          {/* الصورة الثالثة (تحتهم في المنتصف) */}
+          <img 
+            // src={getMemberImage(2)} 
+            src="imgs/person2.svg" 
+            alt="Member 3" 
+            className="absolute object-cover  rounded-[15px]" 
+            style={{ 
+              width: '34px', 
+              height: '34px', 
+              bottom: '4px', 
+              left: '50%', 
+              transform: 'translateX(-50%)', 
+              zIndex: 2, 
+            }} 
+          /> 
+          <GroupIcon /> 
+        </div> 
+      ); 
     }
 
     if (memberCount === 4) {
       return (
         <div 
-          className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0"
+          className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0 "
         >
-          <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
-            {members.slice(0, 4).map((member: any, index: number) => (
-              <img
-                key={index}
-                src={getMemberImage(index)}
-                alt="Member"
-                className="w-full h-full object-cover"
-              />
-            ))}
-          </div>
-          <GroupIcon />
+          {/* 1. أعلى اليسار (تحت الثالثة وفوق الثانية) */}
+          <img 
+            // src={getMemberImage(0)} 
+            src="imgs/person1.svg" 
+            alt="Member 1" 
+            className="absolute object-cover  rounded-[15px]" 
+            style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
+          /> 
+
+          {/* 2. أعلى اليمين (تحت الأولى وفوق الرابعة) */}
+          <img 
+            // src={getMemberImage(1)}
+            src="imgs/person2.svg"  
+            alt="Member 2" 
+            className="absolute object-cover  rounded-[15px]" 
+            style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
+          /> 
+
+          {/* 3. أسفل اليسار (فوق الأولى والرابعة) */}
+          <img 
+            // src={getMemberImage(2)} 
+            src="imgs/person2.svg" 
+            alt="Member 3" 
+            className="absolute object-cover  rounded-[15px]" 
+            style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }} 
+          /> 
+
+          {/* 4. أسفل اليمين (تحت الثانية والثالثة) */}
+          <img 
+            // src={getMemberImage(3)} 
+            src="imgs/person1.svg" 
+            alt="Member 4" 
+            className="absolute object-cover rounded-[15px] " 
+            style={{ width: '34px', height: '34px', bottom: '2px', right: '2px', zIndex: 1 }} 
+          /> 
+
+          <GroupIcon /> 
         </div>
       );
     }
+
+
+    // 5. خمسة أشخاص أو أكثر (ابتداءً من 5)
+if (memberCount >= 5) {
+  const extraCount = memberCount - 3; 
+
+  return (
+    <div className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0">
+      {/* 1. أعلى اليسار (الصورة الأولى) */}
+      <img 
+        src="imgs/person1.svg" 
+        alt="Member 1" 
+        className="absolute object-cover rounded-[15px]" 
+        style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
+      /> 
+
+      {/* 2. أعلى اليمين (الصورة الثانية) */}
+      <img 
+        src="imgs/person2.svg" 
+        alt="Member 2" 
+        className="absolute object-cover rounded-[15px]" 
+        style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
+      /> 
+
+      {/* 3. أسفل اليسار: العداد للمتبقين (أصبح هو الثالث) */}
+      <div 
+        className="absolute flex items-center justify-center bg-[#DADADA] text-[#000000] font-bold text-[12px] rounded-[15px] shadow-sm"
+        style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }}
+      >
+        {extraCount}
+      </div>
+
+      {/* 4. أسفل اليمين: الصورة الثالثة (بالخصائص الجديدة) */}
+      <img 
+        src="imgs/person1.svg" 
+        alt="Member 3" 
+        className="absolute object-cover rounded-[15px]" 
+        style={{ 
+          width: '34.09px', 
+          height: '34.09px', 
+          bottom: '2px', 
+          right: '2px', 
+          zIndex: 1,
+          // transform: 'rotate(-180deg)' // تطبيق زاوية الدوران المطلوبة
+        }} 
+      />
+
+      <GroupIcon /> 
+    </div>
+  );
+}
 
     return (
       <div 
@@ -1638,7 +1757,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       )}
 
       {/* ================= CREATE GROUP MODAL ================= */}
-      {isCreateGroupOpen && (
+      {/* {isCreateGroupOpen && (
         <div
           className="fixed top-[130px] bottom-0 left-[18px] w-[20%] z-50 flex flex-col p-6 bg-[#F5F5F5]"
           style={{
@@ -1892,7 +2011,368 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
             </button>
           </div>
         </div>
-      )}
+      )} */}
+
+     {/* ================= CREATE GROUP MODAL ================= */}
+  {/* ================= CREATE GROUP MODAL ================= */}
+{/* ================= CREATE GROUP MODAL ================= */} 
+{isCreateGroupOpen && ( 
+  <motion.div 
+    drag 
+    dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }} 
+    dragMomentum={false} 
+    className="fixed top-[130px] bottom-0 left-[18px] w-[20%] z-50 flex flex-col p-6 bg-[#F5F5F5] cursor-grab active:cursor-grabbing" 
+    style={{ 
+      direction: "rtl", 
+      borderRadius: "35px", 
+    }} 
+  > 
+    <div className="flex items-center gap-3 mb-4 flex-shrink-0"> 
+      <button 
+        onClick={() => setIsCreateGroupOpen(false)} 
+        className="w-9 h-9 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors p-0" 
+      > 
+        <img  
+          src="/imgs/close.svg"  
+          alt="إغلاق" 
+          style={{ width: '17px', height: '17px', opacity: 1 }} 
+        /> 
+      </button> 
+      <h2 style={{ fontFamily: 'Cairo', fontWeight: 500, fontSize: '25px', lineHeight: '100%', color: '#000000' }}> 
+        انشاء مجموعة 
+      </h2> 
+    </div> 
+ 
+    <div className="mb-3 flex justify-center gap-1 flex-shrink-0 relative -mx-3"> 
+      <div className="relative inline-block"> 
+        <img 
+          src={JSON.parse(localStorage.getItem('userData') || '{}').img || '/imgs/user.png'} 
+          alt="صورة المستخدم" 
+          className="w-[50px] h-[45px] rounded-[17px] object-cover" 
+          style={{ filter: 'blur(1px)' }} 
+        /> 
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"> 
+          <img src="/imgs/Groupcamer.svg" alt="كاميرا" style={{ width: '17px', height: '17px', opacity: 1 }} /> 
+        </div> 
+      </div> 
+ 
+      <input 
+        type="text" 
+        placeholder="اكتب اسم المجموعة" 
+        value={groupName} 
+        maxLength={25} 
+        onChange={(e) => setGroupName(e.target.value)} 
+        style={{ 
+          width: '100%', 
+          maxWidth: '402px', 
+          height: '45px', 
+          borderRadius: '18px', 
+          background: '#FFFFFF', 
+          fontFamily: 'Cairo', 
+          fontWeight: 600, 
+          fontSize: '15px', 
+          padding: '0 15px', 
+          border: 'none', 
+          outline: 'none', 
+        }} 
+        className="text-black placeholder-[#B4B4B9]" 
+      /> 
+ 
+      <span style={{ width: '46px', height: '28px', fontFamily: 'Cairo', fontWeight: 600, fontSize: '15px', lineHeight: '100%', color: '#B4B4B9', transform: 'translateY(15px)' }}> 
+        25/{groupName.length} 
+      </span> 
+    </div> 
+ 
+    <div className="mb-4 flex justify-center flex-shrink-0 -mx-3"> 
+      <div className="flex items-center gap-3 p-3 w-full" style={{ maxWidth: '402px', height: '102px', borderRadius: '18px', background: '#FFFFFF' }}> 
+        <textarea 
+          placeholder="اكتب الوصف" 
+          value={groupDescription} 
+          onChange={(e) => setGroupDescription(e.target.value)} 
+          style={{ flex: 1, height: '100%', fontFamily: 'Cairo', fontWeight: 600, fontSize: '15px', padding: '8px 0', border: 'none', outline: 'none', resize: 'none', background: 'transparent' }} 
+          className="text-black placeholder-[#B4B4B9]" 
+        /> 
+      </div> 
+    </div> 
+ 
+    <div className="w-[calc(100%+48px)] -mx-6 shrink-0" style={{ height: '3px', borderTop: '0.33px solid #3C3C434D' }} /> 
+ 
+    <div className="flex items-center justify-between mb-2 -mx-5 flex-shrink-0"> 
+      <span style={{ fontFamily: 'Cairo', fontWeight: 600, fontSize: '17px', color: '#000000' }}> 
+        الاعضاء: 
+      </span> 
+      <div className="flex items-center gap-1"> 
+        <button 
+          onClick={() => { 
+            const searchInput = document.getElementById('groupSearchInput'); 
+            if (searchInput) { 
+              searchInput.style.display = searchInput.style.display === 'none' ? 'flex' : 'none'; 
+            } 
+          }} 
+          className="w-8 h-8 rounded-full bg-[#F2F2F2] flex items-center justify-center hover:bg-[#E5E5E5] transition-colors" 
+        > 
+          <img src="/imgs/search_mem.svg" alt="بحث" style={{ width: '15px', height: '15px', opacity: 1 }} /> 
+        </button> 
+        <button 
+          onClick={() => setIsMemberSelectionOpen(true)} 
+          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#E5E5E5] transition-colors" 
+        > 
+           <img src="/imgs/chooseMember.svg" alt="إضافة أعضاء" style={{ width: '16px', height: '16px', opacity: 1 }} /> 
+        </button> 
+        {selectedMembers.length > 0 && ( 
+          <span className="text-sm text-[#D72229] font-semibold"> 
+            ({selectedMembers.length}) 
+          </span> 
+        )} 
+      </div> 
+    </div> 
+ 
+    <div 
+      id="groupSearchInput" 
+      className="flex items-center bg-white rounded-xl px-3 py-2 mb-3 shadow-sm mx-auto w-full flex-shrink-0"  
+      style={{ maxWidth: '402px', display: 'none' }} 
+    > 
+      <img src="/imgs/search_mem.svg" alt="بحث" style={{ width: '15px', height: '15px', opacity: 1, marginLeft: '8px' }} /> 
+      <input 
+        type="text" 
+        placeholder="ابحث في الأعضاء..." 
+        value={groupSearchTerm} 
+        onChange={(e) => setGroupSearchTerm(e.target.value)} 
+        className="w-full bg-transparent text-sm focus:outline-none" 
+        style={{ fontFamily: 'Cairo', fontSize: '14px' }} 
+      /> 
+    </div> 
+ 
+    <div className="flex-1 flex items-center justify-center mb-4 mx-auto w-full" style={{ maxWidth: '402px', minHeight: '150px' }}> 
+      <div className="text-center"> 
+        <img src="/imgs/noMember.svg" alt="لا يوجد أعضاء" className="w-[71px] h-[71px] object-contain mx-auto mb-2" /> 
+      </div> 
+    </div> 
+ 
+    <div 
+      className="flex justify-center items-center flex-shrink-0" 
+      style={{ 
+        width: 'calc(100% + 48px)', 
+        marginLeft: '-24px', 
+        marginRight: '-24px', 
+        marginBottom: '-24px', 
+        padding: '16px 24px', 
+        background: '#E3E3E366', 
+        backdropFilter: 'blur(35px)', 
+        borderBottomLeftRadius: '35px', 
+        borderBottomRightRadius: '35px', 
+        minHeight: '82px', 
+      }} 
+    > 
+      <button 
+        disabled={!groupName.trim() || isSubmittingGroup} 
+        onClick={handleCreateGroupSubmit} 
+        style={{ 
+          width: '100%', 
+          maxWidth: '285px', 
+          height: '50px', 
+          borderRadius: '20px', 
+          background: '#FFFFFF', 
+          fontFamily: 'Cairo', 
+          fontWeight: 600, 
+          fontSize: '17px', 
+          border: '1px solid #ddd', 
+          cursor: !groupName.trim() ? 'not-allowed' : 'pointer', 
+          transition: 'all 0.2s ease' 
+        }} 
+        className="text-black shadow-md hover:bg-gray-50" 
+      > 
+        {isSubmittingGroup ? 'جاري الإنشاء...' : 'انشاء مجموعة'} 
+      </button> 
+    </div> 
+  </motion.div> 
+)}
+{/* ================= MODAL اختيار الأعضاء ================= */}
+{isMemberSelectionOpen && (
+  <div
+    className="fixed top-[130px] bottom-0 left-[18px] w-[20%] z-[60] flex flex-col p-6 bg-[#F5F5F5]"
+    style={{
+      direction: "rtl",
+      borderRadius: "35px",
+    }}
+  >
+    <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+      {/* زر إغلاق - صورة close.svg */}
+      <button
+        onClick={() => setIsMemberSelectionOpen(false)}
+        className="w-9 h-9 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors p-0"
+      >
+        <img 
+          src="/imgs/returnPage.svg" 
+          alt="returnPage"
+          style={{
+            width: '17px',
+            height: '17px',
+            opacity: 1,
+           }}
+        />
+      </button>
+      <h2
+        style={{
+          fontFamily: 'Cairo',
+          fontWeight: 500,
+          fontSize: '25px',
+          lineHeight: '100%',
+          color: '#000000'
+        }}
+      >
+          اضافة اشخاص
+      </h2>
+    </div>
+
+       <div className="flex items-center bg-white rounded-xl px-3 py-2 mb-3 shadow-sm mx-auto w-full flex-shrink-0" style={{ maxWidth: '402px' }}>
+            <Search className="text-[#B6B7B7] w-4 h-4 ml-2" />
+            <input
+              type="text"
+              placeholder="ابحث عن اسم شخص..."
+              value={groupSearchTerm}
+              onChange={(e) => setGroupSearchTerm(e.target.value)}
+              className="w-full bg-transparent text-sm focus:outline-none"
+              style={{
+                fontFamily: 'Cairo',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+              <div className="flex items-center justify-between px-2 mb-3">
+                  {/* أقصى اليسار: صورة المستخدم واسمه */}
+      <div className="flex items-center gap-1">
+        <img
+          src='/imgs/addperson.svg'
+          alt="صورة المستخدم"
+          className="w-[13px] h-[13px] object-cover"
+        />
+        <span className="text-sm font-semibold text-black">
+         عدد الاعضاء 
+        </span>
+      </div>
+
+        <div className="flex items-center gap-1">
+        
+        <span className="text-sm ">
+          {selectedMembers.length}
+        </span>
+        <span className="text-sm text-gray-500">
+           الأشخاص
+        </span>
+      </div>
+              </div>
+
+    <div className="flex-1 overflow-y-auto flex flex-col gap-2 mb-4 mx-auto w-full" style={{ maxWidth: '402px', minHeight: '150px' }}>
+      {(() => {
+        const individualUsers = chats.filter(c => !c.isGroup);
+        const filteredUsers = individualUsers.filter(c => 
+          c.name.toLowerCase().includes(groupSearchTerm.toLowerCase().trim())
+        );
+
+        if (individualUsers.length === 0) {
+          return (
+            <div className="flex-1 flex items-center justify-center h-full" style={{ minHeight: '200px' }}>
+              <div className="text-center">
+                <div className="text-5xl mb-3">👤</div>
+                <p className="text-xl font-semibold text-gray-600">لا يوجد أعضاء</p>
+                <p className="text-sm text-gray-400 mt-1">ليس لديك أي محادثات مع أفراد</p>
+              </div>
+            </div>
+          );
+        }
+
+        if (filteredUsers.length === 0 && groupSearchTerm.trim() !== '') {
+          return (
+            <div
+              className="flex-1 flex items-center justify-center h-full"
+              style={{ minHeight: '71px' }}
+            >
+              <div className="text-center">
+                <img
+                  src="/imgs/noMember.svg"
+                  alt="لا توجد نتائج"
+                  className="w-[71px] h-[71px] object-contain mx-auto"
+                />
+              </div>
+            </div>
+          );
+        }
+
+        return filteredUsers.map((chat) => {
+          const isChecked = selectedMembers.includes(chat.chatId);
+          return (
+            <div
+              key={chat.chatId}
+              onClick={() => toggleMemberSelection(chat.chatId)}
+              className="flex items-center justify-between p-2 bg-white rounded-xl cursor-pointer hover:bg-gray-50 transition"
+            >
+              <div className="flex items-center gap-3">
+                <img
+                  src={chat.userinfo?.img || "/imgs/user.png"}
+                  className="w-10 h-10 rounded-full object-cover"
+                  alt={chat.name}
+                />
+                <span className="text-sm font-semibold text-black">{chat.name}</span>
+              </div>
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  isChecked
+                    ? 'bg-[#D72229] border-[#D72229]'
+                    : 'border-gray-300'
+                }`}
+              >
+                {isChecked && (
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          );
+        });
+      })()}
+    </div>
+
+    <div
+      className="flex justify-center items-center flex-shrink-0"
+      style={{
+        width: 'calc(100% + 48px)',
+        marginLeft: '-24px',
+        marginRight: '-24px',
+        marginBottom: '-24px',
+        padding: '16px 24px',
+        background: '#E3E3E366',
+        backdropFilter: 'blur(35px)',
+        borderBottomLeftRadius: '35px',
+        borderBottomRightRadius: '35px',
+        minHeight: '82px',
+      }}
+    >
+      <button
+        onClick={() => setIsMemberSelectionOpen(false)}
+        style={{
+          width: '100%',
+          maxWidth: '285px',
+          height: '50px',
+          borderRadius: '20px',
+          background: '#FFFFFF',
+          fontFamily: 'Cairo',
+          fontWeight: 600,
+          fontSize: '17px',
+          border: 'none',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          color: '#000000',
+        }}
+        className="hover:bg-[#b01d23] shadow-md"
+      >
+       اضافة الاعضاء
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }
