@@ -11,6 +11,7 @@ import FollowButton from "../profile/_components/FollowButton";
 import Loader from "@/components/Loader";
 import { useLoginModal } from "@/contexts/LoginModalContext";
 import { useTranslation } from "@/contexts/TranslationContext";
+// import toast from 'react-hot-toast';
 
 // ============================================================
 // 1. كائن الترجمات (كامل)

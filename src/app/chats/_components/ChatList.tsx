@@ -5,20 +5,21 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import wsService from "@/lib/websocketService";
-import { isChatSeen, markChatSeen } from "@/lib/seenGuard";
+import { markChatSeen } from "@/lib/seenGuard";
 import { ChatItem, Message } from "@/types/types";
 import { Search, X, ChevronDown, Flag, Search as SearchIcon, Archive, Trash2, LogOut, Check } from "lucide-react";
 import { usePathname } from "next/navigation";
 import ChatFilters from './ChatFilters';
- import { motion } from "framer-motion"; // أضف هذا في أعلى الملف
- 
+import { motion } from "framer-motion";
+import { toast } from 'react-hot-toast';
+import { Phone, Video } from "lucide-react";
+
 type FilterType = 'all' | 'read' | 'unread' | 'starred' | 'groups' | 'calls';
 
 type Props = {
   userId?: string | null;
   apiBase: string;
   activeChatId?: string | null;
-//  onSelectionChange?: (isSelecting: boolean, count: number) => void; // إضافة هذ
 };
 
 /* ================= NORMALIZE ================= */
@@ -135,7 +136,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [groupSearchTerm, setGroupSearchTerm] = useState("");
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
-const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
+  const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
 
   // Transfer Ownership Modal States
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -148,14 +149,106 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
 
   const typingTimers = useRef<Record<string, any>>({});
 
-  // Get token from localStorage
+  // ================= Get token from localStorage =================
   const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   const pathname = usePathname();
   const activeChatId = propActiveChatId || pathname?.split("/").pop();
 
+  // ================= BLOCK/UNBLOCK USER =================
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
 
-// ////////////////////////////////////////////
-// ////////////////////////////////////////////
+  // ================= REPORT STATES =================
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedReportChatId, setSelectedReportChatId] = useState<string | null>(null);
+  const [selectedReason, setSelectedReason] = useState<string>("");
+  const [isReporting, setIsReporting] = useState(false);
+  const [showReportSuccess, setShowReportSuccess] = useState(false);
+  
+  // أسباب البلاغ
+  const reportReasons = [
+    { id: "inappropriate", label: "محتوى غير لائق" },
+    { id: "misleading", label: "معلومات مضللة" },
+    { id: "spam", label: "رسائل مزعجة (سبام)" },
+    { id: "harmful", label: "محتوى ضار" },
+    { id: "personal_info", label: "معلومات شخصية" },
+  ];
+
+  // ================= CALLS STATES =================
+  const [callMinutes, setCallMinutes] = useState<{ free: number; total: number }>({ free: 35, total: 75 });
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [selectedCallChatId, setSelectedCallChatId] = useState<string | null>(null);
+
+  // جلب قائمة المستخدمين المحظورين
+  const fetchBlockedUsers = async () => {
+    if (!token) return;
+    try {
+      const baseUrl = apiBase || 'https://bo-chat.space';
+      const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+      
+      console.log('📤 Fetching blocked users from:', `${cleanBaseUrl}/block`);
+      
+      const response = await fetch(`${cleanBaseUrl}/block`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('📥 Fetch blocked users status:', response.status);
+      
+      if (!response.ok) {
+        console.log('❌ Failed to fetch blocked users, status:', response.status);
+        return;
+      }
+      
+      const responseText = await response.text();
+      console.log('📥 Blocked users raw response:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ Failed to parse blocked users response:', e);
+        return;
+      }
+      
+      console.log('📥 Blocked users parsed response:', data);
+      
+      let blockedIds: string[] = [];
+      
+      if (data.success && data.response) {
+        if (Array.isArray(data.response)) {
+          blockedIds = data.response.map((user: any) => user._id || user.id || user);
+        }
+      } else if (Array.isArray(data)) {
+        blockedIds = data.map((user: any) => user._id || user.id || user);
+      } else if (data.blockedUsers && Array.isArray(data.blockedUsers)) {
+        blockedIds = data.blockedUsers.map((user: any) => user._id || user.id || user);
+      } else if (data.users && Array.isArray(data.users)) {
+        blockedIds = data.users.map((user: any) => user._id || user.id || user);
+      } else if (data.data && Array.isArray(data.data)) {
+        blockedIds = data.data.map((user: any) => user._id || user.id || user);
+      }
+      
+      console.log('✅ Blocked IDs:', blockedIds);
+      setBlockedUsers(blockedIds);
+      
+    } catch (error) {
+      console.error('❌ Error fetching blocked users:', error);
+    }
+  };
+
+  // ================= USE EFFECT FOR BLOCKED USERS =================
+  useEffect(() => {
+    if (token) {
+      fetchBlockedUsers();
+    }
+  }, [token]);
+
+  // التحقق إذا كان المستخدم محظوراً
+  const isUserBlocked = (chatId: string) => {
+    return blockedUsers.includes(chatId);
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -226,13 +319,13 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
 
   const handleBulkCall = () => {
     if (selectedChats.length === 0) return;
-    alert(`جاري إنشاء مكالمة جماعية مع ${selectedChats.length} محادثة`);
+    toast.info(`جاري إنشاء مكالمة جماعية مع ${selectedChats.length} محادثة`);
     clearSelection();
   };
 
   const handleBulkGroupMessage = () => {
     if (selectedChats.length === 0) return;
-    alert(`جاري إنشاء رسالة جماعية مع ${selectedChats.length} محادثة`);
+    toast.info(`جاري إنشاء رسالة جماعية مع ${selectedChats.length} محادثة`);
     clearSelection();
   };
 
@@ -295,7 +388,8 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
       return false;
     }
   };
-   // ================= FETCH GROUP DETAILS =================
+
+  // ================= FETCH GROUP DETAILS =================
   const fetchGroupDetails = async (groupId: string) => {
     if (!token) return null;
     try {
@@ -308,7 +402,13 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
       });
       if (!res.ok) return null;
       const data = await res.json();
-      return data.response || null;
+      
+      const groupData = data.response || data || {};
+      return {
+        ...groupData,
+        admins: groupData.admins || groupData.administrators || [],
+        owner: groupData.owner || groupData.createdBy || groupData.ownerId,
+      };
     } catch (error) {
       console.error('Error fetching group details:', error);
       return null;
@@ -648,16 +748,13 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
       </div>
     );
 
- 
     if (memberCount < 2) {
       return (
         <div 
           className="relative w-[60px] h-[60px] rounded-[15px] overflow-hidden flex-shrink-0  flex items-center justify-center"
         >
-          {/* صورة العضو الوحيد متمركزة في المنتصف */}
           <img 
-            // src={getMemberImage(0)} 
-             src="imgs/person1.svg"
+            src="imgs/person1.svg"
             alt="Member" 
             className="w-full h-full object-cover rounded-[15px] p-1" 
           />
@@ -672,7 +769,6 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
           className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0"
         >
           <img
-            // src={getMemberImage(0)}
             src="imgs/person1.svg"
             alt="Member 1"
             className="absolute object-cover"
@@ -687,7 +783,6 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
             }}
           />
           <img
-            // src={getMemberImage(1)}
             src="imgs/person2.svg"
             alt="Member 2"
             className="absolute object-cover"
@@ -705,16 +800,13 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
         </div>
       );
     }
- 
 
     if (memberCount === 3) { 
       return ( 
         <div 
           className="relative w-[60px] h-[60px]  overflow-hidden flex-shrink-0 " 
         > 
-          {/* الصورة الأولى (أعلى اليمين) */}
           <img 
-            // src={getMemberImage(0)} 
             src="imgs/person1.svg" 
             alt="Member 1" 
             className="absolute object-cover  rounded-[15px]" 
@@ -726,10 +818,7 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
               zIndex: 1, 
             }} 
           /> 
-
-          {/* الصورة الثانية (أعلى اليسار) */}
           <img 
-            // src={getMemberImage(1)} 
             src="imgs/person2.svg" 
             alt="Member 2" 
             className="absolute object-cover  rounded-[15px]" 
@@ -741,10 +830,7 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
               zIndex: 1, 
             }} 
           /> 
-
-          {/* الصورة الثالثة (تحتهم في المنتصف) */}
           <img 
-            // src={getMemberImage(2)} 
             src="imgs/person2.svg" 
             alt="Member 3" 
             className="absolute object-cover  rounded-[15px]" 
@@ -767,97 +853,73 @@ const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
         <div 
           className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0 "
         >
-          {/* 1. أعلى اليسار (تحت الثالثة وفوق الثانية) */}
           <img 
-            // src={getMemberImage(0)} 
             src="imgs/person1.svg" 
             alt="Member 1" 
             className="absolute object-cover  rounded-[15px]" 
             style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
           /> 
-
-          {/* 2. أعلى اليمين (تحت الأولى وفوق الرابعة) */}
           <img 
-            // src={getMemberImage(1)}
             src="imgs/person2.svg"  
             alt="Member 2" 
             className="absolute object-cover  rounded-[15px]" 
             style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
           /> 
-
-          {/* 3. أسفل اليسار (فوق الأولى والرابعة) */}
           <img 
-            // src={getMemberImage(2)} 
             src="imgs/person2.svg" 
             alt="Member 3" 
             className="absolute object-cover  rounded-[15px]" 
             style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }} 
           /> 
-
-          {/* 4. أسفل اليمين (تحت الثانية والثالثة) */}
           <img 
-            // src={getMemberImage(3)} 
             src="imgs/person1.svg" 
             alt="Member 4" 
             className="absolute object-cover rounded-[15px] " 
             style={{ width: '34px', height: '34px', bottom: '2px', right: '2px', zIndex: 1 }} 
           /> 
-
           <GroupIcon /> 
         </div>
       );
     }
 
-
-    // 5. خمسة أشخاص أو أكثر (ابتداءً من 5)
-if (memberCount >= 5) {
-  const extraCount = memberCount - 3; 
-
-  return (
-    <div className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0">
-      {/* 1. أعلى اليسار (الصورة الأولى) */}
-      <img 
-        src="imgs/person1.svg" 
-        alt="Member 1" 
-        className="absolute object-cover rounded-[15px]" 
-        style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
-      /> 
-
-      {/* 2. أعلى اليمين (الصورة الثانية) */}
-      <img 
-        src="imgs/person2.svg" 
-        alt="Member 2" 
-        className="absolute object-cover rounded-[15px]" 
-        style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
-      /> 
-
-      {/* 3. أسفل اليسار: العداد للمتبقين (أصبح هو الثالث) */}
-      <div 
-        className="absolute flex items-center justify-center bg-[#DADADA] text-[#000000] font-bold text-[12px] rounded-[15px] shadow-sm"
-        style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }}
-      >
-        {extraCount}
-      </div>
-
-      {/* 4. أسفل اليمين: الصورة الثالثة (بالخصائص الجديدة) */}
-      <img 
-        src="imgs/person1.svg" 
-        alt="Member 3" 
-        className="absolute object-cover rounded-[15px]" 
-        style={{ 
-          width: '34.09px', 
-          height: '34.09px', 
-          bottom: '2px', 
-          right: '2px', 
-          zIndex: 1,
-          // transform: 'rotate(-180deg)' // تطبيق زاوية الدوران المطلوبة
-        }} 
-      />
-
-      <GroupIcon /> 
-    </div>
-  );
-}
+    if (memberCount >= 5) {
+      const extraCount = memberCount - 3; 
+      return (
+        <div className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0">
+          <img 
+            src="imgs/person1.svg" 
+            alt="Member 1" 
+            className="absolute object-cover rounded-[15px]" 
+            style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
+          /> 
+          <img 
+            src="imgs/person2.svg" 
+            alt="Member 2" 
+            className="absolute object-cover rounded-[15px]" 
+            style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
+          /> 
+          <div 
+            className="absolute flex items-center justify-center bg-[#DADADA] text-[#000000] font-bold text-[12px] rounded-[15px] shadow-sm"
+            style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }}
+          >
+            {extraCount}
+          </div>
+          <img 
+            src="imgs/person1.svg" 
+            alt="Member 3" 
+            className="absolute object-cover rounded-[15px]" 
+            style={{ 
+              width: '34.09px', 
+              height: '34.09px', 
+              bottom: '2px', 
+              right: '2px', 
+              zIndex: 1,
+            }} 
+          />
+          <GroupIcon /> 
+        </div>
+      );
+    }
 
     return (
       <div 
@@ -888,55 +950,120 @@ if (memberCount >= 5) {
     );
   };
 
-  // ================= BLOCK USER =================
+  // ================= BLOCK/UNBLOCK USER =================
   const handleBlockUser = async (chatId: string) => {
     if (!token) return;
     
-    const confirmBlock = window.confirm(`هل أنت متأكد من رغبتك في حظر هذا المستخدم؟`);
-    if (!confirmBlock) {
+    const isBlocked = isUserBlocked(chatId);
+    
+    const confirmAction = window.confirm(
+      isBlocked 
+        ? `هل أنت متأكد من رغبتك في رفع الحظر عن هذا المستخدم؟`
+        : `هل أنت متأكد من رغبتك في حظر هذا المستخدم؟`
+    );
+    
+    if (!confirmAction) {
       setOpenDropdown(null);
       return;
     }
     
     try {
-      const response = await fetch(`${apiBase}/chats/block`, {
+      const baseUrl = apiBase || 'https://bo-chat.space';
+      const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+      
+      const url = isBlocked 
+        ? `${cleanBaseUrl}/unblock${myUserId}` 
+        : `${cleanBaseUrl}/block${myUserId}`;
+      
+      console.log('📤 Sending request to:', url);
+      console.log('📤 With body:', { blockedid: chatId });
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          blocked_user_id: chatId 
+          blockedid: chatId 
         })
       });
 
-      const data = await response.json();
+      console.log('📥 Response status:', response.status);
       
-      if (data.success) {
-        alert('✅ تم حظر المستخدم بنجاح');
-        setChats(prev => prev.filter(c => c.chatId !== chatId));
-        setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+      const responseText = await response.text();
+      console.log('📥 Raw response:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ Failed to parse JSON:', e);
+        if (response.ok) {
+          data = { success: true, response: responseText };
+        } else {
+          data = { success: false, response: responseText || 'خطأ في السيرفر' };
+        }
+      }
+      
+      console.log('📥 Parsed response:', data);
+      
+      const isSuccess = response.ok && (
+        data.success === true || 
+        data.status === 'success' || 
+        data.message?.includes('success') || 
+        data.response === 'success' ||
+        data.case === 'done'
+      );
+      
+      if (isSuccess) {
+        const message = isBlocked 
+          ? '✅ تم رفع الحظر عن المستخدم بنجاح' 
+          : '✅ تم حظر المستخدم بنجاح';
         
-        if (activeChatId === chatId) {
-          router.push('/chats');
+        toast.success(message);
+        
+        if (isBlocked) {
+          setBlockedUsers(prev => prev.filter(id => id !== chatId));
+        } else {
+          setBlockedUsers(prev => [...prev, chatId]);
         }
         
         setOpenDropdown(null);
       } else {
-        alert(`❌ فشل حظر المستخدم: ${data.response || data.message || 'خطأ غير معروف'}`);
+        const errorMsg = data?.response || data?.message || data?.error || data?.msg || 'خطأ غير معروف';
+        const actionName = isBlocked ? 'رفع الحظر' : 'حظر';
+        toast.error(`❌ فشل ${actionName}: ${errorMsg}`);
       }
     } catch (error) {
-      console.error('Error blocking user:', error);
-      alert('حدث خطأ أثناء محاولة حظر المستخدم');
+      console.error('❌ Error blocking/unblocking user:', error);
+      toast.error('حدث خطأ أثناء محاولة تنفيذ العملية. يرجى المحاولة مرة أخرى.');
     }
   };
 
-  // ================= ARCHIVE/FAVORITE CHAT =================
+  // ================= ARCHIVE/FAVORITE CHAT (TOGGLE) =================
   const handleArchiveChat = async (chatId: string, chatType: string) => {
     if (!token) return;
     
+    const currentChat = chats.find(c => c.chatId === chatId);
+    if (!currentChat) return;
+    
+    const isCurrentlyFavorite = currentChat.isFavorite || false;
+    
+    const url = isCurrentlyFavorite 
+      ? `${apiBase}/chats/unfavorite` 
+      : `${apiBase}/chats/favorite`;
+    
+    const successMessage = isCurrentlyFavorite 
+      ? '✅ تم إزالة المحادثة من المفضلة بنجاح' 
+      : '✅ تمت إضافة المحادثة إلى المفضلة بنجاح';
+    
+    const errorMessage = isCurrentlyFavorite 
+      ? 'إزالة من المفضلة' 
+      : 'إضافة إلى المفضلة';
+    
     try {
-      const response = await fetch(`${apiBase}/chats/favorite`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -949,30 +1076,33 @@ if (memberCount >= 5) {
       });
 
       const data = await response.json();
+      console.log('Favorite/Unfavorite response:', data);
       
       if (data.success) {
-        alert('✅ تمت إضافة المحادثة إلى المفضلة بنجاح');
+        toast.success(successMessage);
+        
         setChats(prev => 
           prev.map(c => 
             c.chatId === chatId 
-              ? { ...c, isFavorite: true } 
+              ? { ...c, isFavorite: !isCurrentlyFavorite } 
               : c
           )
         );
         setFilteredChats(prev => 
           prev.map(c => 
             c.chatId === chatId 
-              ? { ...c, isFavorite: true } 
+              ? { ...c, isFavorite: !isCurrentlyFavorite } 
               : c
           )
         );
+        
         setOpenDropdown(null);
       } else {
-        alert(`❌ فشل إضافة المحادثة إلى المفضلة: ${data.response || data.message || 'خطأ غير معروف'}`);
+        toast.error(`❌ فشل ${errorMessage}: ${data.response || data.message || 'خطأ غير معروف'}`);
       }
     } catch (error) {
-      console.error('Error archiving chat:', error);
-      alert('حدث خطأ أثناء محاولة إضافة المحادثة إلى المفضلة');
+      console.error('Error toggling favorite:', error);
+      toast.error(`حدث خطأ أثناء محاولة ${errorMessage}`);
     }
   };
 
@@ -1002,7 +1132,7 @@ if (memberCount >= 5) {
       const data = await response.json();
       
       if (data.success) {
-        alert('✅ تم حذف المحادثة بنجاح');
+        toast.success('✅ تم حذف المحادثة بنجاح');
         setChats(prev => prev.filter(c => c.chatId !== chatId));
         setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
         
@@ -1012,87 +1142,317 @@ if (memberCount >= 5) {
         
         setOpenDropdown(null);
       } else {
-        alert(`❌ فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
+        toast.error(`❌ فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error deleting chat:', error);
-      alert('حدث خطأ أثناء محاولة حذف المحادثة');
-    }
-  };
-
-  // ================= TRANSFER OWNERSHIP =================
-  const handleTransferOwnership = async (groupId: string, newOwnerId: string) => {
-    if (!token) return;
-    
-    try {
-      const response = await fetch(`${apiBase}/chats/groups/TransferOwnership/${groupId}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ newOwnerId })
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        await handleLeaveGroup(groupId);
-        setShowTransferModal(false);
-        setSelectedGroupId(null);
-        setNewOwnerId('');
-      } else {
-        alert(`فشل تحويل الملكية: ${data.response || 'خطأ غير معروف'}`);
-      }
-    } catch (error) {
-      console.error('Error transferring ownership:', error);
-      alert('حدث خطأ أثناء تحويل الملكية');
+      toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
     }
   };
 
   // ================= LEAVE GROUP =================
   const handleLeaveGroup = async (chatId: string) => {
     if (!token) return;
-    
-    const confirmLeave = window.confirm('هل أنت متأكد من رغبتك في الخروج من هذه المجموعة؟');
+
+    const confirmLeave = window.confirm(
+      'هل أنت متأكد من رغبتك في الخروج من هذه المجموعة؟'
+    );
+
     if (!confirmLeave) {
       setOpenDropdown(null);
       return;
     }
-    
+
     try {
-      const response = await fetch(`${apiBase}/chats/groups/LeaveGroup/${chatId}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(
+        `${apiBase}/chats/groups/LeaveGroup/${chatId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const data = await response.json();
-      
+
       if (data.success) {
         setChats(prev => prev.filter(c => c.chatId !== chatId));
         setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
-        
+
         if (activeChatId === chatId) {
           router.push('/chats');
         }
-        
+
         setOpenDropdown(null);
-      } else {
-        if (data.response?.includes('Transfer ownership')) {
-          setSelectedGroupId(chatId);
-          setShowTransferModal(true);
-          setOpenDropdown(null);
-        } else {
-          alert(`❌ فشل الخروج من المجموعة: ${data.response || 'خطأ غير معروف'}`);
-        }
+        toast.success('✅ تم الخروج من المجموعة بنجاح');
+        return;
       }
+
+      if (
+        data.response &&
+        data.response.toLowerCase().includes('transfer ownership')
+      ) {
+        setSelectedGroupId(chatId);
+        setNewOwnerId('');
+        setShowTransferModal(true);
+        setOpenDropdown(null);
+        return;
+      }
+
+      toast.error(
+        `❌ فشل الخروج من المجموعة: ${
+          data.response || data.message || 'خطأ غير معروف'
+        }`
+      );
+
     } catch (error) {
       console.error('Error leaving group:', error);
-      alert('حدث خطأ أثناء محاولة الخروج من المجموعة');
+      toast.error('حدث خطأ أثناء محاولة الخروج من المجموعة');
     }
+  };
+
+  // ================= PROMOTE ADMIN & LEAVE =================
+  const handleTransferOwnershipAndLeave = async (
+    newAdminMemberId: string
+  ) => {
+    if (!token || !selectedGroupId) return;
+
+    const groupId = selectedGroupId;
+
+    try {
+      const groupDetails = await fetchGroupDetails(groupId);
+      if (!groupDetails) {
+        toast.error('❌ فشل في جلب بيانات المجموعة');
+        return;
+      }
+
+      const admins = groupDetails.admins || [];
+      const ownerId = groupDetails.owner || groupDetails.createdBy;
+
+      if (newAdminMemberId === ownerId) {
+        toast.error('❌ هذا المستخدم هو مالك المجموعة بالفعل، اختر عضواً آخر');
+        return;
+      }
+
+      if (admins.includes(newAdminMemberId)) {
+        toast.error('⚠️ هذا المستخدم مشرف بالفعل، اختر عضواً آخر');
+        return;
+      }
+
+      const promoteResponse = await fetch(
+        `${apiBase}/chats/groups/PromoteAdmin/${groupId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            memberid: newAdminMemberId,
+          }),
+        }
+      );
+
+      const promoteData = await promoteResponse.json();
+
+      console.log('PromoteAdmin response:', promoteData);
+
+      if (!promoteData.success) {
+        toast.error(
+          `❌ فشل تعيين المشرف الجديد: ${
+            promoteData.response || 'خطأ غير معروف'
+          }`
+        );
+        return;
+      }
+
+      const leaveResponse = await fetch(
+        `${apiBase}/chats/groups/LeaveGroup/${groupId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const leaveData = await leaveResponse.json();
+
+      console.log('LeaveGroup after PromoteAdmin:', leaveData);
+
+      if (!leaveData.success) {
+        toast.error(
+          `❌ تم تعيين الأدمن، لكن فشل الخروج من المجموعة: ${
+            leaveData.response || 'خطأ غير معروف'
+          }`
+        );
+        return;
+      }
+
+      setChats(prev =>
+        prev.filter(chat => chat.chatId !== groupId)
+      );
+
+      setFilteredChats(prev =>
+        prev.filter(chat => chat.chatId !== groupId)
+      );
+
+      setShowTransferModal(false);
+      setSelectedGroupId(null);
+      setNewOwnerId('');
+      setOpenDropdown(null);
+
+      if (activeChatId === groupId) {
+        router.push('/chats');
+      }
+
+      toast.success('✅ تم الخروج من المجموعة بنجاح');
+
+    } catch (error) {
+      console.error(
+        'Error promoting admin and leaving group:',
+        error
+      );
+
+      toast.error(
+        'حدث خطأ أثناء تعيين المشرف والخروج من المجموعة'
+      );
+    }
+  };
+
+  // ================= REPORT USER =================
+  const getReporterId = (): string => {
+    try {
+      const raw = localStorage.getItem("userData");
+      if (!raw) return "";
+      const data = JSON.parse(raw);
+      return data?._id || "";
+    } catch {
+      return "";
+    }
+  };
+
+  const getReporterEmail = (): string => {
+    try {
+      const raw = localStorage.getItem("userData");
+      if (!raw) return "";
+      const data = JSON.parse(raw);
+      return data?.useremail || data?.useremail2 || data?.email || "";
+    } catch {
+      return "";
+    }
+  };
+
+  const handleReportClick = (chatId: string) => {
+    setOpenDropdown(null);
+    setSelectedReportChatId(chatId);
+    setShowReportModal(true);
+    setSelectedReason("");
+    setShowReportSuccess(false);
+  };
+
+  const handleCloseReportModal = () => {
+    setShowReportModal(false);
+    setSelectedReportChatId(null);
+    setSelectedReason("");
+  };
+
+  const handleReasonSelect = async (reasonLabel: string) => {
+    const reporterId = getReporterId();
+    const reporterEmail = getReporterEmail();
+    
+    if (!reporterId || !reporterEmail) {
+      toast.error('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
+    if (!selectedReportChatId) {
+      toast.error('خطأ: لم يتم تحديد المستخدم');
+      return;
+    }
+
+    setSelectedReason(reasonLabel);
+    setIsReporting(true);
+
+    try {
+      const baseUrl = apiBase || 'https://bo-chat.space';
+      const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+
+      const body = {
+        reporter: reporterId,
+        report: reasonLabel,
+        email: reporterEmail,
+        reportedUserId: selectedReportChatId,
+      };
+
+      const res = await fetch(`${cleanBaseUrl}/user/report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "فشل إرسال البلاغ");
+      }
+
+      setShowReportModal(false);
+      setShowReportSuccess(true);
+      toast.success('✅ تم إرسال البلاغ بنجاح');
+      
+    } catch (error: any) {
+      console.error("Report error:", error);
+      toast.error(error.message || '❌ فشل إرسال البلاغ');
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  const handleCloseSuccessModal = () => {
+    setShowReportSuccess(false);
+    setSelectedReason("");
+  };
+
+  // ================= CALLS FUNCTIONS =================
+  const handleCallClick = (chatId: string) => {
+    setOpenDropdown(null);
+    setSelectedCallChatId(chatId);
+    setIsCallModalOpen(true);
+  };
+
+  const handleCloseCallModal = () => {
+    setIsCallModalOpen(false);
+    setSelectedCallChatId(null);
+  };
+
+  const handleStartCall = (type: 'audio' | 'video') => {
+    if (!selectedCallChatId) return;
+    
+    const chat = chats.find(c => c.chatId === selectedCallChatId);
+    if (!chat) return;
+    
+    // التحقق من الرصيد
+    if (callMinutes.free <= 0) {
+      toast.error('❌ رصيدك من الدقائق المجانية قد انتهى');
+      return;
+    }
+    
+    // تقليل الرصيد
+    setCallMinutes(prev => ({
+      ...prev,
+      free: prev.free - 1
+    }));
+    
+    setIsCallModalOpen(false);
+    toast.success(`📞 جاري الاتصال بـ ${chat.name}... (${type === 'audio' ? 'صوتي' : 'فيديو'})`);
+    
+    console.log(`Starting ${type} call with ${chat.chatId}`);
   };
 
   // ================= DROPDOWN ACTIONS =================
@@ -1104,8 +1464,10 @@ if (memberCount >= 5) {
         handleBlockUser(chatId);
         break;
       case 'report':
+        handleReportClick(chatId);
         break;
       case 'search':
+        toast.info('جاري البحث في المحادثة...');
         break;
       case 'archive':
         handleArchiveChat(chatId, chatType);
@@ -1115,6 +1477,9 @@ if (memberCount >= 5) {
         break;
       case 'leave':
         handleLeaveGroup(chatId);
+        break;
+      case 'call':
+        handleCallClick(chatId);
         break;
     }
   };
@@ -1145,45 +1510,44 @@ if (memberCount >= 5) {
       {/* ================= SELECTION MODE TOOLBAR ================= */}
       {selectionMode && selectedChats.length > 0 && (
         <div className="w-full px-4 mb-3"  style={{
-      background: 'linear-gradient(0deg, #FFFFFF 0%, #F2F2F2 46.74%)',
-      paddingTop: '8px',
-      paddingBottom: '8px',
-      borderRadius: '12px',
-    }}>
-          {/* السطر الأول: الأزرار الأربعة */}
+          background: 'linear-gradient(0deg, #FFFFFF 0%, #F2F2F2 46.74%)',
+          paddingTop: '8px',
+          paddingBottom: '8px',
+          borderRadius: '12px',
+        }}>
           <div className="flex items-center justify-center gap-2">
-           <button
-  onClick={handleBulkDelete}
-  style={{
-    width: '63px',
-    height: '31px',
-    borderRadius: '10px',
-    background: '#FFFFFF',
-    border: 'none',
-    cursor: 'pointer',
-    opacity: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s ease',
-  }}
-  className="hover:bg-[#FFEBEE] hover:scale-105 transition-all"
->
-  <span 
-    style={{
-      fontFamily: 'Cairo',
-      fontWeight: 600,
-      fontSize: '12px',
-      lineHeight: '100%',
-      textAlign: 'center',
-      color: '#B4B4B9',
-      display: 'inline-block',
-    }}
-  >
-    حذف
-  </span>
-</button>
-                        <button
+            <button
+              onClick={handleBulkDelete}
+              style={{
+                width: '63px',
+                height: '31px',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}
+              className="hover:bg-[#FFEBEE] hover:scale-105 transition-all"
+            >
+              <span 
+                style={{
+                  fontFamily: 'Cairo',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  lineHeight: '100%',
+                  textAlign: 'center',
+                  color: '#B4B4B9',
+                  display: 'inline-block',
+                }}
+              >
+                حذف
+              </span>
+            </button>
+            <button
               onClick={handleBulkGroupMessage}
               style={{
                 width: '102px',
@@ -1200,21 +1564,20 @@ if (memberCount >= 5) {
               }}
               className="hover:bg-[#E8F5E9] hover:scale-105 transition-all"
             >
-               <span 
-    style={{
-      fontFamily: 'Cairo',
-      fontWeight: 600,
-      fontSize: '12px',
-      lineHeight: '100%',
-      textAlign: 'center',
-      color: '#B4B4B9',
-      display: 'inline-block',
-    }}
-  >
-    رسالة جماعية
-  </span>
+              <span 
+                style={{
+                  fontFamily: 'Cairo',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  lineHeight: '100%',
+                  textAlign: 'center',
+                  color: '#B4B4B9',
+                  display: 'inline-block',
+                }}
+              >
+                رسالة جماعية
+              </span>
             </button>
-
             <button
               onClick={handleBulkCall}
               style={{
@@ -1232,21 +1595,20 @@ if (memberCount >= 5) {
               }}
               className="hover:bg-[#E8F4FD] hover:scale-105 transition-all"
             >
-               <span 
-    style={{
-      fontFamily: 'Cairo',
-      fontWeight: 600,
-      fontSize: '12px',
-      lineHeight: '100%',
-      textAlign: 'center',
-      color: '#B4B4B9',
-      display: 'inline-block',
-    }}
-  >
-    مكالمة جماعية
-  </span>
+              <span 
+                style={{
+                  fontFamily: 'Cairo',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  lineHeight: '100%',
+                  textAlign: 'center',
+                  color: '#B4B4B9',
+                  display: 'inline-block',
+                }}
+              >
+                مكالمة جماعية
+              </span>
             </button>
-
             <button
               onClick={handleBulkArchive}
               style={{
@@ -1264,44 +1626,40 @@ if (memberCount >= 5) {
               }}
               className="hover:bg-[#FFF8E1] hover:scale-105 transition-all"
             >
-               <span 
-    style={{
-      fontFamily: 'Cairo',
-      fontWeight: 600,
-      fontSize: '12px',
-      lineHeight: '100%',
-      textAlign: 'center',
-      color: '#B4B4B9',
-      display: 'inline-block',
-    }}
-  >
-    مميز
-  </span>
+              <span 
+                style={{
+                  fontFamily: 'Cairo',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  lineHeight: '100%',
+                  textAlign: 'center',
+                  color: '#B4B4B9',
+                  display: 'inline-block',
+                }}
+              >
+                مميز
+              </span>
             </button>
-
-
-            
           </div>
 
-          {/* السطر الثاني: تم تحديد X محادثة */}
           <div className="flex items-center justify-between px-2 mt-2">
-          <div className="flex items-center justify-center px-2 mt-2 mb-1 w-full">
-            <span 
-              style={{
-                width: '100%',
-                opacity: 1,
-                fontFamily: 'Cairo',
-                fontWeight: 600,
-                fontSize: '25px',
-                lineHeight: '100%',
-                textAlign: 'center',
-                color: '#000000',
-                display: 'block'
-              }}
-            >
-              تم تحديد {selectedChats.length} محادثة
-            </span>
-          </div>
+            <div className="flex items-center justify-center px-2 mt-2 mb-1 w-full">
+              <span 
+                style={{
+                  width: '100%',
+                  opacity: 1,
+                  fontFamily: 'Cairo',
+                  fontWeight: 600,
+                  fontSize: '25px',
+                  lineHeight: '100%',
+                  textAlign: 'center',
+                  color: '#000000',
+                  display: 'block'
+                }}
+              >
+                تم تحديد {selectedChats.length} محادثة
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -1332,6 +1690,84 @@ if (memberCount >= 5) {
         counts={getFilterCounts}
       />
 
+       {/* ================= CALLS BALANCE BAR ================= */}
+{activeFilter === 'calls' && (
+  <div 
+    className="flex items-center justify-between px-4 -mt-1"
+  >
+    {/* جهة اليمين - رصيدك الحالي */}
+    <div className="flex items-center gap-2">
+      <img
+        src="/imgs/fire-emergency-call 1.svg"
+        alt="Call"
+        style={{
+          width: "12px",
+          height: "12px",
+         }}
+      />
+      <span
+        style={{
+          color: "#171717",
+          fontSize: "12px",
+          fontFamily: "Cairo",
+          fontWeight: 600,
+        }}
+      >
+        رصيدك الحالي
+      </span>
+    </div>
+
+    {/* جهة اليسار - الدقائق */}
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+      }}
+    >
+      <span
+        style={{
+          color: "#171717",
+          fontSize: "12px",
+          fontWeight: 600,
+          fontFamily: "Cairo",
+        }}
+      >
+        {callMinutes.free}
+      </span>
+      <span
+        style={{
+          color: "#8899aa",
+          fontSize: "14px",
+          fontFamily: "Cairo",
+          fontWeight: 400,
+        }}
+      >
+        /
+      </span>
+      <span
+         style={{
+          color: "#171717",
+          fontSize: "12px",
+          fontWeight: 600,
+          fontFamily: "Cairo",
+        }}
+      >
+        {callMinutes.total}
+      </span>
+      <span
+        style={{
+          color: "#D72229",
+          fontSize: "12px",
+          fontFamily: "Cairo",
+          fontWeight: 400,
+        }}
+      >
+        دقيقة مجانية
+      </span>
+    </div>
+  </div>
+)}
       {filterLoading ? (
         <div className="text-center py-10 text-gray-500">جاري تحميل المحادثات...</div>
       ) : (
@@ -1359,7 +1795,7 @@ if (memberCount >= 5) {
             return (
               <div
                 key={chat.chatId}
-               className={`flex items-center gap-3 px-3 py-1 transition cursor-pointer relative group ${
+                className={`flex items-center gap-3 px-3 py-1 transition cursor-pointer relative group ${
                   activeChatId === chat.chatId ? "active-chat" : "hover:bg-gray-100"
                 } ${
                   isSelected 
@@ -1376,7 +1812,6 @@ if (memberCount >= 5) {
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
               >
-                {/* Checkbox - يظهر فقط في وضع التحديد */}
                 {selectionMode && (
                   <div className="flex-shrink-0">
                     <img 
@@ -1433,7 +1868,7 @@ if (memberCount >= 5) {
                         <span className="truncate">
                           {chat.isGroup ? (
                             <span className="flex items-center gap-1"   
-                            style={{ fontSize: '18px'}} >
+                              style={{ fontSize: '18px'}} >
                               <span>{chat.name}</span>
                             </span>
                           ) : (
@@ -1441,30 +1876,30 @@ if (memberCount >= 5) {
                           )}
                         </span>
                         {chat.isGroup && chat.description && chat.description !== 'no' && (
-                        <span 
-                          className="truncate"
-                          style={{
-                            width: '297px',
-                            height: '23px',
-                            opacity: 1,
-                            fontFamily: 'Cairo',
-                            fontWeight: 400,
-                            fontStyle: 'Regular',
-                            fontSize: '15px',
-                            lineHeight: '100%',
-                            letterSpacing: '0%',
-                            verticalAlign: 'middle',
-                            color: '#000000',
-                            display: 'block',
-                            maxWidth: '150px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {chat.description}
-                        </span>
-                      )}
+                          <span 
+                            className="truncate"
+                            style={{
+                              width: '297px',
+                              height: '23px',
+                              opacity: 1,
+                              fontFamily: 'Cairo',
+                              fontWeight: 400,
+                              fontStyle: 'Regular',
+                              fontSize: '15px',
+                              lineHeight: '100%',
+                              letterSpacing: '0%',
+                              verticalAlign: 'middle',
+                              color: '#000000',
+                              display: 'block',
+                              maxWidth: '150px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {chat.description}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1474,7 +1909,6 @@ if (memberCount >= 5) {
                   </div>
                 </div>
 
-                {/* العمود الأيمن: الزمن + علامة قراءة - الأرشفة - عدد الرسائل غير المقروءة */}
                 {!selectionMode && (
                   <div className="flex flex-col items-center gap-1 mt-6">
                     <div className="flex items-center gap-1">
@@ -1542,28 +1976,28 @@ if (memberCount >= 5) {
                     )}
                     
                     <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenDropdown(isDropdownOpen ? null : chat.chatId);
-                    }}
-                    className={`p-1 rounded-full transition-colors ${
-                      isDropdownOpen 
-                        ? 'bg-gray-200' 
-                        : 'opacity-0 group-hover:opacity-100 hover:bg-gray-200'
-                    }`}
-                  >
-                    <img 
-                      src="/imgs/dropdwnBtn.svg" 
-                      alt="قائمة"
-                      style={{
-                        width: '12px',
-                        height: '6px',
-                        opacity: 1,
-                        transition: 'transform 0.3s ease',
-                        transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenDropdown(isDropdownOpen ? null : chat.chatId);
                       }}
-                    />
-                  </button>
+                      className={`p-1 rounded-full transition-colors ${
+                        isDropdownOpen 
+                          ? 'bg-gray-200' 
+                          : 'opacity-0 group-hover:opacity-100 hover:bg-gray-200'
+                      }`}
+                    >
+                      <img 
+                        src="/imgs/dropdwnBtn.svg" 
+                        alt="قائمة"
+                        style={{
+                          width: '12px',
+                          height: '6px',
+                          opacity: 1,
+                          transition: 'transform 0.3s ease',
+                          transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                        }}
+                      />
+                    </button>
 
                     {isDropdownOpen && (
                       <div 
@@ -1575,6 +2009,7 @@ if (memberCount >= 5) {
                         }}
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {/* زر الحظر/رفع الحظر */}
                         <button
                           onClick={() => handleDropdownAction('block', chat.chatId, chat.chatType)}
                           className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
@@ -1582,15 +2017,22 @@ if (memberCount >= 5) {
                             borderBottom: '0.33px solid #3C3C434D',
                           }}
                         >
-                          <img src="/imgs/block.svg" alt="حظر" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
+                          <img 
+                            src={isUserBlocked(chat.chatId) ? "/imgs/block.svg" : "/imgs/block.svg"} 
+                            alt={isUserBlocked(chat.chatId) ? "رفع الحظر" : "حظر"} 
+                            className="w-4 h-4" 
+                            style={{ width: '16px', height: '16px', opacity: 1 }} 
+                          />
                           <span style={{
                             fontFamily: 'Cairo',
                             fontWeight: 600,
                             fontSize: '15px',
                             lineHeight: '100%',
                             textAlign: 'right',
-                            color: '#000000',
-                          }}>حظر</span>
+                            color: isUserBlocked(chat.chatId) ? '#000000' : '#000000',
+                          }}>
+                            {isUserBlocked(chat.chatId) ? 'رفع الحظر' : 'حظر'}
+                          </span>
                         </button>
                         
                         <button
@@ -1610,6 +2052,8 @@ if (memberCount >= 5) {
                             color: '#000000',
                           }}>إبلاغ</span>
                         </button>
+
+                        
                         
                         <button
                           onClick={() => handleDropdownAction('search', chat.chatId, chat.chatType)}
@@ -1628,7 +2072,8 @@ if (memberCount >= 5) {
                             color: '#000000',
                           }}>بحث</span>
                         </button>
-                        
+                  
+                        {/* زر الأرشفة/إزالة من المفضلة */}
                         <button
                           onClick={() => handleDropdownAction('archive', chat.chatId, chat.chatType)}
                           className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
@@ -1636,15 +2081,22 @@ if (memberCount >= 5) {
                             borderBottom: '0.33px solid #3C3C434D',
                           }}
                         >
-                          <img src="/imgs/archive.svg" alt="أرشفة" className="w-4 h-4" style={{ width: '16px', height: '16px', opacity: 1 }} />
+                          <img 
+                            src={chat.isFavorite ? "/imgs/archive.svg" : "/imgs/archive.svg"} 
+                            alt={chat.isFavorite ? "ازلة أرشفة" : "أرشفة"} 
+                            className="w-4 h-4" 
+                            style={{ width: '16px', height: '16px', opacity: 1 }} 
+                          />
                           <span style={{
                             fontFamily: 'Cairo',
                             fontWeight: 600,
                             fontSize: '15px',
                             lineHeight: '100%',
                             textAlign: 'right',
-                            color: '#000000',
-                          }}>أرشفة</span>
+                            color: chat.isFavorite ? '#000000' : '#000000',
+                          }}>
+                            {chat.isFavorite ? 'إزالة أرشفة' : 'أرشفة'}
+                          </span>
                         </button>
                         
                         <button
@@ -1702,7 +2154,11 @@ if (memberCount >= 5) {
             
             <div className="mb-4 max-h-60 overflow-y-auto">
               {chats
-                .filter(c => c.chatId !== myUserId && !c.isGroup)
+                .filter(c => {
+                  if (c.chatId === myUserId) return false;
+                  if (c.isGroup) return false;
+                  return true;
+                })
                 .map(member => (
                   <div
                     key={member.chatId}
@@ -1741,9 +2197,9 @@ if (memberCount >= 5) {
               <button
                 onClick={() => {
                   if (newOwnerId && selectedGroupId) {
-                    handleTransferOwnership(selectedGroupId, newOwnerId);
+                    handleTransferOwnershipAndLeave(newOwnerId);
                   } else {
-                    alert('يرجى اختيار عضو لتحويل الملكية إليه');
+                    toast.error('يرجى اختيار عضو لتحويل الملكية إليه');
                   }
                 }}
                 className="flex-1 py-3 rounded-xl bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1757,20 +2213,198 @@ if (memberCount >= 5) {
       )}
 
       {/* ================= CREATE GROUP MODAL ================= */}
-      {/* {isCreateGroupOpen && (
-        <div
-          className="fixed top-[130px] bottom-0 left-[18px] w-[20%] z-50 flex flex-col p-6 bg-[#F5F5F5]"
+      {isCreateGroupOpen && ( 
+        <motion.div
+          drag
+          dragMomentum={false}
+          className="fixed w-[20%] z-50 flex flex-col p-6 bg-[#F5F5F5] cursor-grab active:cursor-grabbing"
+          initial={{
+            x: 0,
+            y: 0,
+          }}
+          style={{
+            top: '130px',
+            left: '18px',
+            direction: 'rtl',
+            borderRadius: '35px',
+          }}
+        >
+          <div className="flex items-center gap-3 mb-4 flex-shrink-0"> 
+            <button 
+              onClick={() => setIsCreateGroupOpen(false)} 
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors p-0" 
+            > 
+              <img  
+                src="/imgs/close.svg"  
+                alt="إغلاق" 
+                style={{ width: '17px', height: '17px', opacity: 1 }} 
+              /> 
+            </button> 
+            <h2 style={{ fontFamily: 'Cairo', fontWeight: 500, fontSize: '25px', lineHeight: '100%', color: '#000000' }}> 
+              انشاء مجموعة 
+            </h2> 
+          </div> 
+      
+          <div className="mb-3 flex justify-center gap-1 flex-shrink-0 relative -mx-3"> 
+            <div className="relative inline-block"> 
+              <img 
+                src={JSON.parse(localStorage.getItem('userData') || '{}').img || '/imgs/user.png'} 
+                alt="صورة المستخدم" 
+                className="w-[50px] h-[45px] rounded-[17px] object-cover" 
+                style={{ filter: 'blur(1px)' }} 
+              /> 
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none"> 
+                <img src="/imgs/Groupcamer.svg" alt="كاميرا" style={{ width: '17px', height: '17px', opacity: 1 }} /> 
+              </div> 
+            </div> 
+      
+            <input 
+              type="text" 
+              placeholder="اكتب اسم المجموعة" 
+              value={groupName} 
+              maxLength={25} 
+              onChange={(e) => setGroupName(e.target.value)} 
+              style={{ 
+                width: '100%', 
+                maxWidth: '402px', 
+                height: '45px', 
+                borderRadius: '18px', 
+                background: '#FFFFFF', 
+                fontFamily: 'Cairo', 
+                fontWeight: 600, 
+                fontSize: '15px', 
+                padding: '0 15px', 
+                border: 'none', 
+                outline: 'none', 
+              }} 
+              className="text-black placeholder-[#B4B4B9]" 
+            /> 
+      
+            <span style={{ width: '46px', height: '28px', fontFamily: 'Cairo', fontWeight: 600, fontSize: '15px', lineHeight: '100%', color: '#B4B4B9', transform: 'translateY(15px)' }}> 
+              25/{groupName.length} 
+            </span> 
+          </div> 
+      
+          <div className="mb-4 flex justify-center flex-shrink-0 -mx-3"> 
+            <div className="flex items-center gap-3 p-3 w-full" style={{ maxWidth: '402px', height: '102px', borderRadius: '18px', background: '#FFFFFF' }}> 
+              <textarea 
+                placeholder="اكتب الوصف" 
+                value={groupDescription} 
+                onChange={(e) => setGroupDescription(e.target.value)} 
+                style={{ flex: 1, height: '100%', fontFamily: 'Cairo', fontWeight: 600, fontSize: '15px', padding: '8px 0', border: 'none', outline: 'none', resize: 'none', background: 'transparent' }} 
+                className="text-black placeholder-[#B4B4B9]" 
+              /> 
+            </div> 
+          </div> 
+      
+          <div className="w-[calc(100%+48px)] -mx-6 shrink-0" style={{ height: '3px', borderTop: '0.33px solid #3C3C434D' }} /> 
+      
+          <div className="flex items-center justify-between mb-2 -mx-5 flex-shrink-0"> 
+            <span style={{ fontFamily: 'Cairo', fontWeight: 600, fontSize: '17px', color: '#000000' }}> 
+              الاعضاء: 
+            </span> 
+            <div className="flex items-center gap-1"> 
+              <button 
+                onClick={() => setIsMemberSelectionOpen(true)}
+                className="w-8 h-8 rounded-full bg-[#F2F2F2] flex items-center justify-center hover:bg-[#E5E5E5] transition-colors" 
+              > 
+                <img src="/imgs/search_mem.svg" alt="بحث" style={{ width: '15px', height: '15px', opacity: 1 }} /> 
+              </button> 
+              <button 
+                onClick={() => setIsMemberSelectionOpen(true)} 
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#E5E5E5] transition-colors" 
+              > 
+                <img src="/imgs/chooseMember.svg" alt="إضافة أعضاء" style={{ width: '16px', height: '16px', opacity: 1 }} /> 
+              </button> 
+            </div> 
+          </div> 
+      
+          <div 
+            id="groupSearchInput" 
+            className="flex items-center bg-white rounded-xl px-3 py-2 mb-3 shadow-sm mx-auto w-full flex-shrink-0"  
+            style={{ maxWidth: '402px', display: 'none' }} 
+          > 
+            <img src="/imgs/search_mem.svg" alt="بحث" style={{ width: '15px', height: '15px', opacity: 1, marginLeft: '8px' }} /> 
+            <input 
+              type="text" 
+              placeholder="ابحث في الأعضاء..." 
+              value={groupSearchTerm} 
+              onChange={(e) => setGroupSearchTerm(e.target.value)} 
+              className="w-full bg-transparent text-sm focus:outline-none" 
+              style={{ fontFamily: 'Cairo', fontSize: '14px' }} 
+            /> 
+          </div> 
+      
+          <div className="flex-1 flex items-center justify-center mb-4 mx-auto w-full" style={{ maxWidth: '402px', minHeight: '150px' }}> 
+            <div className="text-center"> 
+              <img src="/imgs/noMember.svg" alt="لا يوجد أعضاء" className="w-[71px] h-[71px] object-contain mx-auto mb-2" /> 
+            </div> 
+          </div> 
+      
+          <div 
+            className="flex justify-center items-center flex-shrink-0" 
+            style={{ 
+              width: 'calc(100% + 48px)', 
+              marginLeft: '-24px', 
+              marginRight: '-24px', 
+              marginBottom: '-24px', 
+              padding: '16px 24px', 
+              background: '#E3E3E366', 
+              backdropFilter: 'blur(35px)', 
+              borderBottomLeftRadius: '35px', 
+              borderBottomRightRadius: '35px', 
+              minHeight: '82px', 
+            }} 
+          > 
+            <button 
+              disabled={!groupName.trim() || isSubmittingGroup} 
+              onClick={handleCreateGroupSubmit} 
+              style={{ 
+                width: '100%', 
+                maxWidth: '285px', 
+                height: '50px', 
+                borderRadius: '20px', 
+                background: '#FFFFFF', 
+                fontFamily: 'Cairo', 
+                fontWeight: 600, 
+                fontSize: '17px', 
+                border: '1px solid #ddd', 
+                cursor: !groupName.trim() ? 'not-allowed' : 'pointer', 
+                transition: 'all 0.2s ease' 
+              }} 
+              className="text-black shadow-md hover:bg-gray-50" 
+            > 
+              {isSubmittingGroup ? 'جاري الإنشاء...' : 'انشاء مجموعة'} 
+            </button> 
+          </div> 
+        </motion.div> 
+      )}
+
+      {/* ================= MODAL اختيار الأعضاء ================= */}
+      {isMemberSelectionOpen && (
+        <motion.div
+          drag
+          dragMomentum={false}
+          className="fixed top-[130px] bottom-0 left-[18px] w-[20%] z-[60] flex flex-col p-6 bg-[#F5F5F5] cursor-grab active:cursor-grabbing"
           style={{
             direction: "rtl",
             borderRadius: "35px",
           }}
         >
-          <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+          <div className="flex items-center gap-2 mb-4 flex-shrink-0">
             <button
-              onClick={() => setIsCreateGroupOpen(false)}
+              onClick={() => setIsMemberSelectionOpen(false)}
               className="w-9 h-9 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors p-0"
             >
-              <X className="w-5 h-5 text-gray-600" />
+              <img 
+                src="/imgs/returnPage.svg" 
+                alt="returnPage"
+                style={{
+                  width: '17px',
+                  height: '17px',
+                  opacity: 1,
+                }}
+              />
             </button>
             <h2
               style={{
@@ -1781,118 +2415,15 @@ if (memberCount >= 5) {
                 color: '#000000'
               }}
             >
-              انشاء مجموعة
+              اضافة اشخاص
             </h2>
-          </div>
-
-          <div className="mb-3 flex justify-center gap-2 flex-shrink-0">
-            <img
-              src={
-                JSON.parse(localStorage.getItem('userData') || '{}').img ||
-                '/imgs/user.png'
-              }
-              alt="صورة المستخدم"
-              className="w-[40px] h-[40px] rounded-full object-cover"
-            />
-
-            <input
-              type="text"
-              placeholder="اكتب اسم المجموعة"
-              value={groupName}
-              maxLength={25}
-              onChange={(e) => setGroupName(e.target.value)}
-              style={{
-                width: '100%',
-                maxWidth: '402px',
-                height: '45px',
-                borderRadius: '18px',
-                background: '#FFFFFF',
-                fontFamily: 'Cairo',
-                fontWeight: 600,
-                fontSize: '15px',
-                padding: '0 15px',
-                border: 'none',
-                outline: 'none',
-              }}
-              className="text-black placeholder-[#B4B4B9]"
-            />
-
-            <span
-              style={{
-                width: '46px',
-                height: '28px',
-                fontFamily: 'Cairo',
-                fontWeight: 600,
-                fontSize: '15px',
-                lineHeight: '100%',
-                color: '#B4B4B9',
-                transform: 'translateY(15px)',
-              }}
-            >
-              25/{groupName.length}
-            </span>
-          </div>
-
-          <div className="mb-4 flex justify-center flex-shrink-0">
-            <div
-              className="flex items-center gap-3 p-3 w-full"
-              style={{
-                maxWidth: '402px',
-                height: '102px',
-                borderRadius: '18px',
-                background: '#FFFFFF',
-              }}
-            >
-              <textarea
-                placeholder="اكتب الوصف"
-                value={groupDescription}
-                onChange={(e) => setGroupDescription(e.target.value)}
-                style={{
-                  flex: 1,
-                  height: '100%',
-                  fontFamily: 'Cairo',
-                  fontWeight: 600,
-                  fontSize: '15px',
-                  padding: '8px 0',
-                  border: 'none',
-                  outline: 'none',
-                  resize: 'none',
-                  background: 'transparent'
-                }}
-                className="text-black placeholder-[#B4B4B9]"
-              />
-            </div>
-          </div>
-
-          <div
-            className="w-[calc(100%+48px)] -mx-6 shrink-0"
-            style={{
-              height: '3px',
-              borderTop: '0.33px solid #3C3C434D',
-            }}
-          />
-
-          <div className="flex items-center justify-between mb-2 -mx-5 flex-shrink-0">
-            <span
-              style={{
-                fontFamily: 'Cairo',
-                fontWeight: 600,
-                fontSize: '17px',
-                color: '#000000'
-              }}
-            >
-              الاعضاء:
-            </span>
-            <span className="text-sm text-gray-500">
-              ({selectedMembers.length} شخص)
-            </span>
           </div>
 
           <div className="flex items-center bg-white rounded-xl px-3 py-2 mb-3 shadow-sm mx-auto w-full flex-shrink-0" style={{ maxWidth: '402px' }}>
             <Search className="text-[#B6B7B7] w-4 h-4 ml-2" />
             <input
               type="text"
-              placeholder="ابحث في الأعضاء..."
+              placeholder="ابحث عن اسم شخص..."
               value={groupSearchTerm}
               onChange={(e) => setGroupSearchTerm(e.target.value)}
               className="w-full bg-transparent text-sm focus:outline-none"
@@ -1901,6 +2432,28 @@ if (memberCount >= 5) {
                 fontSize: '14px'
               }}
             />
+          </div>
+
+          <div className="flex items-center justify-between px-2 mb-3">
+            <div className="flex items-center gap-1">
+              <img
+                src='/imgs/addperson.svg'
+                alt="صورة المستخدم"
+                className="w-[13px] h-[13px] object-cover"
+              />
+              <span className="text-sm font-semibold text-black">
+                عدد الاعضاء 
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <span className="text-sm ">
+                {selectedMembers.length}
+              </span>
+              <span className="text-sm text-gray-500">
+                الأشخاص
+              </span>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto flex flex-col gap-2 mb-4 mx-auto w-full" style={{ maxWidth: '402px', minHeight: '150px' }}>
@@ -1941,11 +2494,17 @@ if (memberCount >= 5) {
 
               return filteredUsers.map((chat) => {
                 const isChecked = selectedMembers.includes(chat.chatId);
+                const isAdmin = chat.isAdmin;
+
                 return (
                   <div
                     key={chat.chatId}
                     onClick={() => toggleMemberSelection(chat.chatId)}
-                    className="flex items-center justify-between p-2 bg-white rounded-xl cursor-pointer hover:bg-gray-50 transition"
+                    className={`flex items-center justify-between px-2 py-3 rounded-2xl cursor-pointer transition-all  ${
+                      isChecked 
+                        ? 'border-2 border-[#D72229] shadow-sm' 
+                        : 'border-2 border-transparent hover:bg-gray-50'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <img
@@ -1955,18 +2514,13 @@ if (memberCount >= 5) {
                       />
                       <span className="text-sm font-semibold text-black">{chat.name}</span>
                     </div>
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                        isChecked
-                          ? 'bg-[#D72229] border-[#D72229]'
-                          : 'border-gray-300'
-                      }`}
-                    >
-                      {isChecked && (
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
+
+                    <div>
+                      <img
+                        src={isAdmin ? "/imgs/admin.svg" : "/imgs/noAdmin.svg"}
+                        alt="Admin Status"
+                        className="w-5 h-5 object-contain"
+                      />
                     </div>
                   </div>
                 );
@@ -1990,8 +2544,7 @@ if (memberCount >= 5) {
             }}
           >
             <button
-              disabled={!groupName.trim() || isSubmittingGroup}
-              onClick={handleCreateGroupSubmit}
+              onClick={() => setIsMemberSelectionOpen(false)}
               style={{
                 width: '100%',
                 maxWidth: '285px',
@@ -2001,378 +2554,389 @@ if (memberCount >= 5) {
                 fontFamily: 'Cairo',
                 fontWeight: 600,
                 fontSize: '17px',
-                border: '1px solid #ddd',
-                cursor: !groupName.trim() ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease'
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                color: '#000000',
               }}
-              className="text-black shadow-md hover:bg-gray-50"
+              className="hover:bg-[#b01d23] shadow-md"
             >
-              {isSubmittingGroup ? 'جاري الإنشاء...' : 'انشاء مجموعة'}
+              اضافة الاعضاء
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ================= REPORT REASONS MODAL ================= */}
+      {showReportModal && (
+        <div
+          className="fixed inset-0 z-[1050] flex items-center justify-center bg-black/50 transition-all duration-200"
+          onClick={handleCloseReportModal}
+        >
+          <div
+            className="relative flex flex-col text-right"
+            style={{
+              width: "690px",
+              maxHeight: "90vh",
+              height: "auto",
+              borderRadius: "25px",
+              background: "linear-gradient(270deg, #FFFFFF 0%, #8D8D8D 79.81%)",
+              backdropFilter: "blur(30px)",
+              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={handleCloseReportModal}
+              className="absolute left-4 top-4 text-gray-500 hover:text-gray-800 transition-colors z-10"
+              aria-label="إغلاق"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div
+              className="w-full h-[55px] flex items-center px-6 text-black font-semibold flex-shrink-0"
+              style={{
+                fontSize: "20px",
+                lineHeight: "100%",
+                background: "#FFFFFF40",
+                backdropFilter: "blur(10px)",
+                borderTopLeftRadius: "25px",
+                borderTopRightRadius: "25px",
+                textAlign: "right",
+              }}
+            >
+              الإبلاغ عن مستخدم
+            </div>
+
+            <div
+              className="w-full flex items-center justify-center flex-shrink-0"
+              style={{ minHeight: "47px" }}
+            >
+              <p
+                className="text-black text-center"
+                style={{
+                  fontSize: "25px",
+                  fontWeight: 500,
+                  lineHeight: "100%",
+                  padding: "30px 0 12px",
+                }}
+              >
+                لماذا تريد الإبلاغ عن هذا المستخدم؟
+              </p>
+            </div>
+
+            <div
+              className="mt-6 w-full px-8 space-y-4 flex-1"
+              style={{
+                overflowY: "scroll",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                maxHeight: "calc(90vh - 200px)",
+              }}
+            >
+              {reportReasons.map((reason) => (
+                <div
+                  key={reason.id}
+                  onClick={() => !isReporting && handleReasonSelect(reason.label)}
+                  className={`flex items-center gap-3 cursor-pointer group transition-all hover:bg-white/20 rounded-[19px] ${
+                    isReporting ? "opacity-50 pointer-events-none" : ""
+                  }`}
+                  style={{
+                    width: "100%",
+                    height: "66px",
+                    borderRadius: "19px",
+                    border: "1px solid #A1A1A1",
+                    padding: "0 16px",
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center flex-shrink-0"
+                    style={{
+                      width: "45px",
+                      height: "45px",
+                      backgroundColor: "#A1A1A1",
+                      borderRadius: "50%",
+                    }}
+                  >
+                    <img
+                      src="/imgs/Vector (6).svg"
+                      alt="report icon"
+                      style={{
+                        width: "18px",
+                        height: "20px",
+                        objectFit: "contain",
+                      }}
+                    />
+                  </div>
+                  <span
+                    className="text-black flex-1"
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: 400,
+                      lineHeight: "100%",
+                      textAlign: "right",
+                    }}
+                  >
+                    {reason.label}
+                  </span>
+                  <img
+                    src="/imgs/Group 6836.svg"
+                    alt="arrow"
+                    style={{
+                      width: "6.5px",
+                      height: "13px",
+                      objectFit: "contain",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="h-4 flex-shrink-0"></div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= REPORT SUCCESS MODAL ================= */}
+      {showReportSuccess && (
+        <div
+          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all duration-200"
+          onClick={handleCloseSuccessModal}
+        >
+          <div
+            className="relative flex flex-col items-center text-center"
+            style={{
+              width: "690px",
+              height: "341px",
+              borderRadius: "25px",
+              background: "linear-gradient(270deg, #FFFFFF 0%, #8D8D8D 79.81%)",
+              backdropFilter: "blur(30px)",
+              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              className="w-full h-[55px] flex items-center px-6 text-black font-semibold flex-shrink-0"
+              style={{
+                fontSize: "20px",
+                lineHeight: "100%",
+                background: "#FFFFFF40",
+                backdropFilter: "blur(10px)",
+                borderTopLeftRadius: "25px",
+                borderTopRightRadius: "25px",
+              }}
+            >
+              تم الإبلاغ
+            </h2>
+
+            <div className="text-right w-full flex-1 flex flex-col justify-center items-center">
+              <div className="text-center">
+                <p
+                  className="text-black mb-3 mt-4"
+                  style={{ fontSize: "25px", fontWeight: 400, lineHeight: "1.4" }}
+                >
+                  شكراً لك على إبلاغك
+                </p>
+                <p
+                  className="text-black"
+                  style={{ fontSize: "25px", fontWeight: 400, lineHeight: "1.4" }}
+                >
+                  سيتم مراجعة البلاغ في أقرب وقت
+                </p>
+              </div>
+              <hr
+                style={{
+                  width: "100%",
+                  border: "1px solid #70707080",
+                  marginTop: "20px",
+                }}
+              />
+            </div>
+
+            <button
+              onClick={handleCloseSuccessModal}
+              className="mt-6 mb-6 bg-black text-white font-semibold rounded-[23px] hover:bg-gray-800 transition-colors flex-shrink-0"
+              style={{
+                width: "300px",
+                height: "60px",
+                fontSize: "20px",
+                fontWeight: 600,
+                lineHeight: "100%",
+                borderRadius: "23px",
+              }}
+            >
+              إغلاق
             </button>
           </div>
         </div>
-      )} */}
+      )}
 
-     {/* ================= CREATE GROUP MODAL ================= */}
-  {/* ================= CREATE GROUP MODAL ================= */}
-{/* ================= CREATE GROUP MODAL ================= */} 
-{isCreateGroupOpen && ( 
-  <motion.div 
-    drag 
-    dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }} 
-    dragMomentum={false} 
-    className="fixed top-[130px] bottom-0 left-[18px] w-[20%] z-50 flex flex-col p-6 bg-[#F5F5F5] cursor-grab active:cursor-grabbing" 
-    style={{ 
-      direction: "rtl", 
-      borderRadius: "35px", 
-    }} 
-  > 
-    <div className="flex items-center gap-3 mb-4 flex-shrink-0"> 
-      <button 
-        onClick={() => setIsCreateGroupOpen(false)} 
-        className="w-9 h-9 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors p-0" 
-      > 
-        <img  
-          src="/imgs/close.svg"  
-          alt="إغلاق" 
-          style={{ width: '17px', height: '17px', opacity: 1 }} 
-        /> 
-      </button> 
-      <h2 style={{ fontFamily: 'Cairo', fontWeight: 500, fontSize: '25px', lineHeight: '100%', color: '#000000' }}> 
-        انشاء مجموعة 
-      </h2> 
-    </div> 
- 
-    <div className="mb-3 flex justify-center gap-1 flex-shrink-0 relative -mx-3"> 
-      <div className="relative inline-block"> 
-        <img 
-          src={JSON.parse(localStorage.getItem('userData') || '{}').img || '/imgs/user.png'} 
-          alt="صورة المستخدم" 
-          className="w-[50px] h-[45px] rounded-[17px] object-cover" 
-          style={{ filter: 'blur(1px)' }} 
-        /> 
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"> 
-          <img src="/imgs/Groupcamer.svg" alt="كاميرا" style={{ width: '17px', height: '17px', opacity: 1 }} /> 
-        </div> 
-      </div> 
- 
-      <input 
-        type="text" 
-        placeholder="اكتب اسم المجموعة" 
-        value={groupName} 
-        maxLength={25} 
-        onChange={(e) => setGroupName(e.target.value)} 
-        style={{ 
-          width: '100%', 
-          maxWidth: '402px', 
-          height: '45px', 
-          borderRadius: '18px', 
-          background: '#FFFFFF', 
-          fontFamily: 'Cairo', 
-          fontWeight: 600, 
-          fontSize: '15px', 
-          padding: '0 15px', 
-          border: 'none', 
-          outline: 'none', 
-        }} 
-        className="text-black placeholder-[#B4B4B9]" 
-      /> 
- 
-      <span style={{ width: '46px', height: '28px', fontFamily: 'Cairo', fontWeight: 600, fontSize: '15px', lineHeight: '100%', color: '#B4B4B9', transform: 'translateY(15px)' }}> 
-        25/{groupName.length} 
-      </span> 
-    </div> 
- 
-    <div className="mb-4 flex justify-center flex-shrink-0 -mx-3"> 
-      <div className="flex items-center gap-3 p-3 w-full" style={{ maxWidth: '402px', height: '102px', borderRadius: '18px', background: '#FFFFFF' }}> 
-        <textarea 
-          placeholder="اكتب الوصف" 
-          value={groupDescription} 
-          onChange={(e) => setGroupDescription(e.target.value)} 
-          style={{ flex: 1, height: '100%', fontFamily: 'Cairo', fontWeight: 600, fontSize: '15px', padding: '8px 0', border: 'none', outline: 'none', resize: 'none', background: 'transparent' }} 
-          className="text-black placeholder-[#B4B4B9]" 
-        /> 
-      </div> 
-    </div> 
- 
-    <div className="w-[calc(100%+48px)] -mx-6 shrink-0" style={{ height: '3px', borderTop: '0.33px solid #3C3C434D' }} /> 
- 
-    <div className="flex items-center justify-between mb-2 -mx-5 flex-shrink-0"> 
-      <span style={{ fontFamily: 'Cairo', fontWeight: 600, fontSize: '17px', color: '#000000' }}> 
-        الاعضاء: 
-      </span> 
-      <div className="flex items-center gap-1"> 
-        <button 
-          onClick={() => { 
-            const searchInput = document.getElementById('groupSearchInput'); 
-            if (searchInput) { 
-              searchInput.style.display = searchInput.style.display === 'none' ? 'flex' : 'none'; 
-            } 
-          }} 
-          className="w-8 h-8 rounded-full bg-[#F2F2F2] flex items-center justify-center hover:bg-[#E5E5E5] transition-colors" 
-        > 
-          <img src="/imgs/search_mem.svg" alt="بحث" style={{ width: '15px', height: '15px', opacity: 1 }} /> 
-        </button> 
-        <button 
-          onClick={() => setIsMemberSelectionOpen(true)} 
-          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#E5E5E5] transition-colors" 
-        > 
-           <img src="/imgs/chooseMember.svg" alt="إضافة أعضاء" style={{ width: '16px', height: '16px', opacity: 1 }} /> 
-        </button> 
-        {selectedMembers.length > 0 && ( 
-          <span className="text-sm text-[#D72229] font-semibold"> 
-            ({selectedMembers.length}) 
-          </span> 
-        )} 
-      </div> 
-    </div> 
- 
-    <div 
-      id="groupSearchInput" 
-      className="flex items-center bg-white rounded-xl px-3 py-2 mb-3 shadow-sm mx-auto w-full flex-shrink-0"  
-      style={{ maxWidth: '402px', display: 'none' }} 
-    > 
-      <img src="/imgs/search_mem.svg" alt="بحث" style={{ width: '15px', height: '15px', opacity: 1, marginLeft: '8px' }} /> 
-      <input 
-        type="text" 
-        placeholder="ابحث في الأعضاء..." 
-        value={groupSearchTerm} 
-        onChange={(e) => setGroupSearchTerm(e.target.value)} 
-        className="w-full bg-transparent text-sm focus:outline-none" 
-        style={{ fontFamily: 'Cairo', fontSize: '14px' }} 
-      /> 
-    </div> 
- 
-    <div className="flex-1 flex items-center justify-center mb-4 mx-auto w-full" style={{ maxWidth: '402px', minHeight: '150px' }}> 
-      <div className="text-center"> 
-        <img src="/imgs/noMember.svg" alt="لا يوجد أعضاء" className="w-[71px] h-[71px] object-contain mx-auto mb-2" /> 
-      </div> 
-    </div> 
- 
-    <div 
-      className="flex justify-center items-center flex-shrink-0" 
-      style={{ 
-        width: 'calc(100% + 48px)', 
-        marginLeft: '-24px', 
-        marginRight: '-24px', 
-        marginBottom: '-24px', 
-        padding: '16px 24px', 
-        background: '#E3E3E366', 
-        backdropFilter: 'blur(35px)', 
-        borderBottomLeftRadius: '35px', 
-        borderBottomRightRadius: '35px', 
-        minHeight: '82px', 
-      }} 
-    > 
-      <button 
-        disabled={!groupName.trim() || isSubmittingGroup} 
-        onClick={handleCreateGroupSubmit} 
-        style={{ 
-          width: '100%', 
-          maxWidth: '285px', 
-          height: '50px', 
-          borderRadius: '20px', 
-          background: '#FFFFFF', 
-          fontFamily: 'Cairo', 
-          fontWeight: 600, 
-          fontSize: '17px', 
-          border: '1px solid #ddd', 
-          cursor: !groupName.trim() ? 'not-allowed' : 'pointer', 
-          transition: 'all 0.2s ease' 
-        }} 
-        className="text-black shadow-md hover:bg-gray-50" 
-      > 
-        {isSubmittingGroup ? 'جاري الإنشاء...' : 'انشاء مجموعة'} 
-      </button> 
-    </div> 
-  </motion.div> 
-)}
-{/* ================= MODAL اختيار الأعضاء ================= */}
-{isMemberSelectionOpen && (
-  <div
-    className="fixed top-[130px] bottom-0 left-[18px] w-[20%] z-[60] flex flex-col p-6 bg-[#F5F5F5]"
-    style={{
-      direction: "rtl",
-      borderRadius: "35px",
-    }}
-  >
-    <div className="flex items-center gap-3 mb-4 flex-shrink-0">
-      {/* زر إغلاق - صورة close.svg */}
-      <button
-        onClick={() => setIsMemberSelectionOpen(false)}
-        className="w-9 h-9 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors p-0"
-      >
-        <img 
-          src="/imgs/returnPage.svg" 
-          alt="returnPage"
-          style={{
-            width: '17px',
-            height: '17px',
-            opacity: 1,
-           }}
-        />
-      </button>
-      <h2
-        style={{
-          fontFamily: 'Cairo',
-          fontWeight: 500,
-          fontSize: '25px',
-          lineHeight: '100%',
-          color: '#000000'
-        }}
-      >
-          اضافة اشخاص
-      </h2>
-    </div>
-
-       <div className="flex items-center bg-white rounded-xl px-3 py-2 mb-3 shadow-sm mx-auto w-full flex-shrink-0" style={{ maxWidth: '402px' }}>
-            <Search className="text-[#B6B7B7] w-4 h-4 ml-2" />
-            <input
-              type="text"
-              placeholder="ابحث عن اسم شخص..."
-              value={groupSearchTerm}
-              onChange={(e) => setGroupSearchTerm(e.target.value)}
-              className="w-full bg-transparent text-sm focus:outline-none"
-              style={{
-                fontFamily: 'Cairo',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-              <div className="flex items-center justify-between px-2 mb-3">
-                  {/* أقصى اليسار: صورة المستخدم واسمه */}
-      <div className="flex items-center gap-1">
-        <img
-          src='/imgs/addperson.svg'
-          alt="صورة المستخدم"
-          className="w-[13px] h-[13px] object-cover"
-        />
-        <span className="text-sm font-semibold text-black">
-         عدد الاعضاء 
-        </span>
-      </div>
-
-        <div className="flex items-center gap-1">
-        
-        <span className="text-sm ">
-          {selectedMembers.length}
-        </span>
-        <span className="text-sm text-gray-500">
-           الأشخاص
-        </span>
-      </div>
-              </div>
-
-    <div className="flex-1 overflow-y-auto flex flex-col gap-2 mb-4 mx-auto w-full" style={{ maxWidth: '402px', minHeight: '150px' }}>
-      {(() => {
-        const individualUsers = chats.filter(c => !c.isGroup);
-        const filteredUsers = individualUsers.filter(c => 
-          c.name.toLowerCase().includes(groupSearchTerm.toLowerCase().trim())
-        );
-
-        if (individualUsers.length === 0) {
-          return (
-            <div className="flex-1 flex items-center justify-center h-full" style={{ minHeight: '200px' }}>
-              <div className="text-center">
-                <div className="text-5xl mb-3">👤</div>
-                <p className="text-xl font-semibold text-gray-600">لا يوجد أعضاء</p>
-                <p className="text-sm text-gray-400 mt-1">ليس لديك أي محادثات مع أفراد</p>
-              </div>
-            </div>
-          );
-        }
-
-        if (filteredUsers.length === 0 && groupSearchTerm.trim() !== '') {
-          return (
-            <div
-              className="flex-1 flex items-center justify-center h-full"
-              style={{ minHeight: '71px' }}
+      {/* ================= CALL MODAL ================= */}
+      {isCallModalOpen && selectedCallChatId && (
+        <div
+          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 backdrop-blur-md"
+          onClick={handleCloseCallModal}
+        >
+          <div
+            className="relative flex flex-col items-center"
+            style={{
+              width: "400px",
+              maxWidth: "90vw",
+              borderRadius: "30px",
+              background: "linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+              padding: "30px 20px 25px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* زر إغلاق */}
+            <button
+              onClick={handleCloseCallModal}
+              className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
             >
-              <div className="text-center">
-                <img
-                  src="/imgs/noMember.svg"
-                  alt="لا توجد نتائج"
-                  className="w-[71px] h-[71px] object-contain mx-auto"
-                />
-              </div>
-            </div>
-          );
-        }
-
-        return filteredUsers.map((chat) => {
-          const isChecked = selectedMembers.includes(chat.chatId);
-          return (
-            <div
-              key={chat.chatId}
-              onClick={() => toggleMemberSelection(chat.chatId)}
-              className="flex items-center justify-between p-2 bg-white rounded-xl cursor-pointer hover:bg-gray-50 transition"
-            >
-              <div className="flex items-center gap-3">
-                <img
-                  src={chat.userinfo?.img || "/imgs/user.png"}
-                  className="w-10 h-10 rounded-full object-cover"
-                  alt={chat.name}
-                />
-                <span className="text-sm font-semibold text-black">{chat.name}</span>
-              </div>
-              <div
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                  isChecked
-                    ? 'bg-[#D72229] border-[#D72229]'
-                    : 'border-gray-300'
-                }`}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
               >
-                {isChecked && (
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
-            </div>
-          );
-        });
-      })()}
-    </div>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
 
-    <div
-      className="flex justify-center items-center flex-shrink-0"
-      style={{
-        width: 'calc(100% + 48px)',
-        marginLeft: '-24px',
-        marginRight: '-24px',
-        marginBottom: '-24px',
-        padding: '16px 24px',
-        background: '#E3E3E366',
-        backdropFilter: 'blur(35px)',
-        borderBottomLeftRadius: '35px',
-        borderBottomRightRadius: '35px',
-        minHeight: '82px',
-      }}
-    >
-      <button
-        onClick={() => setIsMemberSelectionOpen(false)}
-        style={{
-          width: '100%',
-          maxWidth: '285px',
-          height: '50px',
-          borderRadius: '20px',
-          background: '#FFFFFF',
-          fontFamily: 'Cairo',
-          fontWeight: 600,
-          fontSize: '17px',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          color: '#000000',
-        }}
-        className="hover:bg-[#b01d23] shadow-md"
-      >
-       اضافة الاعضاء
-      </button>
-    </div>
-  </div>
-)}
+            {/* أيقونة المكالمة */}
+            <div
+              className="flex items-center justify-center mb-4"
+              style={{
+                width: "100px",
+                height: "100px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #e94560, #c23152)",
+                boxShadow: "0 0 40px rgba(233, 69, 96, 0.3)",
+              }}
+            >
+              <img
+                src="/imgs/fire-emergency-call-1.svg"
+                alt="Call"
+                style={{
+                  width: "55px",
+                  height: "55px",
+                  filter: "brightness(0) invert(1)",
+                }}
+              />
+            </div>
+
+            {/* اسم المستخدم */}
+            <h3
+              className="text-white font-bold mb-1"
+              style={{
+                fontSize: "24px",
+                fontFamily: "Cairo",
+              }}
+            >
+              {chats.find(c => c.chatId === selectedCallChatId)?.name || "مستخدم"}
+            </h3>
+
+            {/* رصيد الدقائق */}
+            <div
+              className="flex items-center justify-between w-full px-4 py-2 mb-4"
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                borderRadius: "15px",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              <span
+                style={{
+                  color: "#8899aa",
+                  fontSize: "14px",
+                  fontFamily: "Cairo",
+                }}
+              >
+                رصيدك الحالي
+              </span>
+              <span
+                style={{
+                  color: "#4fc3f7",
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  fontFamily: "Cairo",
+                }}
+              >
+                {callMinutes.free} / {callMinutes.total} دقيقة مجانية
+              </span>
+            </div>
+
+            {/* أزرار المكالمة */}
+            <div className="flex items-center gap-4 w-full">
+              {/* زر المكالمة الصوتية */}
+              <button
+                onClick={() => handleStartCall('audio')}
+                disabled={callMinutes.free <= 0}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl transition-all"
+                style={{
+                  background: callMinutes.free > 0 
+                    ? "linear-gradient(135deg, #4caf50, #388e3c)" 
+                    : "rgba(255,255,255,0.1)",
+                  color: callMinutes.free > 0 ? "#fff" : "#666",
+                  cursor: callMinutes.free > 0 ? "pointer" : "not-allowed",
+                  border: "none",
+                }}
+              >
+                <Phone size={18} />
+                <span style={{ fontFamily: "Cairo", fontWeight: 600, fontSize: "15px" }}>
+                  مكالمة صوتية
+                </span>
+              </button>
+
+              {/* زر المكالمة المرئية */}
+              <button
+                onClick={() => handleStartCall('video')}
+                disabled={callMinutes.free <= 0}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl transition-all"
+                style={{
+                  background: callMinutes.free > 0 
+                    ? "linear-gradient(135deg, #e94560, #c23152)" 
+                    : "rgba(255,255,255,0.1)",
+                  color: callMinutes.free > 0 ? "#fff" : "#666",
+                  cursor: callMinutes.free > 0 ? "pointer" : "not-allowed",
+                  border: "none",
+                }}
+              >
+                <Video size={18} />
+                <span style={{ fontFamily: "Cairo", fontWeight: 600, fontSize: "15px" }}>
+                  مكالمة مرئية
+                </span>
+              </button>
+            </div>
+
+            {/* رسالة عند نفاذ الرصيد */}
+            {callMinutes.free <= 0 && (
+              <p
+                className="mt-3 text-center"
+                style={{
+                  color: "#ff6b6b",
+                  fontSize: "13px",
+                  fontFamily: "Cairo",
+                }}
+              >
+                ⚠️ رصيد الدقائق المجانية منتهي
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
