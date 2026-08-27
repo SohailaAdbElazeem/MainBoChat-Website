@@ -1,7 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 'use client';
+
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import wsService from "@/lib/websocketService";
@@ -63,6 +65,7 @@ function normalizeChats(rawChats: any[], myId: string): ChatItem[] {
       isFavorite: chat.isStarred || false,
       typing: false,
       members: chat.members || [],
+      isAdmin: chat.isAdmin || false,
     };
   });
 
@@ -138,6 +141,10 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
   const [isMemberSelectionOpen, setIsMemberSelectionOpen] = useState(false);
 
+  // ================= ADMIN STATES =================
+  const [tempAdmins, setTempAdmins] = useState<string[]>([]);
+  const [isAdminLoading, setIsAdminLoading] = useState<Record<string, boolean>>({});
+
   // Transfer Ownership Modal States
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -178,14 +185,112 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [selectedCallChatId, setSelectedCallChatId] = useState<string | null>(null);
 
+  // ================= TOAST CONFIRMATION HELPER =================
+  // const showConfirmToast = (
+  //   message: string,
+  //   onConfirm: () => void,
+  //   onCancel?: () => void
+  // ) => {
+  //   toast(
+  //     (t) => (
+  //       <div className="flex flex-col items-center gap-3 p-2">
+  //         <p className="text-center text-sm font-medium">{message}</p>
+  //         <div className="flex gap-3 w-full">
+  //           <button
+  //             onClick={() => {
+  //               toast.dismiss(t.id);
+  //               onConfirm();
+  //             }}
+  //             className="flex-1 py-2 px-4 bg-[#D72229] text-white rounded-lg hover:bg-[#b01d23] transition-colors text-sm font-semibold"
+  //           >
+  //             تأكيد
+  //           </button>
+  //           <button
+  //             onClick={() => {
+  //               toast.dismiss(t.id);
+  //               if (onCancel) onCancel();
+  //             }}
+  //             className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-semibold"
+  //           >
+  //             إلغاء
+  //           </button>
+  //         </div>
+  //       </div>
+  //     ),
+  //     {
+  //       duration: 60000,
+  //       position: 'top-center',
+  //       style: {
+  //         background: '#FFFFFF',
+  //         borderRadius: '16px',
+  //         padding: '16px',
+  //         maxWidth: '400px',
+  //         boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+  //       },
+  //     }
+  //   );
+  // };
+
+  // ================= TOAST CONFIRMATION HELPER =================
+const showConfirmToast = (
+  message: string,
+  onConfirm: () => void,
+  onCancel?: () => void,
+  confirmText?: string,
+  cancelText?: string
+) => {
+  toast(
+    (t) => (
+      <div className="flex flex-col items-center gap-4 p-3">
+        <div className="flex items-center gap-3 w-full">
+          <p className="text-right text-sm font-medium text-gray-800 leading-relaxed flex-1">
+            {message}
+          </p>
+        </div>
+        <div className="flex gap-3 w-full mt-1">
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              onConfirm();
+            }}
+            className="flex-1 py-2.5 px-4 bg-[#D72229] text-white rounded-xl hover:bg-[#b01d23] transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
+          >
+            {confirmText || 'تأكيد الحذف'}
+          </button>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              if (onCancel) onCancel();
+            }}
+            className="flex-1 py-2.5 px-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 text-sm font-semibold"
+          >
+            {cancelText || 'إلغاء'}
+          </button>
+        </div>
+      </div>
+    ),
+    {
+      duration: 60000,
+      position: 'top-center',
+      style: {
+        background: '#FFFFFF',
+        borderRadius: '20px',
+        padding: '20px 24px',
+        maxWidth: '420px',
+        width: '100%',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+        border: '1px solid rgba(0,0,0,0.05)',
+      },
+    }
+  );
+};
+
   // جلب قائمة المستخدمين المحظورين
   const fetchBlockedUsers = async () => {
     if (!token) return;
     try {
       const baseUrl = apiBase || 'https://bo-chat.space';
       const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-      
-      console.log('📤 Fetching blocked users from:', `${cleanBaseUrl}/block`);
       
       const response = await fetch(`${cleanBaseUrl}/block`, {
         headers: {
@@ -194,25 +299,15 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         },
       });
       
-      console.log('📥 Fetch blocked users status:', response.status);
-      
-      if (!response.ok) {
-        console.log('❌ Failed to fetch blocked users, status:', response.status);
-        return;
-      }
+      if (!response.ok) return;
       
       const responseText = await response.text();
-      console.log('📥 Blocked users raw response:', responseText);
-      
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (e) {
-        console.error('❌ Failed to parse blocked users response:', e);
         return;
       }
-      
-      console.log('📥 Blocked users parsed response:', data);
       
       let blockedIds: string[] = [];
       
@@ -230,11 +325,10 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         blockedIds = data.data.map((user: any) => user._id || user.id || user);
       }
       
-      console.log('✅ Blocked IDs:', blockedIds);
       setBlockedUsers(blockedIds);
       
     } catch (error) {
-      console.error('❌ Error fetching blocked users:', error);
+      console.error('Error fetching blocked users:', error);
     }
   };
 
@@ -279,53 +373,83 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
     });
   };
 
-  const selectAllChats = () => {
-    const allIds = searchedChats.map(chat => chat.chatId);
-    setSelectedChats(allIds);
-    setSelectionMode(true);
-  };
-
   const clearSelection = () => {
     setSelectedChats([]);
     setSelectionMode(false);
   };
 
   // ================= BULK ACTIONS =================
-  const handleBulkDelete = async () => {
-    if (selectedChats.length === 0) return;
-    const confirmDelete = window.confirm(`هل أنت متأكد من رغبتك في حذف ${selectedChats.length} محادثة؟`);
-    if (!confirmDelete) return;
+  // const handleBulkDelete = async () => {
+  //   if (selectedChats.length === 0) return;
     
-    for (const chatId of selectedChats) {
-      const chat = chats.find(c => c.chatId === chatId);
-      if (chat) {
-        await handleDeleteChat(chatId, chat.chatType);
-      }
-    }
-    clearSelection();
-  };
+  //   showConfirmToast(
+  //     `هل أنت متأكد من رغبتك في حذف ${selectedChats.length} محادثة؟`,
+  //     async () => {
+  //       for (const chatId of selectedChats) {
+  //         const chat = chats.find(c => c.chatId === chatId);
+  //         if (chat) {
+  //           await handleDeleteChat(chatId, chat.chatType);
+  //         }
+  //       }
+  //       clearSelection();
+  //     }
+  //   );
+  // };
 
+  // ================= BULK ACTIONS =================
+const handleBulkDelete = async () => {
+  if (selectedChats.length === 0) return;
+  
+  const chatCount = selectedChats.length;
+  const isPlural = chatCount > 1;
+  
+  showConfirmToast(
+    ` أنت على وشك حذف ${chatCount} محادثة${isPlural ? 'ات' : ''}\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بهذه المحادثات، ولن تتمكن من استعادتها بعد الحذف.`,
+    async () => {
+      for (const chatId of selectedChats) {
+        const chat = chats.find(c => c.chatId === chatId);
+        if (chat) {
+          await handleDeleteChat(chatId, chat.chatType);
+        }
+      }
+      clearSelection();
+    },
+    () => {
+      toast('تم إلغاء عملية الحذف الجماعي', {
+        icon: '↩️',
+        duration: 2000,
+      });
+    },
+    `نعم، احذف ${chatCount} محادثة${isPlural ? 'ات' : ''}`,
+    'إلغاء'
+  );
+};
   const handleBulkArchive = async () => {
     if (selectedChats.length === 0) return;
     
-    for (const chatId of selectedChats) {
-      const chat = chats.find(c => c.chatId === chatId);
-      if (chat) {
-        await handleArchiveChat(chatId, chat.chatType);
+    showConfirmToast(
+      `هل أنت متأكد من رغبتك في أرشفة ${selectedChats.length} محادثة؟`,
+      async () => {
+        for (const chatId of selectedChats) {
+          const chat = chats.find(c => c.chatId === chatId);
+          if (chat) {
+            await handleArchiveChat(chatId, chat.chatType);
+          }
+        }
+        clearSelection();
       }
-    }
-    clearSelection();
+    );
   };
 
   const handleBulkCall = () => {
     if (selectedChats.length === 0) return;
-    toast.info(`جاري إنشاء مكالمة جماعية مع ${selectedChats.length} محادثة`);
+    toast.success(` جاري إنشاء مكالمة جماعية مع ${selectedChats.length} محادثة`);
     clearSelection();
   };
 
   const handleBulkGroupMessage = () => {
     if (selectedChats.length === 0) return;
-    toast.info(`جاري إنشاء رسالة جماعية مع ${selectedChats.length} محادثة`);
+    toast.success(`💬 جاري إنشاء رسالة جماعية مع ${selectedChats.length} محادثة`);
     clearSelection();
   };
 
@@ -439,6 +563,8 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                 description: groupDetails.description || '',
                 name: groupDetails.name || chat.name,
                 members: groupDetails.members || [],
+                admins: groupDetails.admins || [],
+                owner: groupDetails.owner || groupDetails.createdBy,
               };
             }
           }
@@ -623,8 +749,71 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
     };
   }, [chats]);
 
+  // ================= TOGGLE ADMIN STATUS =================
+  const toggleAdminStatus = async (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    const groupId = selectedGroupId || 'temp_group_id';
+    
+    if (groupId === 'temp_group_id') {
+      setTempAdmins(prev => 
+        prev.includes(chatId) 
+          ? prev.filter(id => id !== chatId)
+          : [...prev, chatId]
+      );
+      return;
+    }
+
+    if (!token) {
+      toast.error('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
+    const isCurrentlyAdmin = tempAdmins.includes(chatId);
+    setIsAdminLoading(prev => ({ ...prev, [chatId]: true }));
+
+    try {
+      const url = isCurrentlyAdmin
+        ? `${apiBase}/chats/groups/DemoteAdmin/${groupId}`
+        : `${apiBase}/chats/groups/PromoteAdmin/${groupId}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ memberid: chatId })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setTempAdmins(prev => 
+          isCurrentlyAdmin 
+            ? prev.filter(id => id !== chatId)
+            : [...prev, chatId]
+        );
+        
+        toast.success(isCurrentlyAdmin ? ' تم إلغاء صلاحية المشرف' : ' تم تعيين المشرف بنجاح');
+      } else {
+        toast.error(`فشل: ${data.response || data.message || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error toggling admin:', error);
+      toast.error('حدث خطأ أثناء محاولة تغيير الصلاحية');
+    } finally {
+      setIsAdminLoading(prev => ({ ...prev, [chatId]: false }));
+    }
+  };
+
+  // ================= CREATE GROUP SUBMIT =================
   const handleCreateGroupSubmit = async () => {
-    if (!groupName.trim() || !token) return;
+    if (!groupName.trim() || !token) {
+      toast.error('يرجى إدخال اسم المجموعة');
+      return;
+    }
+    
     setIsSubmittingGroup(true);
 
     try {
@@ -642,13 +831,13 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
 
       const createData = await createRes.json();
       if (!createData.success || !createData.response?.groupId) {
-        throw new Error("Failed to create group");
+        throw new Error(createData.response || "Failed to create group");
       }
 
       const groupId = createData.response.groupId;
       const members = [myUserId, ...selectedMembers];
       
-      await fetch(`${apiBase}/chats/groups/AddMembers/${groupId}`, {
+      const addMembersRes = await fetch(`${apiBase}/chats/groups/AddMembers/${groupId}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -657,10 +846,33 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         body: JSON.stringify({ members })
       });
 
+      const addMembersData = await addMembersRes.json();
+      if (!addMembersData.success) {
+        throw new Error(addMembersData.response || "Failed to add members");
+      }
+
+      for (const adminId of tempAdmins) {
+        try {
+          await fetch(`${apiBase}/chats/groups/PromoteAdmin/${groupId}`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ memberid: adminId })
+          });
+        } catch (error) {
+          console.error(`Failed to promote admin ${adminId}:`, error);
+        }
+      }
+
       setIsCreateGroupOpen(false);
+      setIsMemberSelectionOpen(false);
       setGroupName("");
       setGroupDescription("");
       setSelectedMembers([]);
+      setTempAdmins([]);
+      setGroupSearchTerm("");
       
       const normalized = await fetchChats('all');
       if (normalized) {
@@ -668,9 +880,12 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         setFilteredChats(normalized);
       }
       
+      toast.success(' تم إنشاء المجموعة بنجاح');
       router.push(`/chats/${groupId}`);
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error("Error creating group:", error);
+      toast.error(` فشل إنشاء المجموعة: ${error.message || 'خطأ غير معروف'}`);
     } finally {
       setIsSubmittingGroup(false);
     }
@@ -951,95 +1166,173 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   };
 
   // ================= BLOCK/UNBLOCK USER =================
-  const handleBlockUser = async (chatId: string) => {
-    if (!token) return;
+  // const handleBlockUser = async (chatId: string) => {
+  //   if (!token) return;
     
-    const isBlocked = isUserBlocked(chatId);
+  //   const isBlocked = isUserBlocked(chatId);
     
-    const confirmAction = window.confirm(
-      isBlocked 
-        ? `هل أنت متأكد من رغبتك في رفع الحظر عن هذا المستخدم؟`
-        : `هل أنت متأكد من رغبتك في حظر هذا المستخدم؟`
-    );
-    
-    if (!confirmAction) {
-      setOpenDropdown(null);
-      return;
-    }
-    
-    try {
-      const baseUrl = apiBase || 'https://bo-chat.space';
-      const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-      
-      const url = isBlocked 
-        ? `${cleanBaseUrl}/unblock${myUserId}` 
-        : `${cleanBaseUrl}/block${myUserId}`;
-      
-      console.log('📤 Sending request to:', url);
-      console.log('📤 With body:', { blockedid: chatId });
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          blockedid: chatId 
-        })
-      });
+  //   showConfirmToast(
+  //     isBlocked 
+  //       ? `هل أنت متأكد من رغبتك في رفع الحظر عن هذا المستخدم؟`
+  //       : `هل أنت متأكد من رغبتك في حظر هذا المستخدم؟`,
+  //     async () => {
+  //       try {
+  //         const baseUrl = apiBase || 'https://bo-chat.space';
+  //         const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+          
+  //         const url = isBlocked 
+  //           ? `${cleanBaseUrl}/unblock${myUserId}` 
+  //           : `${cleanBaseUrl}/block${myUserId}`;
+          
+  //         const response = await fetch(url, {
+  //           method: 'POST',
+  //           headers: {
+  //             'Authorization': `Bearer ${token}`,
+  //             'Content-Type': 'application/json',
+  //           },
+  //           body: JSON.stringify({ 
+  //             blockedid: chatId 
+  //           })
+  //         });
 
-      console.log('📥 Response status:', response.status);
-      
-      const responseText = await response.text();
-      console.log('📥 Raw response:', responseText);
-      
-      let data;
+  //         const responseText = await response.text();
+  //         let data;
+  //         try {
+  //           data = JSON.parse(responseText);
+  //         } catch (e) {
+  //           if (response.ok) {
+  //             data = { success: true, response: responseText };
+  //           } else {
+  //             data = { success: false, response: responseText || 'خطأ في السيرفر' };
+  //           }
+  //         }
+          
+  //         const isSuccess = response.ok && (
+  //           data.success === true || 
+  //           data.status === 'success' || 
+  //           data.message?.includes('success') || 
+  //           data.response === 'success' ||
+  //           data.case === 'done'
+  //         );
+          
+  //         if (isSuccess) {
+  //           const message = isBlocked 
+  //             ? '✅ تم رفع الحظر عن المستخدم بنجاح' 
+  //             : '✅ تم حظر المستخدم بنجاح';
+            
+  //           toast.success(message);
+            
+  //           if (isBlocked) {
+  //             setBlockedUsers(prev => prev.filter(id => id !== chatId));
+  //           } else {
+  //             setBlockedUsers(prev => [...prev, chatId]);
+  //           }
+            
+  //           setOpenDropdown(null);
+  //         } else {
+  //           const errorMsg = data?.response || data?.message || data?.error || data?.msg || 'خطأ غير معروف';
+  //           const actionName = isBlocked ? 'رفع الحظر' : 'حظر';
+  //           toast.error(`❌ فشل ${actionName}: ${errorMsg}`);
+  //         }
+  //       } catch (error) {
+  //         console.error('Error blocking/unblocking user:', error);
+  //         toast.error('حدث خطأ أثناء محاولة تنفيذ العملية. يرجى المحاولة مرة أخرى.');
+  //       }
+  //     },
+  //     () => {
+  //       setOpenDropdown(null);
+  //     }
+  //   );
+  // };
+  // ================= BLOCK/UNBLOCK USER =================
+const handleBlockUser = async (chatId: string) => {
+  if (!token) return;
+  
+  const isBlocked = isUserBlocked(chatId);
+  const chat = chats.find(c => c.chatId === chatId);
+  const userName = chat?.name || 'هذا المستخدم';
+  
+  const confirmMessage = isBlocked 
+    ? ` أنت على وشك رفع الحظر عن "${userName}"\n\nبعد رفع الحظر، سيتمكن هذا المستخدم من التواصل معك مرة أخرى.`
+    : `أنت على وشك حظر "${userName}"\n\nبعد الحظر، لن يتمكن هذا المستخدم من التواصل معك أو رؤية نشاطك.`;
+  
+  showConfirmToast(
+    confirmMessage,
+    async () => {
       try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('❌ Failed to parse JSON:', e);
-        if (response.ok) {
-          data = { success: true, response: responseText };
-        } else {
-          data = { success: false, response: responseText || 'خطأ في السيرفر' };
-        }
-      }
-      
-      console.log('📥 Parsed response:', data);
-      
-      const isSuccess = response.ok && (
-        data.success === true || 
-        data.status === 'success' || 
-        data.message?.includes('success') || 
-        data.response === 'success' ||
-        data.case === 'done'
-      );
-      
-      if (isSuccess) {
-        const message = isBlocked 
-          ? '✅ تم رفع الحظر عن المستخدم بنجاح' 
-          : '✅ تم حظر المستخدم بنجاح';
+        const baseUrl = apiBase || 'https://bo-chat.space';
+        const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
         
-        toast.success(message);
+        const url = isBlocked 
+          ? `${cleanBaseUrl}/unblock${myUserId}` 
+          : `${cleanBaseUrl}/block${myUserId}`;
         
-        if (isBlocked) {
-          setBlockedUsers(prev => prev.filter(id => id !== chatId));
-        } else {
-          setBlockedUsers(prev => [...prev, chatId]);
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            blockedid: chatId 
+          })
+        });
+
+        const responseText = await response.text();
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          if (response.ok) {
+            data = { success: true, response: responseText };
+          } else {
+            data = { success: false, response: responseText || 'خطأ في السيرفر' };
+          }
         }
         
-        setOpenDropdown(null);
-      } else {
-        const errorMsg = data?.response || data?.message || data?.error || data?.msg || 'خطأ غير معروف';
-        const actionName = isBlocked ? 'رفع الحظر' : 'حظر';
-        toast.error(`❌ فشل ${actionName}: ${errorMsg}`);
+        const isSuccess = response.ok && (
+          data.success === true || 
+          data.status === 'success' || 
+          data.message?.includes('success') || 
+          data.response === 'success' ||
+          data.case === 'done'
+        );
+        
+        if (isSuccess) {
+          const message = isBlocked 
+            ? ' تم رفع الحظر عن المستخدم بنجاح' 
+            : ' تم حظر المستخدم بنجاح';
+          
+          toast.success(message);
+          
+          if (isBlocked) {
+            setBlockedUsers(prev => prev.filter(id => id !== chatId));
+          } else {
+            setBlockedUsers(prev => [...prev, chatId]);
+          }
+          
+          setOpenDropdown(null);
+        } else {
+          const errorMsg = data?.response || data?.message || data?.error || data?.msg || 'خطأ غير معروف';
+          const actionName = isBlocked ? 'رفع الحظر' : 'حظر';
+          toast.error(` فشل ${actionName}: ${errorMsg}`);
+        }
+      } catch (error) {
+        console.error('Error blocking/unblocking user:', error);
+        toast.error('حدث خطأ أثناء محاولة تنفيذ العملية. يرجى المحاولة مرة أخرى.');
       }
-    } catch (error) {
-      console.error('❌ Error blocking/unblocking user:', error);
-      toast.error('حدث خطأ أثناء محاولة تنفيذ العملية. يرجى المحاولة مرة أخرى.');
-    }
-  };
+    },
+    () => {
+      setOpenDropdown(null);
+      toast(`تم إلغاء ${isBlocked ? 'رفع الحظر' : 'الحظر'}`, {
+        icon: '↩️',
+        duration: 2000,
+      });
+    },
+    isBlocked ? 'نعم، أرفع الحظر' : 'نعم، أحظر',
+    'إلغاء'
+  );
+};
 
   // ================= ARCHIVE/FAVORITE CHAT (TOGGLE) =================
   const handleArchiveChat = async (chatId: string, chatType: string) => {
@@ -1055,8 +1348,8 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       : `${apiBase}/chats/favorite`;
     
     const successMessage = isCurrentlyFavorite 
-      ? '✅ تم إزالة المحادثة من المفضلة بنجاح' 
-      : '✅ تمت إضافة المحادثة إلى المفضلة بنجاح';
+      ? ' تم إزالة المحادثة من المفضلة بنجاح' 
+      : ' تمت إضافة المحادثة إلى المفضلة بنجاح';
     
     const errorMessage = isCurrentlyFavorite 
       ? 'إزالة من المفضلة' 
@@ -1076,7 +1369,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       });
 
       const data = await response.json();
-      console.log('Favorite/Unfavorite response:', data);
       
       if (data.success) {
         toast.success(successMessage);
@@ -1098,7 +1390,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         
         setOpenDropdown(null);
       } else {
-        toast.error(`❌ فشل ${errorMessage}: ${data.response || data.message || 'خطأ غير معروف'}`);
+        toast.error(` فشل ${errorMessage}: ${data.response || data.message || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
@@ -1107,112 +1399,244 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
   };
 
   // ================= DELETE CHAT =================
-  const handleDeleteChat = async (chatId: string, chatType: string) => {
-    if (!token) return;
+  // const handleDeleteChat = async (chatId: string, chatType: string) => {
+  //   if (!token) return;
     
-    const confirmDelete = window.confirm(`هل أنت متأكد من رغبتك في حذف هذه المحادثة؟`);
-    if (!confirmDelete) {
-      setOpenDropdown(null);
-      return;
-    }
-    
-    try {
-      const response = await fetch(`${apiBase}/chats/chats/delete`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          chatId: chatId,
-          chatType: chatType
-        })
-      });
+  //   showConfirmToast(
+  //     `هل أنت متأكد من رغبتك في حذف هذه المحادثة؟`,
+  //     async () => {
+  //       try {
+  //         const response = await fetch(`${apiBase}/chats/chats/delete`, {
+  //           method: 'DELETE',
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             'Content-Type': 'application/json',
+  //           },
+  //           body: JSON.stringify({ 
+  //             chatId: chatId,
+  //             chatType: chatType
+  //           })
+  //         });
 
-      const data = await response.json();
-      
-      if (data.success) {
-        toast.success('✅ تم حذف المحادثة بنجاح');
-        setChats(prev => prev.filter(c => c.chatId !== chatId));
-        setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
-        
-        if (activeChatId === chatId) {
-          router.push('/chats');
-        }
-        
-        setOpenDropdown(null);
-      } else {
-        toast.error(`❌ فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
-      }
-    } catch (error) {
-      console.error('Error deleting chat:', error);
-      toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
-    }
-  };
+  //         const data = await response.json();
+          
+  //         if (data.success) {
+  //           toast.success('✅ تم حذف المحادثة بنجاح');
+  //           setChats(prev => prev.filter(c => c.chatId !== chatId));
+  //           setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+            
+  //           if (activeChatId === chatId) {
+  //             router.push('/chats');
+  //           }
+            
+  //           setOpenDropdown(null);
+  //         } else {
+  //           toast.error(`❌ فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
+  //         }
+  //       } catch (error) {
+  //         console.error('Error deleting chat:', error);
+  //         toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
+  //       }
+  //     },
+  //     () => {
+  //       setOpenDropdown(null);
+  //     }
+  //   );
+  // };
 
-  // ================= LEAVE GROUP =================
-  const handleLeaveGroup = async (chatId: string) => {
-    if (!token) return;
-
-    const confirmLeave = window.confirm(
-      'هل أنت متأكد من رغبتك في الخروج من هذه المجموعة؟'
-    );
-
-    if (!confirmLeave) {
-      setOpenDropdown(null);
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${apiBase}/chats/groups/LeaveGroup/${chatId}`,
-        {
-          method: 'POST',
+  // ================= DELETE CHAT =================
+const handleDeleteChat = async (chatId: string, chatType: string) => {
+  if (!token) return;
+  
+  // البحث عن اسم المحادثة
+  const chat = chats.find(c => c.chatId === chatId);
+  const chatName = chat?.name || 'هذه المحادثة';
+  const isGroupChat = chatType === 'group' || chat?.isGroup;
+  
+  const confirmMessage = isGroupChat
+    ? `أنت على وشك حذف المجموعة "${chatName}" بالكامل\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمجموعة، ولن تتمكن من استعادتها بعد الحذف.`
+    : ` أنت على وشك حذف المحادثة مع "${chatName}"\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمحادثة، ولن تتمكن من استعادتها بعد الحذف.`;
+  
+  showConfirmToast(
+    confirmMessage,
+    async () => {
+      try {
+        const response = await fetch(`${apiBase}/chats/chats/delete`, {
+          method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ 
+            chatId: chatId,
+            chatType: chatType
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          toast.success(' تم حذف المحادثة بنجاح');
+          setChats(prev => prev.filter(c => c.chatId !== chatId));
+          setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+          
+          if (activeChatId === chatId) {
+            router.push('/chats');
+          }
+          
+          setOpenDropdown(null);
+        } else {
+          toast.error(` فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
         }
-      );
+      } catch (error) {
+        console.error('Error deleting chat:', error);
+        toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
+      }
+    },
+    () => {
+      setOpenDropdown(null);
+      toast('تم إلغاء عملية الحذف', {
+        icon: '↩️',
+        duration: 2000,
+      });
+    },
+    'نعم، احذف', // زر التأكيد
+    'إلغاء' // زر الإلغاء
+  );
+};
 
-      const data = await response.json();
+  // ================= LEAVE GROUP =================
+  // const handleLeaveGroup = async (chatId: string) => {
+  //   if (!token) return;
 
-      if (data.success) {
-        setChats(prev => prev.filter(c => c.chatId !== chatId));
-        setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+  //   showConfirmToast(
+  //     'هل أنت متأكد من رغبتك في الخروج من هذه المجموعة؟',
+  //     async () => {
+  //       try {
+  //         const response = await fetch(
+  //           `${apiBase}/chats/groups/LeaveGroup/${chatId}`,
+  //           {
+  //             method: 'POST',
+  //             headers: {
+  //               Authorization: `Bearer ${token}`,
+  //               'Content-Type': 'application/json',
+  //             },
+  //           }
+  //         );
 
-        if (activeChatId === chatId) {
-          router.push('/chats');
+  //         const data = await response.json();
+
+  //         if (data.success) {
+  //           setChats(prev => prev.filter(c => c.chatId !== chatId));
+  //           setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+
+  //           if (activeChatId === chatId) {
+  //             router.push('/chats');
+  //           }
+
+  //           setOpenDropdown(null);
+  //           toast.success('✅ تم الخروج من المجموعة بنجاح');
+  //           return;
+  //         }
+
+  //         if (
+  //           data.response &&
+  //           data.response.toLowerCase().includes('transfer ownership')
+  //         ) {
+  //           setSelectedGroupId(chatId);
+  //           setNewOwnerId('');
+  //           setShowTransferModal(true);
+  //           setOpenDropdown(null);
+  //           return;
+  //         }
+
+  //         toast.error(
+  //           `❌ فشل الخروج من المجموعة: ${
+  //             data.response || data.message || 'خطأ غير معروف'
+  //           }`
+  //         );
+
+  //       } catch (error) {
+  //         console.error('Error leaving group:', error);
+  //         toast.error('حدث خطأ أثناء محاولة الخروج من المجموعة');
+  //       }
+  //     },
+  //     () => {
+  //       setOpenDropdown(null);
+  //     }
+  //   );
+  // };
+
+  // ================= LEAVE GROUP =================
+const handleLeaveGroup = async (chatId: string) => {
+  if (!token) return;
+
+  const chat = chats.find(c => c.chatId === chatId);
+  const groupName = chat?.name || 'المجموعة';
+
+  showConfirmToast(
+    ` أنت على وشك الخروج من المجموعة "${groupName}"\n\nبعد الخروج، لن تتمكن من رؤية الرسائل الجديدة أو التفاعل مع أعضاء المجموعة.\n${chat?.isAdmin ? '🔴 أنت مشرف في هذه المجموعة، سيتم إزالة صلاحياتك تلقائياً.' : ''}`,
+    async () => {
+      try {
+        const response = await fetch(
+          `${apiBase}/chats/groups/LeaveGroup/${chatId}`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const data = await response.json();
+
+        if (data.success) {
+          setChats(prev => prev.filter(c => c.chatId !== chatId));
+          setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+
+          if (activeChatId === chatId) {
+            router.push('/chats');
+          }
+
+          setOpenDropdown(null);
+          toast.success(' تم الخروج من المجموعة بنجاح');
+          return;
         }
 
-        setOpenDropdown(null);
-        toast.success('✅ تم الخروج من المجموعة بنجاح');
-        return;
+        if (
+          data.response &&
+          data.response.toLowerCase().includes('transfer ownership')
+        ) {
+          setSelectedGroupId(chatId);
+          setNewOwnerId('');
+          setShowTransferModal(true);
+          setOpenDropdown(null);
+          return;
+        }
+
+        toast.error(
+          `فشل الخروج من المجموعة: ${
+            data.response || data.message || 'خطأ غير معروف'
+          }`
+        );
+
+      } catch (error) {
+        console.error('Error leaving group:', error);
+        toast.error('حدث خطأ أثناء محاولة الخروج من المجموعة');
       }
-
-      if (
-        data.response &&
-        data.response.toLowerCase().includes('transfer ownership')
-      ) {
-        setSelectedGroupId(chatId);
-        setNewOwnerId('');
-        setShowTransferModal(true);
-        setOpenDropdown(null);
-        return;
-      }
-
-      toast.error(
-        `❌ فشل الخروج من المجموعة: ${
-          data.response || data.message || 'خطأ غير معروف'
-        }`
-      );
-
-    } catch (error) {
-      console.error('Error leaving group:', error);
-      toast.error('حدث خطأ أثناء محاولة الخروج من المجموعة');
-    }
-  };
-
+    },
+    () => {
+      setOpenDropdown(null);
+      toast('تم إلغاء الخروج من المجموعة', {
+        icon: '↩️',
+        duration: 2000,
+      });
+    },
+    'نعم، أخرج',
+    'إلغاء'
+  );
+};
   // ================= PROMOTE ADMIN & LEAVE =================
   const handleTransferOwnershipAndLeave = async (
     newAdminMemberId: string
@@ -1224,7 +1648,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
     try {
       const groupDetails = await fetchGroupDetails(groupId);
       if (!groupDetails) {
-        toast.error('❌ فشل في جلب بيانات المجموعة');
+        toast.error(' فشل في جلب بيانات المجموعة');
         return;
       }
 
@@ -1232,12 +1656,12 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
       const ownerId = groupDetails.owner || groupDetails.createdBy;
 
       if (newAdminMemberId === ownerId) {
-        toast.error('❌ هذا المستخدم هو مالك المجموعة بالفعل، اختر عضواً آخر');
+        toast.error(' هذا المستخدم هو مالك المجموعة بالفعل، اختر عضواً آخر');
         return;
       }
 
       if (admins.includes(newAdminMemberId)) {
-        toast.error('⚠️ هذا المستخدم مشرف بالفعل، اختر عضواً آخر');
+        toast.error(' هذا المستخدم مشرف بالفعل، اختر عضواً آخر');
         return;
       }
 
@@ -1257,11 +1681,9 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
 
       const promoteData = await promoteResponse.json();
 
-      console.log('PromoteAdmin response:', promoteData);
-
       if (!promoteData.success) {
         toast.error(
-          `❌ فشل تعيين المشرف الجديد: ${
+          `فشل تعيين المشرف الجديد: ${
             promoteData.response || 'خطأ غير معروف'
           }`
         );
@@ -1281,11 +1703,9 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
 
       const leaveData = await leaveResponse.json();
 
-      console.log('LeaveGroup after PromoteAdmin:', leaveData);
-
       if (!leaveData.success) {
         toast.error(
-          `❌ تم تعيين الأدمن، لكن فشل الخروج من المجموعة: ${
+          ` تم تعيين الأدمن، لكن فشل الخروج من المجموعة: ${
             leaveData.response || 'خطأ غير معروف'
           }`
         );
@@ -1309,17 +1729,11 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         router.push('/chats');
       }
 
-      toast.success('✅ تم الخروج من المجموعة بنجاح');
+      toast.success(' تم الخروج من المجموعة بنجاح');
 
     } catch (error) {
-      console.error(
-        'Error promoting admin and leaving group:',
-        error
-      );
-
-      toast.error(
-        'حدث خطأ أثناء تعيين المشرف والخروج من المجموعة'
-      );
+      console.error('Error promoting admin and leaving group:', error);
+      toast.error('حدث خطأ أثناء تعيين المشرف والخروج من المجموعة');
     }
   };
 
@@ -1404,11 +1818,11 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
 
       setShowReportModal(false);
       setShowReportSuccess(true);
-      toast.success('✅ تم إرسال البلاغ بنجاح');
+      toast.success('تم إرسال البلاغ بنجاح');
       
     } catch (error: any) {
       console.error("Report error:", error);
-      toast.error(error.message || '❌ فشل إرسال البلاغ');
+      toast.error(error.message || 'فشل إرسال البلاغ');
     } finally {
       setIsReporting(false);
     }
@@ -1437,20 +1851,18 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
     const chat = chats.find(c => c.chatId === selectedCallChatId);
     if (!chat) return;
     
-    // التحقق من الرصيد
     if (callMinutes.free <= 0) {
-      toast.error('❌ رصيدك من الدقائق المجانية قد انتهى');
+      toast.error(' رصيدك من الدقائق المجانية قد انتهى');
       return;
     }
     
-    // تقليل الرصيد
     setCallMinutes(prev => ({
       ...prev,
       free: prev.free - 1
     }));
     
     setIsCallModalOpen(false);
-    toast.success(`📞 جاري الاتصال بـ ${chat.name}... (${type === 'audio' ? 'صوتي' : 'فيديو'})`);
+    toast.success(` جاري الاتصال بـ ${chat.name}... (${type === 'audio' ? 'صوتي' : 'فيديو'})`);
     
     console.log(`Starting ${type} call with ${chat.chatId}`);
   };
@@ -1690,84 +2102,83 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
         counts={getFilterCounts}
       />
 
-       {/* ================= CALLS BALANCE BAR ================= */}
-{activeFilter === 'calls' && (
-  <div 
-    className="flex items-center justify-between px-4 -mt-1"
-  >
-    {/* جهة اليمين - رصيدك الحالي */}
-    <div className="flex items-center gap-2">
-      <img
-        src="/imgs/fire-emergency-call 1.svg"
-        alt="Call"
-        style={{
-          width: "12px",
-          height: "12px",
-         }}
-      />
-      <span
-        style={{
-          color: "#171717",
-          fontSize: "12px",
-          fontFamily: "Cairo",
-          fontWeight: 600,
-        }}
-      >
-        رصيدك الحالي
-      </span>
-    </div>
+      {/* ================= CALLS BALANCE BAR ================= */}
+      {activeFilter === 'calls' && (
+        <div 
+          className="flex items-center justify-between px-4 -mt-1"
+        >
+          <div className="flex items-center gap-2">
+            <img
+              src="/imgs/fire-emergency-call 1.svg"
+              alt="Call"
+              style={{
+                width: "12px",
+                height: "12px",
+              }}
+            />
+            <span
+              style={{
+                color: "#171717",
+                fontSize: "12px",
+                fontFamily: "Cairo",
+                fontWeight: 600,
+              }}
+            >
+              رصيدك الحالي
+            </span>
+          </div>
 
-    {/* جهة اليسار - الدقائق */}
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "4px",
-      }}
-    >
-      <span
-        style={{
-          color: "#171717",
-          fontSize: "12px",
-          fontWeight: 600,
-          fontFamily: "Cairo",
-        }}
-      >
-        {callMinutes.free}
-      </span>
-      <span
-        style={{
-          color: "#8899aa",
-          fontSize: "14px",
-          fontFamily: "Cairo",
-          fontWeight: 400,
-        }}
-      >
-        /
-      </span>
-      <span
-         style={{
-          color: "#171717",
-          fontSize: "12px",
-          fontWeight: 600,
-          fontFamily: "Cairo",
-        }}
-      >
-        {callMinutes.total}
-      </span>
-      <span
-        style={{
-          color: "#D72229",
-          fontSize: "12px",
-          fontFamily: "Cairo",
-          fontWeight: 400,
-        }}
-      >
-        دقيقة مجانية
-      </span>
-    </div>
-  </div>
-)}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <span
+              style={{
+                color: "#171717",
+                fontSize: "12px",
+                fontWeight: 600,
+                fontFamily: "Cairo",
+              }}
+            >
+              {callMinutes.free}
+            </span>
+            <span
+              style={{
+                color: "#8899aa",
+                fontSize: "14px",
+                fontFamily: "Cairo",
+                fontWeight: 400,
+              }}
+            >
+              /
+            </span>
+            <span
+              style={{
+                color: "#171717",
+                fontSize: "12px",
+                fontWeight: 600,
+                fontFamily: "Cairo",
+              }}
+            >
+              {callMinutes.total}
+            </span>
+            <span
+              style={{
+                color: "#D72229",
+                fontSize: "12px",
+                fontFamily: "Cairo",
+                fontWeight: 400,
+              }}
+            >
+              دقيقة مجانية
+            </span>
+          </div>
+        </div>
+      )}
+      
       {filterLoading ? (
         <div className="text-center py-10 text-gray-500">جاري تحميل المحادثات...</div>
       ) : (
@@ -2009,7 +2420,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                         }}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {/* زر الحظر/رفع الحظر */}
                         <button
                           onClick={() => handleDropdownAction('block', chat.chatId, chat.chatType)}
                           className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
@@ -2053,8 +2463,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                           }}>إبلاغ</span>
                         </button>
 
-                        
-                        
                         <button
                           onClick={() => handleDropdownAction('search', chat.chatId, chat.chatType)}
                           className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
@@ -2073,7 +2481,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                           }}>بحث</span>
                         </button>
                   
-                        {/* زر الأرشفة/إزالة من المفضلة */}
                         <button
                           onClick={() => handleDropdownAction('archive', chat.chatId, chat.chatType)}
                           className="w-full px-2 py-3 text-sm text-gray-700 hover:bg-[#FFFFFF] flex items-center justify-between gap-2"
@@ -2494,7 +2901,8 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
 
               return filteredUsers.map((chat) => {
                 const isChecked = selectedMembers.includes(chat.chatId);
-                const isAdmin = chat.isAdmin;
+                const isAdmin = tempAdmins.includes(chat.chatId);
+                const isLoading = isAdminLoading[chat.chatId] || false;
 
                 return (
                   <div
@@ -2515,18 +2923,33 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                       <span className="text-sm font-semibold text-black">{chat.name}</span>
                     </div>
 
-                    <div>
-                      <img
-                        src={isAdmin ? "/imgs/admin.svg" : "/imgs/noAdmin.svg"}
-                        alt="Admin Status"
-                        className="w-5 h-5 object-contain"
-                      />
+                    <div
+                      onClick={(e) => toggleAdminStatus(chat.chatId, e)}
+                      className={`w-[30px] h-[30px] rounded-[20px] bg-white backdrop-blur-[4px] flex items-center justify-center shadow-sm transition-all ${
+                        isLoading ? 'opacity-50 cursor-wait' : 'hover:bg-gray-100 cursor-pointer'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <div className="w-3 h-3 border-2 border-[#D72229] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <img
+                          src={isAdmin ? "/imgs/admin (2).svg" : "/imgs/noAdmin (2).svg"}
+                          alt={isAdmin ? "Admin" : "Not Admin"}
+                          className="w-[12px] h-[13px] object-contain"
+                        />
+                      )}
                     </div>
                   </div>
                 );
               });
             })()}
           </div>
+
+          {/* {tempAdmins.length > 0 && (
+            <div className="text-center text-sm text-[#D72229] font-semibold mb-2">
+               {tempAdmins.length} مشرفين تم تعيينهم
+            </div>
+          )} */}
 
           <div
             className="flex justify-center items-center flex-shrink-0"
@@ -2798,7 +3221,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* زر إغلاق */}
             <button
               onClick={handleCloseCallModal}
               className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
@@ -2815,7 +3237,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
               </svg>
             </button>
 
-            {/* أيقونة المكالمة */}
             <div
               className="flex items-center justify-center mb-4"
               style={{
@@ -2837,7 +3258,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
               />
             </div>
 
-            {/* اسم المستخدم */}
             <h3
               className="text-white font-bold mb-1"
               style={{
@@ -2848,7 +3268,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
               {chats.find(c => c.chatId === selectedCallChatId)?.name || "مستخدم"}
             </h3>
 
-            {/* رصيد الدقائق */}
             <div
               className="flex items-center justify-between w-full px-4 py-2 mb-4"
               style={{
@@ -2878,9 +3297,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
               </span>
             </div>
 
-            {/* أزرار المكالمة */}
             <div className="flex items-center gap-4 w-full">
-              {/* زر المكالمة الصوتية */}
               <button
                 onClick={() => handleStartCall('audio')}
                 disabled={callMinutes.free <= 0}
@@ -2900,7 +3317,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                 </span>
               </button>
 
-              {/* زر المكالمة المرئية */}
               <button
                 onClick={() => handleStartCall('video')}
                 disabled={callMinutes.free <= 0}
@@ -2921,7 +3337,6 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
               </button>
             </div>
 
-            {/* رسالة عند نفاذ الرصيد */}
             {callMinutes.free <= 0 && (
               <p
                 className="mt-3 text-center"
@@ -2931,7 +3346,7 @@ export default function ChatList({ userId: propUserId, apiBase, activeChatId: pr
                   fontFamily: "Cairo",
                 }}
               >
-                ⚠️ رصيد الدقائق المجانية منتهي
+                 رصيد الدقائق المجانية منتهي
               </p>
             )}
           </div>
