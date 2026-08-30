@@ -15,6 +15,8 @@ import ChatFilters from './ChatFilters';
 import { motion } from "framer-motion";
 import { toast } from 'react-hot-toast';
 import { Phone, Video } from "lucide-react";
+import Loader from '@/components/Loader';
+
 
 type FilterType = 'all' | 'read' | 'unread' | 'starred' | 'groups' | 'calls';
 
@@ -75,8 +77,7 @@ function normalizeChats(rawChats: any[], myId: string): ChatItem[] {
       new Date(a.lastMessage?.timestamp || 0).getTime()
   );
 }
-
-/* ================= FORMAT TIME WITH AM/PM ================= */
+/* ================= FORMAT TIME WITH "SINCE" FORMAT ================= */
 function formatMessageTime(timestamp: string): string {
   if (!timestamp) return '';
   
@@ -84,37 +85,56 @@ function formatMessageTime(timestamp: string): string {
   if (isNaN(date.getTime())) return '';
 
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
-  const timeStr = date.toLocaleTimeString('ar-EG', { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    hour12: true
-  });
-  
-  if (msgDate.getTime() === today.getTime()) {
-    return timeStr;
-  }
-  
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (msgDate.getTime() === yesterday.getTime()) {
-    return 'أمس';
-  }
-  
-  const dayDiff = Math.floor((today.getTime() - msgDate.getTime()) / (1000 * 60 * 60 * 24));
-  if (dayDiff < 7) {
-    return date.toLocaleDateString('ar-EG', { weekday: 'short' });
-  }
-  
-  return date.toLocaleDateString('ar-EG', { 
-    day: '2-digit', 
-    month: '2-digit', 
-    year: '2-digit' 
-  });
-}
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
 
+  // أقل من دقيقة
+  if (diffSeconds < 60) {
+    return 'الآن';
+  }
+  
+  // دقائق
+  if (diffMinutes < 60) {
+    return `منذ ${diffMinutes} دقيقة`;
+  }
+  
+  // ساعات
+  if (diffHours < 24) {
+    return `منذ ${diffHours} ساعة`;
+  }
+  
+  // أيام
+  if (diffDays < 7) {
+    if (diffDays === 1) return 'منذ يوم';
+    return `منذ ${diffDays} يوم`;
+  }
+  
+  // أسابيع
+  if (diffWeeks < 4) {
+    if (diffWeeks === 1) return 'منذ أسبوع';
+    return `منذ ${diffWeeks} أسبوع`;
+  }
+  
+  // أشهر
+  if (diffMonths < 12) {
+    if (diffMonths === 1) return 'منذ شهر';
+    if (diffMonths === 2) return 'منذ شهرين';
+    if (diffMonths >= 3 && diffMonths <= 10) return `منذ ${diffMonths} أشهر`;
+    return `منذ ${diffMonths} شهر`;
+  }
+  
+  // سنوات
+  if (diffYears === 1) return 'منذ سنة';
+  if (diffYears === 2) return 'منذ سنتين';
+  if (diffYears >= 3 && diffYears <= 10) return `منذ ${diffYears} سنوات`;
+  return `منذ ${diffYears} سنة`;
+}
 /* ================= COMPONENT ================= */
 export default function ChatList({ userId: propUserId, apiBase, activeChatId: propActiveChatId }: Props) {
   const [myUserId, setMyUserId] = useState<string>(propUserId || "");
@@ -1899,6 +1919,7 @@ const handleLeaveGroup = async (chatId: string) => {
   if (loading) {
     return <div className="p-4 text-center">جارٍ التحميل...</div>;
   }
+ 
 
   return (
     <div className="relative h-full flex flex-col">
@@ -1921,13 +1942,13 @@ const handleLeaveGroup = async (chatId: string) => {
 
       {/* ================= SELECTION MODE TOOLBAR ================= */}
       {selectionMode && selectedChats.length > 0 && (
-        <div className="w-full px-4 mb-3"  style={{
+        <div className="w-full px-4 mb-3 -mt-10"  style={{
           background: 'linear-gradient(0deg, #FFFFFF 0%, #F2F2F2 46.74%)',
-          paddingTop: '8px',
+           paddingTop: '8px',
           paddingBottom: '8px',
-          borderRadius: '12px',
+          // borderRadius: '12px',
         }}>
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-2 mt-[30px]">
             <button
               onClick={handleBulkDelete}
               style={{
@@ -2206,13 +2227,20 @@ const handleLeaveGroup = async (chatId: string) => {
             return (
               <div
                 key={chat.chatId}
+                // className={`flex items-center gap-3 px-3 py-1 transition cursor-pointer relative group ${
+                //   activeChatId === chat.chatId ? "active-chat" : "hover:bg-gray-100"
+                // } ${
+                //   isSelected 
+                //     ? 'bg-[#FAFAFA] rounded-lg' 
+                //     : ''
+                // }`}
                 className={`flex items-center gap-3 px-3 py-1 transition cursor-pointer relative group ${
-                  activeChatId === chat.chatId ? "active-chat" : "hover:bg-gray-100"
-                } ${
-                  isSelected 
-                    ? 'bg-[#FAFAFA] rounded-lg' 
-                    : ''
-                }`}
+                activeChatId === chat.chatId ? "active-chat" : "hover:bg-gray-100"
+              } ${
+                isSelected 
+                  ? 'bg-[#FAFAFA] rounded-lg' 
+                  : ''
+              }`}
                 dir="ltr"
                 ref={(el) => {
                   if (el) {
@@ -2748,7 +2776,103 @@ const handleLeaveGroup = async (chatId: string) => {
             </div> 
           </div> 
       
-          <div 
+      <div 
+  className="flex justify-center items-center flex-shrink-0" 
+  style={{ 
+    width: 'calc(100% + 48px)', 
+    marginLeft: '-24px', 
+    marginRight: '-24px', 
+    marginBottom: '-24px', 
+    padding: '16px 24px', 
+    background: '#E3E3E366', 
+    backdropFilter: 'blur(35px)', 
+    borderBottomLeftRadius: '35px', 
+    borderBottomRightRadius: '35px', 
+    minHeight: '82px', 
+  }} 
+> 
+  {/* أضف CSS التموّج هنا */}
+  <style jsx>{`
+    .wave {
+      stroke: #D72229;
+      stroke-width: 6;
+      stroke-linecap: round;
+      fill: none;
+      stroke-dasharray: 40 140;
+      animation: dash 1.2s ease-in-out infinite;
+    }
+
+    .wave2 {
+      animation-delay: 0.15s;
+    }
+
+    .wave3 {
+      animation-delay: 0.30s;
+    }
+
+    @keyframes dash {
+      0% {
+        stroke-dashoffset: 40;
+        opacity: 0.2;
+      }
+      50% {
+        stroke-dashoffset: 0;
+        opacity: 1;
+      }
+      100% {
+        stroke-dashoffset: -40;
+        opacity: 0.2;
+      }
+    }
+  `}</style>
+
+  <button
+    disabled={!groupName.trim() || isSubmittingGroup}
+    onClick={handleCreateGroupSubmit}
+    style={{
+      width: '100%',
+      maxWidth: '285px',
+      height: '50px',
+      borderRadius: '20px',
+      background: isSubmittingGroup ? '#FFF5F5' : '#FFFFFF',
+      fontFamily: 'Cairo',
+      fontWeight: 600,
+      fontSize: '17px',
+      border: isSubmittingGroup ? '1px solid #D72229' : '1px solid #ddd',
+      cursor: !groupName.trim() || isSubmittingGroup ? 'not-allowed' : 'pointer',
+      transition: 'all 0.2s ease',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      opacity: isSubmittingGroup ? 0.85 : 1
+    }}
+    className={`text-black shadow-md ${!isSubmittingGroup && groupName.trim() ? 'hover:bg-gray-50' : ''}`}
+  >
+    {isSubmittingGroup ? (
+      <svg
+        width="80"
+        height="30"
+        viewBox="0 0 120 36"
+        className="block mx-auto"
+      >
+        <path className="wave wave1" d="M5 18 Q 11 6 17 18" />
+        <path
+          className="wave wave2"
+          d="M5 18 Q 11 6 17 18"
+          transform="translate(26,0)"
+        />
+        <path
+          className="wave wave3"
+          d="M5 18 Q 11 6 17 18"
+          transform="translate(52,0)"
+        />
+      </svg>
+    ) : (
+      'انشاء مجموعة'
+    )}
+  </button>
+</div>
+          {/* <div 
             className="flex justify-center items-center flex-shrink-0" 
             style={{ 
               width: 'calc(100% + 48px)', 
@@ -2783,7 +2907,7 @@ const handleLeaveGroup = async (chatId: string) => {
             > 
               {isSubmittingGroup ? 'جاري الإنشاء...' : 'انشاء مجموعة'} 
             </button> 
-          </div> 
+          </div>  */}
         </motion.div> 
       )}
 

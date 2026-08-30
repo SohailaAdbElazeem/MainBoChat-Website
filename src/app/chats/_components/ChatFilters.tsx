@@ -73,7 +73,7 @@ export default function ChatFilters({
                backgroundColor: isActive ? '#FFFFFF' : '#F2F2F2',
                color: '#B4B4B9',
               transform: isHovered && !isActive ? 'scale(1.05)' : 'scale(1)',
-              boxShadow: isActive ? '0px 2px 8px rgba(0, 0, 0, 0.08)' : 'none',
+              // boxShadow: isActive ? '0px 2px 8px rgba(0, 0, 0, 0.08)' : 'none',
             }}
           >
             <span style={{ fontSize: '10px' }}>{filter.label}</span>
