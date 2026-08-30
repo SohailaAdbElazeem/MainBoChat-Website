@@ -11,7 +11,7 @@ export default function SuggestionsPage() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 
   return (
-    <div className="min-h-screen pt-4 flex flex-col items-center">
+    <div className="min-h-screen pt-4 flex flex-col items-center -mt-7">
       <div className="w-full max-w-6xl">
         {selectedVideo ? (
           <div className="w-full mb-10">

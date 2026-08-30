@@ -79,7 +79,7 @@ export function SideButtons({
   return (
     <div className="flex flex-col gap-3 mt-10">
       <div
-        className="relative w-[44px] h-[44px] cursor-pointer"
+        className="relative w-[40px] h-[40px] cursor-pointer"
         onClick={handleProfileClick}
       >
         <div className="w-full h-full rounded-full overflow-hidden">
@@ -94,13 +94,13 @@ export function SideButtons({
           <img
             src="/icons/check.svg"
             alt={t('following')}
-            className="absolute left-1/2 bottom-1 -translate-x-1/2 translate-y-1/2 w-[19px] h-[19px] z-10 border-0 outline-none"
+            className="absolute left-1/2 bottom-1 -translate-x-1/2 translate-y-1/2 w-4 h-4 z-10 border-0 outline-none"
           />
         ) : (
           <img
             src="/icons/UnFollow (2).svg"
             alt={t('not_following')}
-            className="absolute left-1/2 bottom-1 -translate-x-1/2 translate-y-1/2 w-[19px] h-[19px] z-10 border-0 outline-none"
+            className="absolute left-1/2 bottom-1 -translate-x-1/2 translate-y-1/2 w-4 h-4 z-10 border-0 outline-none"
           />
         )}
       </div>
@@ -110,12 +110,12 @@ export function SideButtons({
       {/* Comment */}
       <button
         onClick={onComment}
-        className={`relative rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center transition-colors ${
+        className={`relative rounded-full backdrop-blur-md w-[36px] h-[36px] flex items-center justify-center transition-colors ${
           isCommented ? "bg-[#D722294D]" : "bg-[#000000]/15"
         }`}
         aria-label={t('comment')}
       >
-        <img src="/icons/comment-white.svg" alt={t('comment')} className="w-5 h-5" />
+        <img src="/icons/comment-white.svg" alt={t('comment')} className="w-4 h-4" />
         <span className="absolute -bottom-4 text-[10px] text-[#D72229A6] whitespace-nowrap">
           {formatNumber(commentsCount)}
         </span>
@@ -124,10 +124,10 @@ export function SideButtons({
       {/* Share */}
       <button
         onClick={onShare}
-        className="mt-3 relative rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center transition-colors bg-[#000000]/15"
+        className="mt-3 relative rounded-full backdrop-blur-md w-[36px] h-[36px] flex items-center justify-center transition-colors bg-[#000000]/15"
         aria-label={t('share')}
       >
-        <img src="/icons/share-white.svg" alt={t('share')} className="w-5 h-5" />
+        <img src="/icons/share-white.svg" alt={t('share')} className="w-4 h-4" />
         <span className="absolute -bottom-5 text-[10px] text-[#D72229A6] whitespace-nowrap">
           {formatNumber(shareCount)}
         </span>
@@ -135,19 +135,19 @@ export function SideButtons({
 
       <button
         onClick={onFullscreen}
-        className="mt-3 rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center bg-[#000000]/15"
+        className="mt-3 rounded-full backdrop-blur-md w-[36px] h-[36px] flex items-center justify-center bg-[#000000]/15"
         aria-label={t('fullscreen')}
       >
-        <img src="/icons/fullscreen.svg" alt={t('fullscreen')} className="w-5 h-5" />
+        <img src="/icons/fullscreen.svg" alt={t('fullscreen')} className="w-4 h-4" />
       </button>
 
       <div className="relative">
         <button
           onClick={() => setShowOptionsMenu(!showOptionsMenu)}
-          className="rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center bg-[#000000]/15"
+          className="rounded-full backdrop-blur-md w-[36px] h-[36px] flex items-center justify-center bg-[#000000]/15"
           aria-label={t('options')}
         >
-          <img src="/icons/options-white.svg" alt={t('options')} className="w-5 h-5" />
+          <img src="/icons/options-white.svg" alt={t('options')} className="w-4 h-4" />
         </button>
         {onBlock && onReport && (
           <OptionsMenu
@@ -169,12 +169,12 @@ export function SideButtons({
 
       <button
         onClick={onTogglePlay}
-        className="rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center bg-[#000000]/15"
+        className="rounded-full backdrop-blur-md w-[36px] h-[36px] flex items-center justify-center bg-[#000000]/15"
         aria-label={isPlaying ? t('pause') : t('play')}
       >
         <img
           src={isPlaying ? "/imgs/Group 9081.svg" : "/icons/play.svg"}
-          className="w-5 h-5"
+          className="w-4 h-4"
           alt={isPlaying ? t('pause') : t('play')}
         />
       </button>
@@ -183,18 +183,18 @@ export function SideButtons({
         <button
           onClick={onPrev}
           disabled={isFirst}
-          className="rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center bg-[#000000]/15 disabled:opacity-30"
+          className="rounded-full backdrop-blur-md w-[36px] h-[36px] flex items-center justify-center bg-[#000000]/15 disabled:opacity-30"
           aria-label={t('previous')}
         >
-          <img src="/icons/arrow-up.svg" alt={t('previous')} className="w-5 h-5" />
+          <img src="/icons/arrow-up.svg" alt={t('previous')} className="w-4 h-4" />
         </button>
         <button
           onClick={onNext}
           disabled={isLast}
-          className="rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center bg-[#000000]/15 disabled:opacity-30"
+          className="rounded-full backdrop-blur-md w-[36px] h-[36px] flex items-center justify-center bg-[#000000]/15 disabled:opacity-30"
           aria-label={t('next')}
         >
-          <img src="/icons/arrow-down.svg" alt={t('next')} className="w-5 h-5" />
+          <img src="/icons/arrow-down.svg" alt={t('next')} className="w-4 h-4" />
         </button>
       </div>
     </div>

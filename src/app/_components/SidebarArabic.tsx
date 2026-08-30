@@ -113,7 +113,7 @@ export default function Sidebar({
         label: isAr ? "الرسائل" : "Messages",
         href: userId ? "/chats" : "#",
         icon: icons.mail,
-        badgeCount: unreadMessages,
+        // badgeCount: unreadMessages,
       },
       {
         id: "profile",

@@ -10,14 +10,14 @@ export function LikeButton({ isLiked, likeCount, onLike }: LikeButtonProps) {
     <div className="flex flex-col items-center">
       <button
         onClick={onLike}
-        className={`rounded-full backdrop-blur-md w-[40px] h-[40px] flex items-center justify-center transition-colors ${
+        className={`rounded-full backdrop-blur-md w-[36px] h-[36px] flex items-center justify-center transition-colors ${
           isLiked ? "bg-[#D72229A6] text-white" : "bg-[#000000]/15"
         }`}
       >
         <img 
           src={isLiked ? "/icons/like-white.svg" : "/icons/like-white.svg"} 
           alt="like" 
-          className="w-5 h-5" 
+          className="w-4 h-4" 
         />
       </button>
       {likeCount > 0 && (

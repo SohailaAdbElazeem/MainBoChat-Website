@@ -262,7 +262,7 @@ export default function VideosPage() {
             ref={videoRef}
             src={video.video?.[0]?.video || ""}
             username={video.username || "username"}
-            description={video.description || t('no_description')}
+            description={video.description}
             progress={progress}
             onTimeUpdate={handleTimeUpdate}
             onSeek={handleSeek}
