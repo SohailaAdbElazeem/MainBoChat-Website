@@ -1,4 +1,4 @@
-// app/chats/[receiverId]/page.tsx
+ // app/chats/[receiverId]/page.tsx
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable prefer-const */
@@ -17,7 +17,7 @@ import Stickers from "../_components/Stickers";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from 'react-hot-toast';
-
+ 
 // ================= Helper: Broadcast =================
 function emitChatUpdate(event: "message" | "typing" | "typing_stop" | "seen", metadata: any) {
   try {
@@ -33,6 +33,8 @@ const REST_SEND = `${API_BASE}/sendmessage`;
 const REST_HISTORY_BASE = `${API_BASE}/message`;
 const TYPING_STOP_DELAY = 1500;
 const LOCAL_TYPING_THROTTLE = 700;
+
+
 
 // ================= TOAST CONFIRMATION HELPER =================
 const showConfirmToast = (
@@ -81,11 +83,13 @@ const showConfirmToast = (
         padding: '20px 24px',
         maxWidth: '420px',
         width: '100%',
+        // boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
         border: '1px solid rgba(0,0,0,0.05)',
       },
     }
   );
 };
+export type MediaType = 'image' | 'video' | 'file';
 
 interface PendingImage {
   id: string;
@@ -93,22 +97,24 @@ interface PendingImage {
   url: string;
 }
 
+// =import React, { useState, useRef, useEffect } from 'react';
+
 interface ImageViewerProps {
   images: string[];
   currentIndex: number;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
-  onAddImages?: (newFiles: FileList) => void;
-  onDeleteImage?: (index: number) => void;
-  onSendWithCaption?: (caption: string) => void;
+  onAddImages?: (newFiles: FileList) => void; 
+  onDeleteImage?: (index: number) => void;  
+  onSendWithCaption?: (caption: string) => void; 
 }
 
-export const ImageViewer: React.FC<ImageViewerProps> = ({
-  images,
-  currentIndex,
-  onClose,
-  onNext,
+export const ImageViewer: React.FC<ImageViewerProps> = ({ 
+  images, 
+  currentIndex, 
+  onClose, 
+  onNext, 
   onPrev,
   onAddImages,
   onDeleteImage,
@@ -150,20 +156,20 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   };
 
   return (
-    <div
+    <div 
       className="fixed inset-0 z-[999999] bg-black/40 flex items-center justify-center p-4 animate-fadeIn"
       onClick={onClose}
     >
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        multiple
-        accept="image/*"
-        className="hidden"
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        multiple 
+        accept="image/*" 
+        className="hidden" 
       />
 
-      <div
+      <div 
         className="relative bg-white rounded-[35px] flex flex-col justify-between overflow-hidden transition-all duration-300"
         style={{
           width: '572px',
@@ -173,9 +179,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* السطر الأول: إغلاق + عنوان + إضافة صور */}
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <button
+            <button 
               onClick={onClose}
               className="flex items-center justify-center rounded-full transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
               style={{ width: '36px', height: '36px', background: '#0000001A' }}
@@ -183,7 +190,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             >
               <img src="/imgs/close.svg" alt="إغلاق" style={{ width: '17px', height: '17px' }} />
             </button>
-            <span
+            <span 
               className="font-medium text-black"
               style={{ fontFamily: 'Cairo, sans-serif', fontSize: '25px', lineHeight: '1', textAlign: 'right' }}
             >
@@ -191,7 +198,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             </span>
           </div>
 
-          <button
+          <button 
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center justify-center rounded-full transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
             style={{ width: '36px', height: '36px', background: '#F3F5FF' }}
@@ -201,39 +208,43 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           </button>
         </div>
 
+        {/* عرض مجموعة الصور مع العناصر العلوية داخل صورة المنتصف */}
         <div className="relative flex-1 flex items-center justify-center px-4 overflow-hidden my-auto">
+          {/* الصورة السابقة (على اليسار في المعاينة) */}
           {prevIndex !== null && (
-            <div
+            <div 
               onClick={onPrev}
               className="absolute left-6 cursor-pointer opacity-70 hover:opacity-100 transition-all transform -translate-y-1/2 top-1/2"
               style={{ width: '125px', height: '255px', borderRadius: '20px', overflow: 'hidden', background: 'linear-gradient(270deg, rgba(255, 255, 255, 0) 14.83%, #FFFFFF 79.89%)' }}
             >
               <img src={images[prevIndex]} alt="السابقة" className="w-full h-full object-cover" />
-              <div
-                className="absolute top-2 right-7 flex items-center justify-center shadow-md"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  background: '#FFFFFF',
-                  border: '2px solid #F3F5FF40',
-                  borderRadius: '50%',
-                  opacity: 1,
-                }}
-              >
-                <img
-                  src="/imgs/close.svg"
-                  alt="إغلاق"
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    opacity: 1,
-                  }}
-                />
-              </div>
+             <div 
+  className="absolute top-2 right-7 flex items-center justify-center shadow-md"
+  style={{
+    width: '40px',
+    height: '40px',
+    background: '#FFFFFF',
+    border: '2px solid #F3F5FF40',
+    borderRadius: '50%',
+    opacity: 1,
+  }}
+>
+  <img 
+    src="/imgs/close.svg" 
+    alt="إغلاق" 
+    style={{
+      width: '14px',
+      height: '14px',
+      opacity: 1,
+      // filter: 'brightness(0) saturate(100%)', // لتصبح باللون الأسود
+    }} 
+  />
+</div>
             </div>
           )}
 
-          <div
+          {/* الصورة الأساسية في المنتصف */}
+          <div 
             className="relative flex items-center justify-center transition-all duration-300 z-10"
             style={{ width: '291px', height: '358px', borderRadius: '40px', border: '3px solid #B4B4B9', background: '#000', overflow: 'visible' }}
           >
@@ -244,101 +255,116 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
               style={{ borderRadius: '37px' }}
             />
 
-            <div className="absolute top-3 inset-x-0 flex items-center justify-center gap-[5px] z-20 px-3 pointer-events-none">
-              <button
-                type="button"
-                onClick={() => onDeleteImage && onDeleteImage(currentIndex)}
-                className="pointer-events-auto flex items-center justify-center rounded-[20px] transition-all transform hover:scale-105 active:scale-95 cursor-pointer shadow-md"
-                style={{
-                  width: '61px',
-                  height: '60px',
-                  background: '#F3F5FF80',
-                  backdropFilter: 'blur(4px)',
-                  border: '2px solid #F3F5FF40',
-                  opacity: 1,
-                  borderRadius: '50%',
-                }}
-                title="حذف الصورة"
-              >
-                <img
-                  src="/imgs/deleteImg.svg"
-                  alt="حذف"
-                  style={{
-                    width: '20px',
-                    height: '21px',
-                    opacity: 1,
-                  }}
-                />
-              </button>
+            {/* العناصر العلوية داخل صورة المنتصف */}
+         {/* الحاوية العلوية لتوسيط الزر والأيقونة بجانب بعضهما */}
+<div className="absolute top-3 inset-x-0 flex items-center justify-center gap-[5px] z-20 px-3 pointer-events-none">
+  
+  {/* زر الحذف */}
+  <button 
+    type="button"
+    onClick={() => onDeleteImage && onDeleteImage(currentIndex)}
+    className="pointer-events-auto flex items-center justify-center rounded-[20px] transition-all transform hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+    style={{
+      width: '61px',
+      height: '60px',
+      background: '#F3F5FF80',
+      backdropFilter: 'blur(4px)',
+      border: '2px solid #F3F5FF40',
+      opacity: 1,  
+    borderRadius: '50%',
+    }}
+    title="حذف الصورة"
+  >
+    <img 
+      src="/imgs/deleteImg.svg" 
+      alt="حذف" 
+      style={{
+        width: '20px',
+        height: '21px',
+        opacity: 1,
+      }} 
+    />
+  </button>
 
-              <div
-                className="pointer-events-auto flex items-center justify-center rounded-[20px] shadow-md"
-                style={{
-                  width: '60px',
-                  height: '61px',
-                  background: '#F3F5FF80',
-                  border: '2px solid #F3F5FF40',
-                  borderRadius: '50%',
-                  opacity: 1,
-                }}
-              >
-                <img
-                  src="/imgs/onlyOne.svg"
-                  alt="onlyOne"
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    opacity: 1,
-                  }}
-                />
-              </div>
-            </div>
+  {/* أيقونة onlyOne بجانبه مباشرة */}
+<div 
+  className="pointer-events-auto flex items-center justify-center rounded-[20px] shadow-md"
+  style={{
+    width: '60px',
+    height: '61px',
+    background: '#F3F5FF80',
+    border: '2px solid #F3F5FF40',
+    borderRadius: '50%',
+    opacity: 1,
+  }}
+>
+  <img 
+    src="/imgs/onlyOne.svg" 
+    alt="onlyOne" 
+    style={{
+      width: '20px',    
+      height: '20px',
+      opacity: 1,
+      // filter: 'brightness(0) saturate(100%)', 
+    }} 
+  />
+</div>
+
+</div>
           </div>
 
+          {/* الصورة التالية (على اليمين) */}
           {nextIndex !== null && (
-            <div
+            <div 
               onClick={onNext}
               className="absolute right-6 cursor-pointer opacity-70 hover:opacity-100 transition-all transform -translate-y-1/2 top-1/2"
               style={{ width: '125px', height: '255px', borderRadius: '20px', overflow: 'hidden', background: 'linear-gradient(90deg, rgba(255, 255, 255, 0) 14.83%, #FFFFFF 79.89%)' }}
             >
               <img src={images[nextIndex]} alt="التالية" className="w-full h-full object-cover" />
-              <div
-                className="absolute top-2 left-10 flex items-center justify-center shadow-md"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  background: '#F3F5FF80',
-                  border: '2px solid #F3F5FF40',
-                  borderRadius: '50%',
-                  opacity: 1,
-                }}
-              >
-                <img
-                  src="/imgs/onlyOne.svg"
-                  alt="onlyOne"
-                  style={{
-                    width: '12px',
-                    height: '18px',
-                    opacity: 1,
-                  }}
-                />
-              </div>
+              {/* <div className="absolute top-2 left-10">
+                <img src="/imgs/onlyOne.svg" alt="onlyOne" className="w-5 h-5 object-contain" />
+              </div> */}
+              <div 
+  className="absolute top-2 left-10 flex items-center justify-center shadow-md"
+  style={{
+    width: '40px',
+    height: '40px',
+    background: '#F3F5FF80',
+    border: '2px solid #F3F5FF40',
+    borderRadius: '50%',
+    opacity: 1,
+  }}
+>
+  <img 
+    src="/imgs/onlyOne.svg" 
+    alt="onlyOne" 
+    style={{
+      width: '12px',
+      height: '18px',
+      opacity: 1,
+      // filter: 'brightness(0) saturate(100%)', // لتصبح باللون الأسود
+    }} 
+  />
+</div>
             </div>
           )}
         </div>
 
+        {/* Pagination */}
         <div className="flex justify-center items-center gap-2 py-1">
           {images.map((_, index) => (
             <div
               key={index}
-              className={`h-2 rounded-full transition-all duration-300 ${index === currentIndex ? 'bg-black w-6' : 'bg-gray-300 w-2'
-                }`}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                index === currentIndex ? 'bg-black w-6' : 'bg-gray-300 w-2'
+              }`}
             />
           ))}
         </div>
 
+        {/* الجزء السفلي */}
         <div className="px-6 pb-5 pt-2 flex justify-center">
-          <div
+          <div 
             className="flex items-center justify-between relative overflow-hidden"
             style={{ width: '528px', height: '50px', borderRadius: '20px', background: '#F3F5FF' }}
           >
@@ -352,7 +378,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             </button>
 
             <div className="flex items-center flex-1 px-4 gap-2">
-              <input
+              <input 
                 type="text"
                 placeholder="اضف وصف..."
                 value={caption}
@@ -364,11 +390,299 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
 };
+// interface ImageViewerProps {
+//   images: string[];
+//   currentIndex: number;
+//   onClose: () => void;
+//   onNext: () => void;
+//   onPrev: () => void;
+//   onAddImages?: (newFiles: FileList) => void; 
+//   onDeleteImage?: (index: number) => void;  
+//   onSendWithCaption?: (caption: string) => void; 
+// }
 
+//  // ================= Image Viewer Component =================
+// export const ImageViewer: React.FC<ImageViewerProps> = ({ 
+//   images, 
+//   currentIndex, 
+//   onClose, 
+//   onNext, 
+//   onPrev,
+//   onAddImages,
+//   onDeleteImage,
+//   onSendWithCaption
+// }) => {
+//   const [caption, setCaption] = useState('');
+//   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+//   useEffect(() => {
+//     document.body.style.overflow = 'hidden';
+//     return () => {
+//       document.body.style.overflow = 'unset';
+//     };
+//   }, []);
+
+//   useEffect(() => {
+//     const handleKeyDown = (e: KeyboardEvent) => {
+//       if (e.key === 'Escape') onClose();
+//       if (e.key === 'ArrowRight') onNext();
+//       if (e.key === 'ArrowLeft') onPrev();
+//     };
+//     window.addEventListener('keydown', handleKeyDown);
+//     return () => window.removeEventListener('keydown', handleKeyDown);
+//   }, [onClose, onNext, onPrev]);
+
+//   if (!images.length) return null;
+
+//   const totalImages = images.length;
+//   const prevIndex = totalImages > 1 ? (currentIndex - 1 + totalImages) % totalImages : null;
+//   const nextIndex = totalImages > 1 ? (currentIndex + 1) % totalImages : null;
+
+//   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     if (e.target.files && e.target.files.length > 0) {
+//       if (onAddImages) {
+//         onAddImages(e.target.files);
+//       }
+//       e.target.value = '';
+//     }
+//   };
+
+//   return (
+//     <div 
+//       className="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+//       onClick={onClose}
+//     >
+//       <input 
+//         type="file" 
+//         ref={fileInputRef} 
+//         onChange={handleFileChange} 
+//         multiple 
+//         accept="image/*" 
+//         className="hidden" 
+//       />
+
+//       <div 
+//         className="relative bg-white rounded-[35px] flex flex-col justify-between overflow-hidden transition-all duration-300"
+//         style={{
+//           width: '572px',
+//           height: '569px',
+//           borderRadius: '35px',
+//           background: '#FFFFFF',
+//         }}
+//         onClick={(e) => e.stopPropagation()}
+//       >
+//         {/* السطر الأول: علامة X + كلمة إرسال صورة + زر الإتمام (+) */}
+//         <div className="flex items-center justify-between px-6 py-4">
+//           <div className="flex items-center gap-3">
+//             <button 
+//               onClick={onClose}
+//               className="flex items-center justify-center rounded-full transition-all transform hover:scale-105 active:scale-95"
+//               style={{
+//                 width: '36px',
+//                 height: '36px',
+//                 background: '#0000001A',
+//               }}
+//               title="إغلاق"
+//             >
+//               <img 
+//                 src="/imgs/close.svg" 
+//                 alt="إغلاق" 
+//                 style={{
+//                   width: '17px',
+//                   height: '17px',
+//                 }} 
+//               />
+//             </button>
+//             <span 
+//               className="font-medium text-black"
+//               style={{
+//                 fontFamily: 'Cairo, sans-serif',
+//                 fontSize: '25px',
+//                 lineHeight: '1',
+//                 letterSpacing: '0%',
+//                 textAlign: 'right',
+//               }}
+//             >
+//               إرسال صورة
+//             </span>
+//           </div>
+
+//           <button 
+//             onClick={() => fileInputRef.current?.click()}
+//             className="flex items-center justify-center rounded-full transition-all transform hover:scale-105 active:scale-95"
+//             style={{
+//               width: '36px',
+//               height: '36px',
+//               background: '#F3F5FF',
+//             }}
+//             title="إضافة صور أخرى من الجهاز"
+//           >
+//             <img 
+//               src="/imgs/Add.svg" 
+//               alt="إضافة صورة" 
+//               style={{
+//                 width: '17px',
+//                 height: '17px',
+//                 transform: 'rotate(-90deg)',
+//               }} 
+//             />
+//           </button>
+//         </div>
+
+//         {/* عرض مجموعة الصور */}
+//         <div className="relative flex-1 flex items-center justify-center px-4 overflow-hidden my-auto">
+//           {prevIndex !== null && (
+//             <div 
+//               onClick={onPrev}
+//               className="absolute left-6 cursor-pointer opacity-70 hover:opacity-100 transition-all transform -translate-y-1/2 top-1/2"
+//               style={{
+//                 width: '125px',
+//                 height: '255px',
+//                 borderRadius: '20px',
+//                 overflow: 'hidden',
+//                 background: 'linear-gradient(270deg, rgba(255, 255, 255, 0) 14.83%, #FFFFFF 79.89%)',
+//               }}
+//             >
+//               <img src={images[prevIndex]} alt="السابقة" className="w-full h-full object-cover" />
+//             </div>
+//           )}
+
+//           <div 
+//             className="relative flex items-center justify-center transition-all duration-300 z-10"
+//             style={{
+//               width: '291px',
+//               height: '358px',
+//               borderRadius: '40px',
+//               border: '3px solid #B4B4B9',
+//               overflow: 'hidden',
+//               background: 'linear-gradient(180deg, rgba(0, 0, 0, 0) 38.73%, #000000 85.54%)',
+//             }}
+//           >
+//             <img
+//               src={images[currentIndex]}
+//               alt={`صورة ${currentIndex + 1}`}
+//               className="w-full h-full object-cover"
+//             />
+
+//             {onDeleteImage && (
+//               <button 
+//                 onClick={() => onDeleteImage(currentIndex)}
+//                 className="absolute top-3 left-3 bg-black/60 hover:bg-red-600 text-white p-2 rounded-full transition text-xs"
+//                 title="حذف الصورة"
+//               >
+//                 🗑️
+//               </button>
+//             )}
+//           </div>
+
+//           {nextIndex !== null && (
+//             <div 
+//               onClick={onNext}
+//               className="absolute right-6 cursor-pointer opacity-70 hover:opacity-100 transition-all transform -translate-y-1/2 top-1/2"
+//               style={{
+//                 width: '125px',
+//                 height: '255px',
+//                 borderRadius: '20px',
+//                 overflow: 'hidden',
+//                 background: 'linear-gradient(90deg, rgba(255, 255, 255, 0) 14.83%, #FFFFFF 79.89%)',
+//               }}
+//             >
+//               <img src={images[nextIndex]} alt="التالية" className="w-full h-full object-cover" />
+//             </div>
+//           )}
+//         </div>
+
+//         {/* Pagination */}
+//         <div className="flex justify-center items-center gap-2 py-1">
+//           {images.map((_, index) => (
+//             <div
+//               key={index}
+//               className={`h-2 rounded-full transition-all duration-300 ${
+//                 index === currentIndex ? 'bg-black w-6' : 'bg-gray-300 w-2'
+//               }`}
+//             />
+//           ))}
+//         </div>
+
+// {/* الجزء السفلي: الحاوية الموحدة بالمقاسات 528×50 */}
+//         <div className="px-6 pb-5 pt-2 flex justify-center">
+//           <div 
+//             className="flex items-center justify-between relative overflow-hidden"
+//             style={{
+//               width: '528px',
+//               height: '50px',
+//               borderRadius: '20px',
+//               background: '#F3F5FF',
+//               opacity: 1,
+//             }}
+//           >
+//             {/* 1. زر الإرسال: أصبح في البداية من جهة اليمين وملتصقاً بحافة الحاوية */}
+//             <button
+//               onClick={() => onSendWithCaption?.(caption)}
+//               className="flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
+//               style={{
+//                 width: '64px',
+//                 height: '50px',
+//                 borderRadius: '20px 0px 0px 20px', // انحناء من جهة اليمين ليتطابق مع الحاوية
+//                 background: '#FFFFFF',
+//                 border: 'none',
+//               }}
+//               title="إرسال"
+//             >
+//               <img 
+//                 src="/imgs/send.svg" 
+//                 alt="إرسال"
+//                 style={{
+//                   width: '18px',
+//                   height: '18px',
+//                   opacity: 1,
+//                 }} 
+//               />
+//             </button>
+
+//             {/* 2. حقل الكتابة وأيقونة الحركة: في المساحة المتبقية باتجاه اليسار */}
+//             <div className="flex items-center flex-1 px-4 gap-2">
+//               <input 
+//                 type="text"
+//                 placeholder="اضف وصف..."
+//                 value={caption}
+//                 onChange={(e) => setCaption(e.target.value)}
+//                 className="w-full bg-transparent focus:outline-none text-right"
+//                 style={{
+//                   fontFamily: 'Cairo, sans-serif',
+//                   fontWeight: 600,
+//                   fontSize: '15px',
+//                   lineHeight: '100%',
+//                   letterSpacing: '0%',
+//                   color: '#B6B7B7', // اللون المطلوب للوصف
+//                 }}
+//               />
+//               <img 
+//                 src="/imgs/animation-icon.svg" 
+//                 alt="أيقونة"
+//                 className="shrink-0"
+//                 style={{
+//                   width: '18px',
+//                   height: '18px',
+//                   opacity: 1,
+//                 }}
+//               />
+//             </div>
+
+//           </div>
+//         </div>
+
+//       </div>
+//     </div>
+//   );
+// };
+ 
+ 
 export default function ChatPage() {
   const params = useParams();
   const receiverId = params?.receiverId as string | undefined;
@@ -434,23 +748,31 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
-
   // ================= State for pending images =================
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
-
+  
   // ================= State for Image Viewer =================
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [viewerImages, setViewerImages] = useState<string[]>([]);
   const [viewerCurrentIndex, setViewerCurrentIndex] = useState(0);
-
+  
   const router = useRouter();
+
+  // دالة التعامل مع الملف المرفق
+const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    sendFile(file); // أو دالة الإرسال الخاصة بك
+  }
+  e.target.value = ""; // لإعادة تعيين الحقل
+};
 
   // ================= Image Viewer Functions =================
   const openImageViewer = useCallback((imageUrl: string, allImages?: string[]) => {
     if (!imageUrl) return;
-
+    
     let images: string[] = [];
-
+    
     if (allImages && allImages.length > 0) {
       images = allImages;
     } else {
@@ -465,15 +787,15 @@ export default function ChatPage() {
           return '';
         })
         .filter(url => url && url.length > 0);
-
+      
       if (images.length === 0) {
         images = [imageUrl];
       }
     }
-
+    
     const currentIndex = images.findIndex(img => img === imageUrl);
     const index = currentIndex >= 0 ? currentIndex : 0;
-
+    
     setViewerImages(images);
     setViewerCurrentIndex(index);
     setImageViewerOpen(true);
@@ -486,22 +808,22 @@ export default function ChatPage() {
   }, []);
 
   const nextImage = useCallback(() => {
-    setViewerCurrentIndex(prev =>
+    setViewerCurrentIndex(prev => 
       prev >= viewerImages.length - 1 ? 0 : prev + 1
     );
   }, [viewerImages.length]);
 
   const prevImage = useCallback(() => {
-    setViewerCurrentIndex(prev =>
+    setViewerCurrentIndex(prev => 
       prev <= 0 ? viewerImages.length - 1 : prev - 1
     );
   }, [viewerImages.length]);
 
   // ================= دوال معالجة الرسائل =================
-
+  
   const handleReact = useCallback(async (messageId: string, emoji: string) => {
     if (!token || !receiverId) return;
-
+    
     try {
       const res = await fetch(`${API_BASE}/reacttomessage`, {
         method: 'POST',
@@ -514,7 +836,7 @@ export default function ChatPage() {
           messageid: messageId,
         }),
       });
-
+      
       if (res.ok) {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -523,7 +845,7 @@ export default function ChatPage() {
               : msg
           )
         );
-
+        
         wsService.send({
           event: "react",
           metadata: {
@@ -540,7 +862,7 @@ export default function ChatPage() {
 
   const handleEditMessage = useCallback(async (updatedMessage: Message) => {
     if (!token || !receiverId) return;
-
+    
     try {
       const res = await fetch(`${API_BASE}/message/edit`, {
         method: 'PUT',
@@ -554,7 +876,7 @@ export default function ChatPage() {
           receiver: receiverId,
         }),
       });
-
+      
       if (res.ok) {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -582,13 +904,13 @@ export default function ChatPage() {
 
   const handleTranslate = useCallback(async (message: Message) => {
     if (!message.message) return;
-
+    
     try {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=${encodeURIComponent(message.message)}`;
       const res = await fetch(url);
       const data = await res.json();
       const translated = data[0]?.map((item: any) => item[0]).join('');
-
+      
       if (translated) {
         toast.success(`الترجمة: ${translated}`, {
           duration: 8000,
@@ -605,7 +927,7 @@ export default function ChatPage() {
 
   const handleDeleteMessage = useCallback(async (message: Message) => {
     if (!token || !receiverId) return;
-
+    
     showConfirmToast(
       'هل أنت متأكد من حذف هذه الرسالة؟',
       async () => {
@@ -621,7 +943,7 @@ export default function ChatPage() {
               receiver: receiverId,
             }),
           });
-
+          
           if (res.ok) {
             setMessages((prev) => prev.filter((msg) => msg._id !== message._id));
             toast.success('تم حذف الرسالة بنجاح');
@@ -640,7 +962,7 @@ export default function ChatPage() {
   }, [token, receiverId]);
 
   // ================= باقي الدوال =================
-
+  
   const handleBlockMember = (member: any) => {
     toast.success(`تم حظر المستخدم ${member.name}`);
   };
@@ -728,7 +1050,7 @@ export default function ChatPage() {
       bcRef.current = null;
     }
     return () => {
-      try { bcRef.current?.close(); } catch { }
+      try { bcRef.current?.close(); } catch {}
       bcRef.current = null;
     };
   }, []);
@@ -736,7 +1058,7 @@ export default function ChatPage() {
   // ================= Helper: Render Group Avatar =================
   const renderGroupAvatar = useCallback((chat: any) => {
     let members = chat?.groupMembers || chat?.members || groupMembers || [];
-
+    
     if (members.length === 0 && receiverData) {
       const currentUser = {
         _id: myId,
@@ -752,16 +1074,16 @@ export default function ChatPage() {
       };
       members = [currentUser, otherUser];
     }
-
+    
     const memberCount = members.length;
-
+    
     const getMemberImage = (index: number) => {
       const member = members[index];
       return member?.img || member?.avatar || '/imgs/user.png';
     };
 
     const GroupIcon = () => (
-      <div
+      <div 
         style={{
           position: 'absolute',
           width: '19px',
@@ -776,11 +1098,12 @@ export default function ChatPage() {
           justifyContent: 'center',
           zIndex: 10,
           pointerEvents: 'none',
+          // boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
         }}
       >
-        <img
-          src="/imgs/Group.svg"
-          alt="Group"
+        <img 
+          src="/imgs/Group.svg" 
+          alt="Group" 
           style={{
             width: '10.909222602844238px',
             height: '10.909222602844238px',
@@ -791,13 +1114,13 @@ export default function ChatPage() {
 
     if (memberCount < 2) {
       return (
-        <div
+        <div 
           className="relative w-[50px] h-[50px] rounded-[21px] overflow-hidden flex-shrink-0 flex items-center justify-center"
         >
-          <img
+          <img 
             src="/imgs/person1.svg"
-            alt="Member"
-            className="w-full h-full object-cover rounded-[21px] p-1"
+            alt="Member" 
+            className="w-full h-full object-cover rounded-[21px] p-1" 
           />
           <GroupIcon />
         </div>
@@ -844,12 +1167,12 @@ export default function ChatPage() {
 
     if (memberCount === 3) {
       return (
-        <div
+        <div 
           className="relative w-[50px] h-[50px] overflow-hidden flex-shrink-0 rounded-[21px]"
         >
-          <img
+          <img 
             src={getMemberImage(1) || "/imgs/person1.svg"}
-            alt="Member 1"
+            alt="Member 1" 
             className="absolute object-cover rounded-[15px]"
             style={{
               width: '28.41px',
@@ -859,9 +1182,9 @@ export default function ChatPage() {
               zIndex: 1,
             }}
           />
-          <img
+          <img 
             src={getMemberImage(2) || "/imgs/person2.svg"}
-            alt="Member 2"
+            alt="Member 2" 
             className="absolute object-cover rounded-[15px]"
             style={{
               width: '28.41px',
@@ -871,9 +1194,9 @@ export default function ChatPage() {
               zIndex: 1,
             }}
           />
-          <img
+          <img 
             src={getMemberImage(0) || "/imgs/person2.svg"}
-            alt="Member 3"
+            alt="Member 3" 
             className="absolute object-cover rounded-[15px]"
             style={{
               width: '28.41px',
@@ -891,30 +1214,30 @@ export default function ChatPage() {
 
     if (memberCount === 4) {
       return (
-        <div
+        <div 
           className="relative w-[50px] h-[50px] overflow-hidden flex-shrink-0 rounded-[21px]"
         >
-          <img
+          <img 
             src={getMemberImage(0) || "/imgs/person1.svg"}
-            alt="Member 1"
+            alt="Member 1" 
             className="absolute object-cover rounded-[15px]"
             style={{ width: '28px', height: '28px', top: '1px', left: '1px', zIndex: 3 }}
           />
-          <img
+          <img 
             src={getMemberImage(1) || "/imgs/person2.svg"}
-            alt="Member 2"
+            alt="Member 2" 
             className="absolute object-cover rounded-[15px]"
             style={{ width: '28px', height: '28px', top: '1px', right: '1px', zIndex: 2 }}
           />
-          <img
+          <img 
             src={getMemberImage(2) || "/imgs/person2.svg"}
-            alt="Member 3"
+            alt="Member 3" 
             className="absolute object-cover rounded-[15px]"
             style={{ width: '28px', height: '28px', bottom: '1px', left: '1px', zIndex: 4 }}
           />
-          <img
+          <img 
             src={getMemberImage(3) || "/imgs/person1.svg"}
-            alt="Member 4"
+            alt="Member 4" 
             className="absolute object-cover rounded-[15px]"
             style={{ width: '28px', height: '28px', bottom: '1px', right: '1px', zIndex: 1 }}
           />
@@ -927,27 +1250,27 @@ export default function ChatPage() {
       const extraCount = memberCount - 3;
       return (
         <div className="relative w-[50px] h-[50px] overflow-hidden flex-shrink-0 rounded-[21px]">
-          <img
+          <img 
             src={getMemberImage(0) || "/imgs/person1.svg"}
-            alt="Member 1"
+            alt="Member 1" 
             className="absolute object-cover rounded-[15px]"
             style={{ width: '28px', height: '28px', top: '1px', left: '1px', zIndex: 3 }}
           />
-          <img
+          <img 
             src={getMemberImage(1) || "/imgs/person2.svg"}
-            alt="Member 2"
+            alt="Member 2" 
             className="absolute object-cover rounded-[15px]"
             style={{ width: '28px', height: '28px', top: '1px', right: '1px', zIndex: 2 }}
           />
-          <div
+          <div 
             className="absolute flex items-center justify-center bg-[#DADADA] text-[#000000] font-bold text-[10px] rounded-[15px]"
             style={{ width: '28px', height: '28px', bottom: '1px', left: '1px', zIndex: 4 }}
           >
             +{extraCount}
           </div>
-          <img
+          <img 
             src={getMemberImage(2) || "/imgs/person1.svg"}
-            alt="Member 3"
+            alt="Member 3" 
             className="absolute object-cover rounded-[15px]"
             style={{
               width: '28px',
@@ -963,7 +1286,7 @@ export default function ChatPage() {
     }
 
     return (
-      <div
+      <div 
         className="relative w-[50px] h-[50px] rounded-[21px] border border-white overflow-hidden flex-shrink-0"
       >
         <img
@@ -978,7 +1301,7 @@ export default function ChatPage() {
   // ================= جلب بيانات المستخدم =================
   const fetchReceiverData = useCallback(async () => {
     if (!receiverId || !token || !myId) return;
-
+    
     try {
       let currentUserData = null;
       try {
@@ -992,50 +1315,50 @@ export default function ChatPage() {
       } catch (e) {
         console.error('Failed to fetch current user data:', e);
       }
-
+      
       const chatResponse = await fetch(`${API_BASE}/chats/chats/${myId}`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
-
+      
       let isGroupChat = false;
       let groupName = '';
       let isAdmin = false;
-
+      
       if (chatResponse.ok) {
         const chatData = await chatResponse.json();
         const chatList = chatData.response || chatData.userchats || [];
-
+        
         const foundChat = chatList.find((chat: any) => {
           const otherId = chat.otherUserId || chat.id;
           return otherId === receiverId;
         });
-
+        
         if (foundChat) {
           isGroupChat = foundChat.chatType === 'group' || foundChat.isGroup === true;
           groupName = foundChat.groupName || foundChat.name || '';
           isAdmin = foundChat.admin === myId || foundChat.owner === myId;
-
+          
           setIsGroup(isGroupChat);
           setIsGroupAdmin(isAdmin);
-
+          
           if (!isGroupChat) {
             const members = foundChat.memberAvatars || foundChat.members || [];
             setGroupMembers(members);
           }
-
+          
           if (isGroupChat && groupName) {
             setChatName(groupName);
           }
         }
       }
-
+      
       if (!isGroupChat) {
         const userResponse = await fetch(`${API_BASE}/users/${receiverId}`, {
           headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         });
         const userData = await userResponse.json();
         setReceiverData(userData.userpersonaldata);
-
+        
         if (userData.userpersonaldata?.name) {
           setChatName(userData.userpersonaldata.name);
         } else {
@@ -1044,7 +1367,7 @@ export default function ChatPage() {
       } else {
         setReceiverData(null);
       }
-
+      
     } catch (error) {
       console.error("Failed to fetch receiver data", error);
     }
@@ -1053,39 +1376,39 @@ export default function ChatPage() {
   // ================= جلب بيانات المجموعة =================
   const fetchGroupData = useCallback(async () => {
     if (!receiverId || !token || !isGroup) return;
-
+    
     try {
       const res = await fetch(`${API_BASE}/chats/groups/GetGroup/${receiverId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json"
+        headers: { 
+          Authorization: `Bearer ${token}`, 
+          Accept: "application/json" 
         },
       });
-
+      
       if (!res.ok) {
         console.error('Failed to fetch group data:', res.status);
         return;
       }
-
+      
       const data = await res.json();
       const groupData = data.response || data;
-
+      
       const ownerMember = groupData.members?.find((m: any) => m.role === 'owner');
-
+      
       if (ownerMember) {
         setGroupOwner(ownerMember);
         setGroupOwnerName(ownerMember.name || 'مستخدم');
         setGroupOwnerImg(ownerMember.image || '');
       }
-
+      
       if (groupData.createdAt) {
         setGroupCreatedAt(groupData.createdAt);
       }
-
+      
       if (groupData.description) {
         setGroupDescription(groupData.description);
       }
-
+      
       if (groupData.members && Array.isArray(groupData.members)) {
         const formattedMembers = groupData.members.map((m: any) => ({
           userId: m.userId,
@@ -1100,15 +1423,15 @@ export default function ChatPage() {
         }));
         setGroupMembers(formattedMembers);
       }
-
+      
       if (groupData.name) {
         setChatName(groupData.name);
       }
-
+      
       const currentUserMember = groupData.members?.find((m: any) => m.userId === myId);
       const isAdmin = currentUserMember?.role === 'admin' || currentUserMember?.role === 'owner';
       setIsGroupAdmin(isAdmin);
-
+      
     } catch (error) {
       console.error('Error fetching group data:', error);
     }
@@ -1128,13 +1451,13 @@ export default function ChatPage() {
   // ================= Helper: Format group members names =================
   const formatGroupMembers = useCallback((members: any[], maxDisplay: number = 5) => {
     if (!members || members.length === 0) return '';
-
+    
     const names = members.map(member => member.name || 'مستخدم');
-
+    
     if (members.length <= maxDisplay) {
       return names.join('، ');
     }
-
+    
     const firstFive = names.slice(0, maxDisplay);
     const remainingCount = members.length - maxDisplay;
     return `${firstFive.join('، ')} +${remainingCount}`;
@@ -1143,7 +1466,7 @@ export default function ChatPage() {
   // ================= Update group name =================
   const handleUpdateGroupName = useCallback(async () => {
     if (!editName.trim() || !receiverId || !token) return;
-
+    
     try {
       const res = await fetch(`${API_BASE}/chats/groups/update/${receiverId}`, {
         method: 'PUT',
@@ -1153,9 +1476,9 @@ export default function ChatPage() {
         },
         body: JSON.stringify({ groupName: editName.trim() }),
       });
-
+      
       const data = await res.json();
-
+      
       if (data.success) {
         setChatName(editName.trim());
         toast.success('تم تحديث اسم المجموعة بنجاح');
@@ -1172,7 +1495,7 @@ export default function ChatPage() {
   // ================= Update group description =================
   const handleUpdateGroupDescription = useCallback(async () => {
     if (!editDescription.trim() || !receiverId || !token) return;
-
+    
     try {
       const res = await fetch(`${API_BASE}/chats/groups/update/${receiverId}`, {
         method: 'PUT',
@@ -1182,9 +1505,9 @@ export default function ChatPage() {
         },
         body: JSON.stringify({ description: editDescription.trim() }),
       });
-
+      
       const data = await res.json();
-
+      
       if (data.success) {
         setGroupDescription(editDescription.trim());
         toast.success('تم تحديث وصف المجموعة بنجاح');
@@ -1201,13 +1524,13 @@ export default function ChatPage() {
   // ================= التحقق من نوع المحادثة =================
   useEffect(() => {
     if (!receiverId || !token || !myId) return;
-
+    
     const checkChatType = async () => {
       try {
         const res = await fetch(`${API_BASE}/chats/chats/${myId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
+        
         if (res.ok) {
           const data = await res.json();
           const chatList = data.response || data.userchats || [];
@@ -1215,7 +1538,7 @@ export default function ChatPage() {
             const otherId = chat.otherUserId || chat.id;
             return otherId === receiverId;
           });
-
+          
           if (found) {
             const isGroupChat = found.chatType === 'group' || found.isGroup === true;
             setIsGroup(isGroupChat);
@@ -1225,7 +1548,7 @@ export default function ChatPage() {
         console.error('Error checking chat type:', error);
       }
     };
-
+    
     checkChatType();
   }, [receiverId, token, myId]);
 
@@ -1243,8 +1566,6 @@ export default function ChatPage() {
     if (!text.trim() || !effRec || !effMy || !token) return;
 
     const tempId = `tmp-${Date.now()}`;
-    
-    // بناء كائن الرسالة مع الـ Reply
     const tempMsg: Message = {
       _id: tempId,
       message: text,
@@ -1255,25 +1576,8 @@ export default function ChatPage() {
       fileData: undefined,
     };
 
-    // إذا كان هناك رد، نضيفه للرسالة
-    if (replyTo) {
-      tempMsg.replyTo = {
-        _id: replyTo._id,
-        message: replyTo.message || '',
-        sender: replyTo.sender,
-        senderName: replyTo.sender === effMy ? 'أنت' : receiverData?.name || 'مستخدم',
-        type: replyTo.type || 'text',
-        fileName: replyTo.fileName || '',
-      };
-    }
-
     setMessages((prev) => [...prev, tempMsg]);
     setText("");
-    
-    // حفظ الـ replyTo مؤقتاً للإرسال
-    const currentReply = replyTo;
-    setReplyTo(null); // إعادة تعيين الـ Reply بعد الإرسال
-    
     emitChatUpdate("message", { ...tempMsg, seenBy: false });
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -1281,181 +1585,23 @@ export default function ChatPage() {
     try { wsService.send(stopPayload); } catch {}
 
     try {
-      // بناء الجسم مع الـ replyTo
-      const bodyData: any = { 
-        message: tempMsg.message, 
-        receiver: effRec, 
-        sender: effMy 
-      };
-      
-      // إضافة الـ replyTo إذا كان موجود
-      if (currentReply) {
-        bodyData.replyTo = {
-          messageId: currentReply._id,
-          message: currentReply.message || '',
-          sender: currentReply.sender,
-          type: currentReply.type || 'text',
-        };
-      }
-      
       const res = await fetch(REST_SEND, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(bodyData),
+        body: JSON.stringify({ message: tempMsg.message, receiver: effRec, sender: effMy }),
       });
-      
       if (!res.ok) throw new Error("Send failed");
       const data = await res.json();
       const savedMsg = data.message || data;
       if (savedMsg && savedMsg._id) {
-        // الحفاظ على الـ replyTo في الرسالة المحفوظة
-        if (currentReply) {
-          savedMsg.replyTo = {
-            _id: currentReply._id,
-            message: currentReply.message || '',
-            sender: currentReply.sender,
-            senderName: currentReply.sender === effMy ? 'أنت' : receiverData?.name || 'مستخدم',
-            type: currentReply.type || 'text',
-            fileName: currentReply.fileName || '',
-          };
-        }
         replaceTempMessage(tempId, savedMsg);
       } else {
         setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
       }
     } catch (err) {
-      console.error("Send error:", err);
       setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
     }
-  }, [text, token, replaceTempMessage, replyTo, receiverData]);
-
-  // ================= عرض الـ Reply في شريط الإدخال =================
-  // const renderReplyInput = () => {
-  //   if (!replyTo) return null;
-    
-  //   const replyText = replyTo.message || 'رسالة';
-  //   const senderName = replyTo.sender === myId ? 'أنت' : receiverData?.name || 'مستخدم';
-    
-  //   // تحديد نوع الميديا للعرض
-  //   let mediaPreview = '';
-  //   if (replyTo.type === 'image') mediaPreview = '📷 صورة';
-  //   else if (replyTo.type === 'video') mediaPreview = '🎬 فيديو';
-  //   else if (replyTo.type === 'audio') mediaPreview = '🎵 رسالة صوتية';
-  //   else if (replyTo.type === 'sticker') mediaPreview = '🎨 ملصق';
-  //   else if (replyTo.type === 'pdf') mediaPreview = '📄 PDF';
-  //   else if (replyTo.type === 'word') mediaPreview = '📄 مستند Word';
-  //   else if (replyTo.type === 'excel') mediaPreview = '📊 جدول Excel';
-  //   else if (replyTo.type === 'powerpoint') mediaPreview = '📊 عرض تقديمي';
-  //   else if (replyTo.type === 'file') mediaPreview = '📎 ملف';
-    
-  //   const displayText = mediaPreview || replyText;
-    
-  //   return (
-  //     <div className="flex items-center gap-2 px-3 py-2 bg-[#F3F5FF] rounded-t-lg border-b border-gray-200 relative w-full">
-  //       <div className="flex-1 min-w-0">
-  //         <div className="flex items-center gap-2">
-  //           <span className="text-xs font-semibold text-[#D72229]">
-  //             الرد على {senderName}
-  //           </span>
-  //           <span className="text-xs text-gray-500 truncate max-w-[200px]">
-  //             {displayText}
-  //           </span>
-  //         </div>
-  //       </div>
-  //       <button
-  //         onClick={() => setReplyTo(null)}
-  //         className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-200 transition flex-shrink-0"
-  //       >
-  //         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-  //           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-  //         </svg>
-  //       </button>
-  //     </div>
-  //   );
-  // };
-
-  // ================= عرض الـ Reply في شريط الإدخال =================
-// ================= عرض الـ Reply في شريط الإدخال =================
-const renderReplyInput = () => {
-  if (!replyTo) return null;
-  
-  const replyText = replyTo.message || 'رسالة';
-  const senderName = replyTo.sender === myId ? 'أنت' : receiverData?.name || 'مستخدم';
-  
-  // تحديد نوع الميديا للعرض
-  let mediaPreview = '';
-  if (replyTo.type === 'image') mediaPreview = '📷 صورة';
-  else if (replyTo.type === 'video') mediaPreview = '🎬 فيديو';
-  else if (replyTo.type === 'audio') mediaPreview = '🎵 رسالة صوتية';
-  else if (replyTo.type === 'sticker') mediaPreview = '🎨 ملصق';
-  else if (replyTo.type === 'pdf') mediaPreview = '📄 PDF';
-  else if (replyTo.type === 'word') mediaPreview = '📄 مستند Word';
-  else if (replyTo.type === 'excel') mediaPreview = '📊 جدول Excel';
-  else if (replyTo.type === 'powerpoint') mediaPreview = '📊 عرض تقديمي';
-  else if (replyTo.type === 'file') mediaPreview = '📎 ملف';
-  
-  const displayText = mediaPreview || replyText;
-  
-  return (
-<div
-  dir="rtl"
-  className="relative flex items-center justify-between w-full max-w-[930px] h-[70px] rounded-[15px] overflow-hidden shadow-[0px_0px_5px_0px_rgba(0,0,0,0.05)] bg-[linear-gradient(0deg,#FFFFFF_26.92%,#F3F5FF_66.8%)] p-1.5  pl-4"
->
-  {/* المحتوى الداخلي بخلفية بيضاء كاملة */}
-  <div className="flex items-center justify-between w-full h-[56px] bg-[#FEFEFF] rounded-[11px] p-2">
-    
-    {/* الجزء الأيمن: الشريط الجانبي والنص */}
-    <div className="flex items-center gap-3 flex-1 min-w-0 h-full">
-      {/* الشريط العمودي الجانبي المتدرج */}
-      <div
-        className="w-[27px] h-full rounded-r-[11px] bg-[linear-gradient(270deg,#FFFFFF_0%,#B4B4B9_100%)] shrink-0"
-      />
-
-      {/* محتوى النص */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center">
-        <span className="block text-xs font-bold text-[#000000]">
-          الرد على {senderName}
-        </span>
-        <span className="block text-xs text-gray-500 truncate max-w-[200px]">
-          {displayText}
-        </span>
-      </div>
-    </div>
-
-    {/* زر إلغاء الرد (على الشمال) */}
-    <button
-      type="button"
-      onClick={() => {
-        setReplyTo(null);
-
-        const input = document.querySelector('input[type="text"]');
-        if (input) {
-          (input as HTMLInputElement).focus();
-        }
-      }}
-      className="w-6 h-6 flex items-center justify-center rounded-full border border-[#B4B4B9] bg-white hover:bg-gray-50 transition shrink-0 mr-2"
-      title="إلغاء الرد"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="12"
-        height="12"
-        viewBox="0 0 16 16"
-        fill="none"
-      >
-        <path
-          d="M4 4L12 12M12 4L4 12"
-          stroke="#B4B4B9"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    </button>
-
-  </div>
-</div>
-  );
-};
+  }, [text, token, replaceTempMessage]);
 
   // ================= Retry failed message =================
   const retrySend = useCallback(async (failedMsg: Message) => {
@@ -1548,7 +1694,7 @@ const renderReplyInput = () => {
             const fullMsg = (data?.resp?.messages || []).find((m: Message) => m._id === messageId);
             if (fullMsg && (fullMsg.fileData || fullMsg.media)) return fullMsg;
           }
-        } catch { }
+        } catch {}
         await new Promise((r) => setTimeout(r, 500));
       }
       return null;
@@ -1824,21 +1970,22 @@ const renderReplyInput = () => {
       uploadProgress: 0,
       _optimistic: true,
     };
-
+    
+    // إضافة الرسالة المؤقتة مباشرة إلى messages
     setMessages((prev) => [...prev, tempMsg]);
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_BASE}/message/send_media`);
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.setRequestHeader("Content-Type", "application/json");
-
+    
     xhr.upload.onprogress = (ev) => {
       if (ev.lengthComputable) {
         const percent = Math.round((ev.loaded / ev.total) * 100);
         setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, uploadProgress: percent } : m)));
       }
     };
-
+    
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         const data = JSON.parse(xhr.responseText);
@@ -1850,16 +1997,17 @@ const renderReplyInput = () => {
               : m
           )
         );
+        // إزالة الصورة من pendingImages بعد نجاح التحميل
         setPendingImages(prev => prev.filter(img => img.file.name !== file.name || img.file.size !== file.size));
       } else {
         setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
       }
     };
-
+    
     xhr.onerror = () => {
       setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
     };
-
+    
     const base64 = await blobToPureBase64(file);
     xhr.send(
       JSON.stringify({
@@ -1869,131 +2017,277 @@ const renderReplyInput = () => {
     );
   }, [token]);
 
-  // ================= Send File =================
-  const sendFile = useCallback(async (file: File) => {
-    const effMy = myIdRef.current;
-    const effRec = receiverIdRef.current;
-    if (!effMy || !effRec || !token) return;
+  // ================= Handle multiple media selection =================
+  // استبدل دالة handleSelectMedia بهذه النسخة الموسعة
+// app/chats/[receiverId]/page.tsx
+const sendFile = useCallback(async (file: File) => {
+  const effMy = myIdRef.current;
+  const effRec = receiverIdRef.current;
+  if (!effMy || !effRec || !token) return;
 
-    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-    let fileType = 'file';
-    if (['pdf'].includes(fileExtension)) fileType = 'pdf';
-    else if (['doc', 'docx'].includes(fileExtension)) fileType = 'word';
-    else if (['xls', 'xlsx'].includes(fileExtension)) fileType = 'excel';
-    else if (['ppt', 'pptx'].includes(fileExtension)) fileType = 'powerpoint';
-    else if (['txt'].includes(fileExtension)) fileType = 'text';
-    else if (['zip', 'rar', '7z'].includes(fileExtension)) fileType = 'archive';
+  // تحديد نوع الملف من الامتداد
+  const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+  
+  // خريطة أنواع الملفات
+  const fileTypeMap: Record<string, string> = {
+    'pdf': 'pdf',
+    'doc': 'word',
+    'docx': 'word',
+    'xls': 'excel',
+    'xlsx': 'excel',
+    'ppt': 'powerpoint',
+    'pptx': 'powerpoint',
+    'txt': 'text',
+    'zip': 'archive',
+    'rar': 'archive',
+    '7z': 'archive',
+  };
+  
+  // تحديد نوع الملف، إذا لم يكن معروفاً استخدم 'file'
+  const fileType = fileTypeMap[fileExtension] || 'file';
 
-    const tempId = `tmp-file-${Date.now()}-${Math.random()}`;
-    const tempMsg: Message = {
-      _id: tempId,
-      sender: effMy,
-      receiver: effRec,
-      timestamp: new Date().toISOString(),
-      type: fileType,
-      message: file.name,
-      media: file,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      uploadProgress: 0,
-      _optimistic: true,
-    };
+  const tempId = `tmp-file-${Date.now()}-${Math.random()}`;
+  
+  // إنشاء رسالة مؤقتة مع تحديد النوع الصحيح
+  const tempMsg: Message = {
+    _id: tempId,
+    sender: effMy,
+    receiver: effRec,
+    timestamp: new Date().toISOString(),
+    type: fileType, // ✅ النوع الصحيح للملف (pdf, word, excel, إلخ)
+    message: file.name,
+    media: file,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    fileExtension: fileExtension.toUpperCase(),
+    uploadProgress: 0,
+    _optimistic: true,
+  };
+  
+  setMessages((prev) => [...prev, tempMsg]);
 
-    setMessages((prev) => [...prev, tempMsg]);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE}/message/send_media`);
-    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-    xhr.setRequestHeader("Content-Type", "application/json");
-
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable) {
-        const percent = Math.round((ev.loaded / ev.total) * 100);
-        setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, uploadProgress: percent } : m)));
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const data = JSON.parse(xhr.responseText);
-        sentMessageIdsRef.current.add(data.data._id);
-        setMessages((prev) =>
-          prev.map((m) =>
-            m._id === tempId
-              ? { ...m, _id: data.data._id, media: data.data.message[0], uploadProgress: undefined, _sendFailed: false }
-              : m
-          )
-        );
-        setPendingImages(prev => prev.filter(img => img.file.name !== file.name || img.file.size !== file.size));
-        toast.success(`تم إرسال الملف: ${file.name}`);
-      } else {
-        setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
-        toast.error(`فشل إرسال الملف: ${file.name}`);
-      }
-    };
-
-    xhr.onerror = () => {
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", `${API_BASE}/message/send_media`);
+  xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  
+  xhr.upload.onprogress = (ev) => {
+    if (ev.lengthComputable) {
+      const percent = Math.round((ev.loaded / ev.total) * 100);
+      setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, uploadProgress: percent } : m)));
+    }
+  };
+  
+  xhr.onload = () => {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      const data = JSON.parse(xhr.responseText);
+      sentMessageIdsRef.current.add(data.data._id);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === tempId
+            ? { 
+                ...m, 
+                _id: data.data._id, 
+                media: data.data.message[0], 
+                uploadProgress: undefined, 
+                _sendFailed: false,
+                fileName: file.name,
+                fileSize: file.size,
+                fileExtension: fileExtension.toUpperCase(),
+              }
+            : m
+        )
+      );
+      setPendingImages(prev => prev.filter(img => img.file.name !== file.name || img.file.size !== file.size));
+      toast.success(`تم إرسال الملف: ${file.name}`);
+    } else {
       setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
       toast.error(`فشل إرسال الملف: ${file.name}`);
-    };
-
-    const base64 = await blobToPureBase64(file);
-    xhr.send(
-      JSON.stringify({
-        metadata: {
-          sender: effMy,
-          reicever: effRec,
-          type: fileType,
-          fileName: file.name,
-          fileSize: file.size,
-          fileMimeType: file.type,
-          clientTempId: tempId
-        },
-        fileData: [{
-          fileName: file.name,
-          fileContent: `data:${file.type};base64,${base64}`,
-          mimetype: file.type
-        }],
-      })
-    );
-  }, [token]);
-
-  // ================= Handle multiple media selection =================
-  const handleSelectMedia = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const MAX_FILES = 10;
-    const filesToSend = Math.min(files.length, MAX_FILES);
-
-    if (files.length > MAX_FILES) {
-      toast.warning(`يمكنك إرسال ${MAX_FILES} ملف كحد أقصى`);
     }
+  };
+  
+  xhr.onerror = () => {
+    setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
+    toast.error(`فشل إرسال الملف: ${file.name}`);
+  };
+  
+  const base64 = await blobToPureBase64(file);
+  xhr.send(
+    JSON.stringify({
+      metadata: { 
+        sender: effMy, 
+        reicever: effRec, 
+        type: fileType, // ✅ النوع الصحيح
+        fileName: file.name,
+        fileSize: file.size,
+        fileMimeType: file.type,
+        fileExtension: fileExtension,
+        clientTempId: tempId 
+      },
+      fileData: [{ 
+        fileName: file.name, 
+        fileContent: `data:${file.type};base64,${base64}`, 
+        mimetype: file.type 
+      }],
+    })
+  );
+}, [token, blobToPureBase64]);
 
-    const newImages: PendingImage[] = [];
-    for (let i = 0; i < filesToSend; i++) {
-      const file = files[i];
-      const id = `pending-${Date.now()}-${i}`;
-      const url = URL.createObjectURL(file);
-      newImages.push({ id, file, url });
+// ================= Handle multiple media selection =================
+const handleSelectMedia = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  
+  const MAX_FILES = 10;
+  const filesToSend = Math.min(files.length, MAX_FILES);
+  
+  if (files.length > MAX_FILES) {
+    toast.warning(`يمكنك إرسال ${MAX_FILES} ملف كحد أقصى`);
+  }
+  
+  const newImages: PendingImage[] = [];
+  for (let i = 0; i < filesToSend; i++) {
+    const file = files[i];
+    const id = `pending-${Date.now()}-${i}`;
+    const url = URL.createObjectURL(file);
+    newImages.push({ id, file, url });
+  }
+  
+  setPendingImages(prev => [...prev, ...newImages]);
+  
+  newImages.forEach((img) => {
+    // تحديد نوع الملف
+    const fileType = img.file.type;
+    const fileExtension = img.file.name.split('.').pop()?.toLowerCase() || '';
+    
+    // التحقق إذا كان الملف صورة
+    if (fileType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension)) {
+      sendImageFile(img.file);
+    } else {
+      sendFile(img.file); // ✅ استدعاء sendFile للملفات غير الصورية
     }
+  });
+  
+  e.target.value = "";
+}, [sendImageFile, sendFile]); // ✅ تأكد من إضافة sendFile إلى التبعيات
+// أضف هذه الدالة بعد sendImageFile
+// const sendFile = useCallback(async (file: File) => {
+//   const effMy = myIdRef.current;
+//   const effRec = receiverIdRef.current;
+//   if (!effMy || !effRec || !token) return;
 
-    setPendingImages(prev => [...prev, ...newImages]);
+//   // تحديد نوع الملف من الامتداد
+//   const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+//   let fileType = 'file';
+//   if (['pdf'].includes(fileExtension)) fileType = 'pdf';
+//   else if (['doc', 'docx'].includes(fileExtension)) fileType = 'word';
+//   else if (['xls', 'xlsx'].includes(fileExtension)) fileType = 'excel';
+//   else if (['ppt', 'pptx'].includes(fileExtension)) fileType = 'powerpoint';
+//   else if (['txt'].includes(fileExtension)) fileType = 'text';
+//   else if (['zip', 'rar', '7z'].includes(fileExtension)) fileType = 'archive';
 
-    newImages.forEach((img) => {
-      const fileType = img.file.type;
-      const fileExtension = img.file.name.split('.').pop()?.toLowerCase() || '';
+//   const tempId = `tmp-file-${Date.now()}-${Math.random()}`;
+//   const tempMsg: Message = {
+//     _id: tempId,
+//     sender: effMy,
+//     receiver: effRec,
+//     timestamp: new Date().toISOString(),
+//     type: fileType,
+//     message: file.name,
+//     media: file,
+//     fileName: file.name,
+//     fileSize: file.size,
+//     fileType: file.type,
+//     uploadProgress: 0,
+//     _optimistic: true,
+//   };
+  
+//   setMessages((prev) => [...prev, tempMsg]);
 
-      if (fileType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension)) {
-        sendImageFile(img.file);
-      } else {
-        sendFile(img.file);
-      }
-    });
+//   const xhr = new XMLHttpRequest();
+//   xhr.open("POST", `${API_BASE}/message/send_media`);
+//   xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+//   xhr.setRequestHeader("Content-Type", "application/json");
+  
+//   xhr.upload.onprogress = (ev) => {
+//     if (ev.lengthComputable) {
+//       const percent = Math.round((ev.loaded / ev.total) * 100);
+//       setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, uploadProgress: percent } : m)));
+//     }
+//   };
+  
+//   xhr.onload = () => {
+//     if (xhr.status >= 200 && xhr.status < 300) {
+//       const data = JSON.parse(xhr.responseText);
+//       sentMessageIdsRef.current.add(data.data._id);
+//       setMessages((prev) =>
+//         prev.map((m) =>
+//           m._id === tempId
+//             ? { ...m, _id: data.data._id, media: data.data.message[0], uploadProgress: undefined, _sendFailed: false }
+//             : m
+//         )
+//       );
+//       setPendingImages(prev => prev.filter(img => img.file.name !== file.name || img.file.size !== file.size));
+//     } else {
+//       setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
+//     }
+//   };
+  
+//   xhr.onerror = () => {
+//     setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
+//   };
+  
+//   const base64 = await blobToPureBase64(file);
+//   xhr.send(
+//     JSON.stringify({
+//       metadata: { 
+//         sender: effMy, 
+//         reicever: effRec, 
+//         type: fileType,
+//         fileName: file.name,
+//         fileSize: file.size,
+//         fileMimeType: file.type,
+//         clientTempId: tempId 
+//       },
+//       fileData: [{ 
+//         fileName: file.name, 
+//         fileContent: `data:${file.type};base64,${base64}`, 
+//         mimetype: file.type 
+//       }],
+//     })
+//   );
+// }, [token]);
+// app/chats/[receiverId]/page.tsx
 
-    e.target.value = "";
-  }, [sendImageFile, sendFile]);
+// ================= Send File =================
+  // const handleSelectMedia = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = e.target.files;
+  //   if (!files || files.length === 0) return;
+    
+  //   const MAX_FILES = 10;
+  //   const filesToSend = Math.min(files.length, MAX_FILES);
+    
+  //   if (files.length > MAX_FILES) {
+  //     toast.warning(`يمكنك إرسال ${MAX_FILES} صور كحد أقصى`);
+  //   }
+    
+  //   const newImages: PendingImage[] = [];
+  //   for (let i = 0; i < filesToSend; i++) {
+  //     const file = files[i];
+  //     const id = `pending-${Date.now()}-${i}`;
+  //     const url = URL.createObjectURL(file);
+  //     newImages.push({ id, file, url });
+  //   }
+    
+  //   setPendingImages(prev => [...prev, ...newImages]);
+    
+  //   newImages.forEach((img) => {
+  //     sendImageFile(img.file);
+  //   });
+    
+  //   e.target.value = "";
+  // }, [sendImageFile]);
 
   // ================= Cancel pending images =================
   const cancelPendingImages = useCallback(() => {
@@ -2020,22 +2314,22 @@ const renderReplyInput = () => {
   // ================= حظر المستخدم =================
   const handleBlockUser = useCallback(async () => {
     if (!receiverId || !myId || !token) return;
-
+    
     const isBlocked = isUserBlocked(receiverId);
     const userName = chatName || receiverData?.name || 'هذا المستخدم';
-
-    const confirmMessage = isBlocked
+    
+    const confirmMessage = isBlocked 
       ? ` أنت على وشك رفع الحظر عن "${userName}"\n\nبعد رفع الحظر، سيتمكن هذا المستخدم من التواصل معك مرة أخرى.`
       : `أنت على وشك حظر "${userName}"\n\nبعد الحظر، لن يتمكن هذا المستخدم من التواصل معك أو رؤية نشاطك.`;
-
+    
     showConfirmToast(
       confirmMessage,
       async () => {
         try {
-          const url = isBlocked
-            ? `${API_BASE}/unblock${myId}`
+          const url = isBlocked 
+            ? `${API_BASE}/unblock${myId}` 
             : `${API_BASE}/block${myId}`;
-
+          
           const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -2045,7 +2339,7 @@ const renderReplyInput = () => {
           if (res.ok) {
             const message = isBlocked ? ' تم رفع الحظر عن المستخدم بنجاح' : ' تم حظر المستخدم بنجاح';
             toast.success(message);
-
+            
             if (isBlocked) {
               setBlockedUsers(prev => prev.filter(id => id !== receiverId));
               setIBlockedHim(false);
@@ -2096,14 +2390,14 @@ const renderReplyInput = () => {
   // ================= حذف المحادثة =================
   const handleDeleteChat = useCallback(async () => {
     if (!receiverId || !token) return;
-
+    
     const chatNameToShow = chatName || receiverData?.name || 'هذه المحادثة';
     const isGroupChat = isGroup;
-
+    
     const confirmMessage = isGroupChat
       ? `أنت على وشك حذف المجموعة "${chatNameToShow}" بالكامل\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمجموعة، ولن تتمكن من استعادتها بعد الحذف.`
       : ` أنت على وشك حذف المحادثة مع "${chatNameToShow}"\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمحادثة، ولن تتمكن من استعادتها بعد الحذف.`;
-
+    
     showConfirmToast(
       confirmMessage,
       async () => {
@@ -2114,14 +2408,14 @@ const renderReplyInput = () => {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
+            body: JSON.stringify({ 
               chatId: receiverId,
               chatType: isGroupChat ? 'group' : 'private'
             })
           });
 
           const data = await res.json();
-
+          
           if (data.success) {
             toast.success(' تم حذف المحادثة بنجاح');
             router.push('/chats');
@@ -2149,9 +2443,9 @@ const renderReplyInput = () => {
   // ================= الخروج من المجموعة =================
   const handleLeaveGroup = useCallback(async () => {
     if (!receiverId || !token || !isGroup) return;
-
+    
     const groupNameToShow = chatName || receiverData?.name || 'المجموعة';
-
+    
     showConfirmToast(
       ` أنت على وشك الخروج من المجموعة "${groupNameToShow}"\n\nبعد الخروج، لن تتمكن من رؤية الرسائل الجديدة أو التفاعل مع أعضاء المجموعة.`,
       async () => {
@@ -2195,7 +2489,7 @@ const renderReplyInput = () => {
   // ================= طلب مشرف في المجموعة =================
   const handleRequestAdmin = useCallback(async () => {
     if (!receiverId || !token || !isGroup) return;
-
+    
     try {
       const res = await fetch(`${API_BASE}/chats/groups/RequestAdmin/${receiverId}`, {
         method: 'POST',
@@ -2204,9 +2498,9 @@ const renderReplyInput = () => {
           'Content-Type': 'application/json',
         },
       });
-
+      
       const data = await res.json();
-
+      
       if (data.success) {
         toast.success('✅ تم إرسال طلب المشرف إلى مدير المجموعة بنجاح');
       } else {
@@ -2281,15 +2575,15 @@ const renderReplyInput = () => {
       {/* Header */}
       <header className="flex items-center justify-between px-4 mb-4 pb-2">
         <div className="flex items-center justify-start gap-3">
-          <img
-            src="/imgs/prv.svg"
-            className="w-[11px] h-[18px] object-cover cursor-pointer"
-            alt="back"
-            onClick={() => router.back()}
+          <img 
+            src="/imgs/prv.svg" 
+            className="w-[11px] h-[18px] object-cover cursor-pointer" 
+            alt="back" 
+            onClick={() => router.back()} 
           />
-
+          
           <div className="relative inline-block">
-            <div
+            <div 
               onClick={() => {
                 if (isGroup) {
                   setShowGroupDetails(!showGroupDetails);
@@ -2305,17 +2599,17 @@ const renderReplyInput = () => {
                   members: groupMembers,
                 })
               ) : (
-                <img
-                  src={receiverData?.img || "/imgs/user.png"}
-                  className="w-[50px] h-[50px] rounded-[21px] object-cover"
-                  alt="avatar"
+                <img 
+                  src={receiverData?.img || "/imgs/user.png"} 
+                  className="w-[50px] h-[50px] rounded-[21px] object-cover" 
+                  alt="avatar" 
                 />
               )}
             </div>
 
             {/* ================= Group Details Dropdown ================= */}
             {showGroupDetails && isGroup && (
-              <div
+              <div 
                 className="absolute z-[99999]"
                 style={{
                   top: '100%',
@@ -2326,9 +2620,11 @@ const renderReplyInput = () => {
                   background: '#F5F5F5',
                   padding: '24px 20px',
                   overflowY: 'auto',
+                  // boxShadow: '0 10px 40px rgba(0,0,0,0.25)',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
+                {/* زر الإغلاق والعنوان معاً */}
                 <div className="flex items-center justify-between mb-4">
                   <button
                     onClick={() => setShowGroupDetails(false)}
@@ -2336,8 +2632,8 @@ const renderReplyInput = () => {
                   >
                     <img src="/imgs/close.svg" alt="إغلاق" className="w-[14px] h-[14px]" />
                   </button>
-
-                  <h2
+                  
+                  <h2 
                     className="text-right flex-1"
                     style={{
                       fontFamily: 'Cairo',
@@ -2353,6 +2649,7 @@ const renderReplyInput = () => {
                   </h2>
                 </div>
 
+                {/* صور الأعضاء */}
                 <div className="flex items-center justify-center gap-2 mb-4 overflow-x-auto pb-2">
                   {groupMembers.length >= 2 ? (
                     <div className="relative w-[80px] h-[80px] rounded-[21px] overflow-hidden flex-shrink-0">
@@ -2414,7 +2711,7 @@ const renderReplyInput = () => {
                         />
                       )}
                       {groupMembers.length >= 5 && (
-                        <div
+                        <div 
                           className="absolute flex items-center justify-center bg-[#DADADA] text-[#000000] font-bold"
                           style={{
                             width: '45px',
@@ -2429,7 +2726,7 @@ const renderReplyInput = () => {
                           +{groupMembers.length - 3}
                         </div>
                       )}
-                      <div
+                      <div 
                         style={{
                           position: 'absolute',
                           width: '30px',
@@ -2444,11 +2741,12 @@ const renderReplyInput = () => {
                           justifyContent: 'center',
                           zIndex: 10,
                           pointerEvents: 'none',
+                          // boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
                         }}
                       >
-                        <img
-                          src="/imgs/Group.svg"
-                          alt="Group"
+                        <img 
+                          src="/imgs/Group.svg" 
+                          alt="Group" 
                           style={{
                             width: '18px',
                             height: '18px',
@@ -2457,14 +2755,15 @@ const renderReplyInput = () => {
                       </div>
                     </div>
                   ) : (
-                    <img
-                      src={groupMembers[0]?.img || groupMembers[0]?.avatar || '/imgs/user.png'}
-                      className="w-[80px] h-[80px] rounded-[21px] object-cover border-2 border-white"
-                      alt="avatar"
+                    <img 
+                      src={groupMembers[0]?.img || groupMembers[0]?.avatar || '/imgs/user.png'} 
+                      className="w-[80px] h-[80px] rounded-[21px] object-cover border-2 border-white" 
+                      alt="avatar" 
                     />
                   )}
                 </div>
 
+                {/* اسم المجموعة مع علامة القلم للأدمن */}
                 <div className="flex items-center justify-center gap-2 mb-0">
                   {editingField === 'name' ? (
                     <div className="flex items-center gap-2">
@@ -2495,7 +2794,7 @@ const renderReplyInput = () => {
                     </div>
                   ) : (
                     <>
-                      <h3
+                      <h3 
                         className="text-center"
                         style={{
                           fontFamily: 'Cairo',
@@ -2509,7 +2808,7 @@ const renderReplyInput = () => {
                         {chatName || 'مجموعة'}
                       </h3>
                       {isGroupAdmin && (
-                        <button
+                        <button 
                           onClick={() => {
                             setEditName(chatName || '');
                             setEditingField('name');
@@ -2523,7 +2822,8 @@ const renderReplyInput = () => {
                   )}
                 </div>
 
-                <p
+                {/* عدد الأشخاص */}
+                <p 
                   className="text-center mb-2 mt-2"
                   style={{
                     fontFamily: 'Cairo',
@@ -2541,8 +2841,9 @@ const renderReplyInput = () => {
                   </span>
                 </p>
 
+                {/* تم إنشاء المجموعة بواسطة */}
                 <div className="text-center mb-4">
-                  <p
+                  <p 
                     style={{
                       fontFamily: 'Cairo',
                       fontWeight: 600,
@@ -2555,39 +2856,40 @@ const renderReplyInput = () => {
                   >
                     تم إنشاء المجموعة بواسطة &nbsp;
                     <span style={{ color: '#7C7D7E', fontSize: '11px', fontWeight: 500 }}>
-                      {groupOwnerName || 'مستخدم'}
+                      {groupOwnerName || 'مستخدم'} 
                       {' '}في{' '} &nbsp;
                     </span>
                     <span style={{ color: '#7C7D7E', fontSize: '11px', fontWeight: 500 }}>
-                      {groupCreatedAt
-                        ? new Date(groupCreatedAt).toLocaleDateString('ar-EG', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit'
-                        })
-                        : new Date().toLocaleDateString('ar-EG', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit'
-                        })
+                      {groupCreatedAt 
+                        ? new Date(groupCreatedAt).toLocaleDateString('ar-EG', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit' 
+                          })
+                        : new Date().toLocaleDateString('ar-EG', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit' 
+                          })
                       }
                     </span>
                     ،{' '}
                     <span style={{ color: '#7C7D7E', fontSize: '11px', fontWeight: 500 }}>
-                      {groupCreatedAt
-                        ? new Date(groupCreatedAt).toLocaleTimeString('ar-EG', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })
-                        : new Date().toLocaleTimeString('ar-EG', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })
+                      {groupCreatedAt 
+                        ? new Date(groupCreatedAt).toLocaleTimeString('ar-EG', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                        : new Date().toLocaleTimeString('ar-EG', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
                       }
                     </span>
                   </p>
                 </div>
 
+                {/* وصف المجموعة مع علامة القلم للأدمن */}
                 <div className="mb-4">
                   {editingField === 'description' ? (
                     <div className="flex flex-col items-start gap-2">
@@ -2619,7 +2921,7 @@ const renderReplyInput = () => {
                     </div>
                   ) : (
                     <div className="flex items-center justify-end gap-2">
-                      <p
+                      <p 
                         className="text-right"
                         style={{
                           fontFamily: 'Cairo',
@@ -2633,7 +2935,7 @@ const renderReplyInput = () => {
                         {groupDescription || receiverData?.description || receiverData?.bio || 'لا يوجد وصف للمجموعة'}
                       </p>
                       {isGroupAdmin && (
-                        <button
+                        <button 
                           onClick={() => {
                             setEditDescription(groupDescription || receiverData?.description || receiverData?.bio || '');
                             setEditingField('description');
@@ -2647,7 +2949,8 @@ const renderReplyInput = () => {
                   )}
                 </div>
 
-                <div
+                {/* خط فاصل تحت الوصف */}
+                <div 
                   className="w-full"
                   style={{
                     width: '100%',
@@ -2659,8 +2962,10 @@ const renderReplyInput = () => {
                   }}
                 />
 
+                {/* أيقونات الإجراءات */}
                 <div className="flex items-center justify-center mb-1 py-1 -mt-2 flex-wrap gap-2">
-                  <button
+                  {/* مكالمة */}
+                  <button 
                     className="flex flex-col items-center gap-1 group transition-all duration-200"
                     onClick={() => {
                       setShowGroupDetails(false);
@@ -2673,21 +2978,23 @@ const renderReplyInput = () => {
                     <span className="text-[10px] text-[#B4B4B9]">مكالمة</span>
                   </button>
 
-                  <button
+                  {/* بحث */}
+                  <button 
                     className="flex flex-col items-center gap-1 group transition-all duration-200"
                     onClick={() => {
                       setShowGroupDetails(false);
                       toast.info('جاري البحث في المجموعة...');
                     }}
                   >
-                    <div className="w-[45px] h-[45px] rounded-full bg-[#FFFFFF] flex items-center justify-center group-hover:bg-[#F5F5F5] transition-all duration-200">
+                    <div className="w-[45px] h-[45px] rounded-full bg-[#FFFFFF] flex items-center justify-center  group-hover:bg-[#F5F5F5] transition-all duration-200">
                       <img src="/imgs/search.svg" alt="بحث" className="w-[18px] h-[18px]" />
                     </div>
                     <span className="text-[10px] text-[#B4B4B9]">بحث</span>
                   </button>
 
+                  {/* إضافة - تظهر فقط للأدمن */}
                   {isGroupAdmin && (
-                    <button
+                    <button 
                       className="flex flex-col items-center gap-1 group transition-all duration-200"
                       onClick={() => {
                         setShowGroupDetails(false);
@@ -2701,7 +3008,8 @@ const renderReplyInput = () => {
                     </button>
                   )}
 
-                  <button
+                  {/* أرشفة */}
+                  <button 
                     className="flex flex-col items-center gap-1 group transition-all duration-200"
                     onClick={() => {
                       setShowGroupDetails(false);
@@ -2714,26 +3022,29 @@ const renderReplyInput = () => {
                     <span className="text-[10px] text-[#B4B4B9]">أرشفة</span>
                   </button>
 
+                  {/* إعدادات - مع قائمة منسدلة */}
                   <div className="relative settings-menu-container">
-                    <button
+                    <button 
                       className="flex flex-col items-center gap-1 group transition-all duration-200"
                       onClick={() => {
                         setShowSettingsMenu(!showSettingsMenu);
                       }}
                     >
-                      <div className="w-[45px] h-[45px] rounded-full bg-[#FFFFFF] flex items-center justify-center group-hover:bg-[#F5F5F5] transition-all duration-200">
+                      <div className="w-[45px] h-[45px] rounded-full bg-[#FFFFFF] flex items-center justify-center  group-hover:bg-[#F5F5F5] transition-all duration-200">
                         <img src="/imgs/proChat.svg" alt="إعدادات" className="w-[18px] h-[18px]" />
                       </div>
                       <span className="text-[10px] text-[#B4B4B9]">إعدادات</span>
                     </button>
 
+                    {/* قائمة الإعدادات المنسدلة */}
                     {showSettingsMenu && (
-                      <div
+                      <div 
                         className="absolute z-[99999] top-full left-1/2 -translate-x-1/2 mt-2"
                         style={{
                           width: '154px',
                           borderRadius: '20px',
                           backgroundColor: "#F5F5F5",
+                          // boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                           padding: '4px 0',
                         }}
                         onClick={(e) => e.stopPropagation()}
@@ -2752,10 +3063,10 @@ const renderReplyInput = () => {
                           <span className="font-semibold text-[15px] text-black">
                             {isUserCurrentlyBlocked ? 'رفع الحظر' : 'حظر'}
                           </span>
-                          <img
-                            src="/imgs/block.svg"
-                            alt={isUserCurrentlyBlocked ? "رفع الحظر" : "حظر"}
-                            className="w-4 h-4"
+                          <img 
+                            src="/imgs/block.svg" 
+                            alt={isUserCurrentlyBlocked ? "رفع الحظر" : "حظر"} 
+                            className="w-4 h-4" 
                           />
                         </button>
 
@@ -2789,23 +3100,25 @@ const renderReplyInput = () => {
                     )}
                   </div>
 
-                  <button
+                  {/* خروج */}
+                  <button 
                     className="flex flex-col items-center gap-1 group transition-all duration-200"
                     onClick={() => {
                       setShowGroupDetails(false);
                       handleLeaveGroup();
                     }}
                   >
-                    <div className="w-[45px] h-[45px] rounded-full bg-[#FFFFFF] flex items-center justify-center group-hover:bg-[#F5F5F5] transition-all duration-200">
+                    <div className="w-[45px] h-[45px] rounded-full bg-[#FFFFFF] flex items-center justify-center  group-hover:bg-[#F5F5F5] transition-all duration-200">
                       <img src="/imgs/leave.svg" alt="خروج" className="w-[18px] h-[18px]" />
                     </div>
                     <span className="text-[10px] text-[#B4B4B9]">خروج</span>
                   </button>
                 </div>
 
+                {/* قسم أعضاء المجموعة */}
                 <div className="flex-1 overflow-y-auto" style={{ maxHeight: '150px' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <p
+                    <p 
                       className="text-right"
                       style={{
                         fontFamily: 'Cairo',
@@ -2836,10 +3149,10 @@ const renderReplyInput = () => {
                         className="w-[13px] h-[13px] object-cover"
                       />
                       <span className="text-sm font-semibold text-black">
-                        عدد الاعضاء
+                        عدد الاعضاء 
                       </span>
                     </div>
-                    <p
+                    <p 
                       className="text-right"
                       style={{
                         fontFamily: 'Cairo',
@@ -2859,7 +3172,7 @@ const renderReplyInput = () => {
                       const isMemberMenuOpen = activeMemberMenuId === (member.userId || index);
 
                       return (
-                        <div
+                        <div 
                           key={member.userId || index}
                           className="flex items-center justify-between p-2 rounded-[15px] hover:bg-white/50 transition-colors relative"
                         >
@@ -2870,20 +3183,20 @@ const renderReplyInput = () => {
                               className="w-[40px] h-[40px] rounded-[15px] object-cover"
                             />
                             <div className="flex flex-col text-right">
-                              <span
+                              <span 
                                 className="text-sm font-semibold text-black"
                                 style={{ fontFamily: 'Cairo' }}
                               >
                                 {member.name || 'مستخدم'}
                               </span>
-                              <span
+                              <span 
                                 className="text-[10px] text-[#B4B4B9]"
                                 style={{ fontFamily: 'Cairo' }}
                               >
                                 @{member.username || member.name || 'مستخدم'}
                               </span>
                               {member.userId === myId && (
-                                <span
+                                <span 
                                   className="text-[10px] text-[#D72229]"
                                   style={{ fontFamily: 'Cairo' }}
                                 >
@@ -2906,12 +3219,13 @@ const renderReplyInput = () => {
                               </button>
 
                               {isMemberMenuOpen && (
-                                <div
+                                <div 
                                   className="absolute left-0 top-full mt-1 z-[99999]"
                                   style={{
                                     width: '130px',
                                     borderRadius: '15px',
                                     backgroundColor: "#F5F5F5",
+                                    // boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                                     padding: '4px 0',
                                   }}
                                   onClick={(e) => e.stopPropagation()}
@@ -2950,18 +3264,18 @@ const renderReplyInput = () => {
               </div>
             )}
           </div>
-
+          
           <div className="flex flex-col text-right">
             <h3 className="text-[15px] my-0">
               {chatName || receiverData?.name || (isGroup ? 'مجموعة' : 'مستخدم')}
             </h3>
-
+            
             {isGroup && groupMembers.length > 0 && (
               <div className="text-xs text-[#B4B4B9] max-w-[180px] truncate" dir="rtl">
                 {formatGroupMembers(groupMembers, 5)}
               </div>
             )}
-
+            
             {!isGroup && (
               <bdi className="text-xs text-[#B4B4B9]">
                 @{receiverData?.username}
@@ -2974,11 +3288,11 @@ const renderReplyInput = () => {
             <img src="/imgs/phoneChat.svg" className="w-[16px] h-[16px]" alt="phoneChat" />
           </div>
           <div className="rounded-[17px] bg-[#F5F5F5] w-[40px] h-[40px] flex items-center justify-center cursor-pointer relative">
-            <img
-              src="/imgs/optionChat.svg"
-              onClick={() => setShowMenu((prev) => !prev)}
-              className="w-[16px] h-[16px]"
-              alt="dots"
+            <img 
+              src="/imgs/optionChat.svg" 
+              onClick={() => setShowMenu((prev) => !prev)} 
+              className="w-[16px] h-[16px]" 
+              alt="dots" 
             />
           </div>
         </div>
@@ -2989,10 +3303,10 @@ const renderReplyInput = () => {
       {/* Message List or Empty State */}
       {messages.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-225px)]">
-          <img
-            src={receiverData?.private ? "/icons/privatechat.svg" : "/icons/empty.svg"}
-            className="w-[82.5px]"
-            alt="empty"
+          <img 
+            src={receiverData?.private ? "/icons/privatechat.svg" : "/icons/empty.svg"} 
+            className="w-[82.5px]" 
+            alt="empty" 
           />
           <h3 className="text-[35px]">
             {receiverData?.private ? "الدرج ده خاص" : "لسه مفيش كلام"}
@@ -3031,6 +3345,7 @@ const renderReplyInput = () => {
               }}
               showReactions={true}
               onImageClick={(imageUrl) => {
+                // جمع كل صور المحادثة
                 const allImages = messages
                   .filter(msg => msg.type === 'image' && msg.media)
                   .map(msg => {
@@ -3042,10 +3357,11 @@ const renderReplyInput = () => {
                     return '';
                   })
                   .filter(url => url && url.length > 0);
-
+                
+                // إضافة الصور المعلقة أيضاً
                 const pendingImageUrls = pendingImages.map(img => img.url);
                 const allImagesWithPending = [...allImages, ...pendingImageUrls];
-
+                
                 openImageViewer(imageUrl, allImagesWithPending);
               }}
             />
@@ -3058,7 +3374,7 @@ const renderReplyInput = () => {
       {showScrollDown && (
         <button
           onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-[#d7222897] text-white rounded-2xl px-4 py-2 z-[99999] text-sm border-none cursor-pointer"
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-[#d7222897] text-white rounded-2xl px-4 py-2 z-[99999] text-sm border-none  cursor-pointer"
         >
           انزل تحت
         </button>
@@ -3076,10 +3392,10 @@ const renderReplyInput = () => {
         </div>
       )}
 
-      {/* ================= Pending Images Display ================= */}
+      {/* ================= Pending Images Display with alignment based on sender ================= */}
       {pendingImages.length > 0 && (
-        <div
-          className={`flex items-center mb-2 px-4 ${myId ? 'justify-start' : 'justify-end'}`}
+        <div 
+          className={`flex items-center mb-2 px-4 ${myId ? 'justify-start' : 'justify-end'}`} 
           style={{ height: '180px' }}
         >
           <div className="relative" style={{ width: '140px', height: '160px' }}>
@@ -3090,7 +3406,7 @@ const renderReplyInput = () => {
               let zIndex = 0;
               let width = '137.99998474121145px';
               let height = '156.0000152587903px';
-
+              
               if (index === 0) {
                 angle = 0;
                 offsetX = 0;
@@ -3120,11 +3436,11 @@ const renderReplyInput = () => {
                 width = '137.3889642799699px';
                 height = '155.70752300857416px';
               }
-
+              
               return (
                 <div
                   key={img.id}
-                  className="absolute rounded-[18px] overflow-hidden border-2 border-white"
+                  className="absolute rounded-[18px] overflow-hidden  border-2 border-white"
                   style={{
                     width: width,
                     height: height,
@@ -3136,9 +3452,9 @@ const renderReplyInput = () => {
                     marginTop: index === 0 ? '-78px' : '-77.85px',
                   }}
                 >
-                  <img
-                    src={img.url}
-                    alt={`صورة ${index + 1}`}
+                  <img 
+                    src={img.url} 
+                    alt={`صورة ${index + 1}`} 
                     className="w-full h-full object-cover"
                     onClick={() => {
                       const allImages = messages
@@ -3152,17 +3468,18 @@ const renderReplyInput = () => {
                           return '';
                         })
                         .filter(url => url && url.length > 0);
-
+                      
                       const pendingImageUrls = pendingImages.map(p => p.url);
                       const allImagesWithPending = [...allImages, ...pendingImageUrls];
-
+                      
                       openImageViewer(img.url, allImagesWithPending);
                     }}
                   />
                 </div>
               );
             })}
-
+            
+            {/* زر إلغاء جميع الصور المعلقة */}
             <button
               onClick={cancelPendingImages}
               className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm z-20 hover:bg-red-600 transition"
@@ -3174,229 +3491,271 @@ const renderReplyInput = () => {
         </div>
       )}
 
-      {/* ================= Input Area with Reply ================= */}
-      {/* ================= Input Area with Reply ================= */}
+      {/* Input Area */}
+   {/* ================= قائمة الإرفاق ================= */}
 {!shouldHideInput && (
-  <div className="mt-3 flex flex-col items-center w-full relative">
-    {/* ================= عرض الـ Reply في شريط الإدخال - ثابت في الأعلى ================= */}
-{replyTo && (
-  <div className="absolute bottom-[55px] left-0 w-full z-20">
-    {renderReplyInput()}
-  </div>
-)}
+  <div className="mt-3 flex gap-2 items-center">
+    {isTyping && (
+      <button
+        onClick={handleSend}
+        className="w-[80px] h-[55px] text-[#D72229] flex items-center justify-center rounded-l-[20px] bg-[#F3F5FF]"
+      >
+        ➤
+      </button>
+    )}
+
+    {!isTyping && canShowRecordingUI && (
+      <>
+        <button onClick={stopRecording}>⏹</button>
+        <canvas ref={canvasRef} width={200} height={40} className="bg-gray-100 rounded-md" />
+        <button onClick={cancelRecording}>✖</button>
+      </>
+    )}
+
+    {!isTyping && canSendVoice && (
+      <button
+        onClick={sendVoiceMessage}
+        className="w-[80px] h-[55px] text-[#D72229] flex items-center justify-center rounded-l-[20px] bg-[#F3F5FF]"
+      >
+        ➤
+      </button>
+    )}
+
+    {!isTyping && canShowMic && (
+      <button
+        onPointerDown={startRecording}
+        className="w-[80px] h-[55px] flex items-center justify-center rounded-l-[20px] bg-[#F3F5FF]"
+      >
+        <img src="/icons/mic.svg" alt="mic" />
+      </button>
+    )}
+
+    <div className="flex bg-[#F3F5FF] w-full h-[55px] px-4 py-2 rounded-r-[20px] text-[15px] items-center relative gap-2">
+     <div className="flex items-center gap-2">
     
-    {/* ================= حقل الإدخال والأزرار ================= */}
-    <div className="flex gap-2 items-center w-full h-[55px]">
-      {/* زر الإرسال - يظهر فقط عند كتابة نص */}
-      {isTyping && (
-        <button
-          onClick={handleSend}
-          className="w-[80px] h-[55px] text-[#D72229] flex items-center justify-center rounded-l-[20px] bg-[#F3F5FF] hover:bg-[#e8eaf0] transition-all duration-200"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-        </button>
-      )}
+   
 
-      {/* واجهة التسجيل الصوتي */}
-      {!isTyping && canShowRecordingUI && (
-        <>
-          <button onClick={stopRecording} className="w-[80px] h-[55px] flex items-center justify-center rounded-l-[20px] bg-[#D72229] text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <rect x="6" y="4" width="12" height="12" rx="2" strokeWidth={2} />
-            </svg>
-          </button>
-          <canvas ref={canvasRef} width={200} height={40} className="bg-gray-100 rounded-md" />
-          <button onClick={cancelRecording} className="text-gray-500 hover:text-red-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </>
-      )}
+  {/* 📌 مكون الستكرز جاهز ويعمل لوحده تماماً */}
+  <Stickers onSelectSticker={handleSendSticker} />
+</div>
+      <input
+        value={text}
+        onChange={(e) => onInputChange(e.target.value)}
+        disabled={isRecording}
+        placeholder={isRecording ? "تسجيل..." : "اكتب رسالتك هنا  "}
+        className="w-full outline-none bg-transparent"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && isTyping) handleSend();
+        }}
+      />
 
-      {/* زر إرسال الصوت */}
-      {!isTyping && canSendVoice && (
-        <button
-          onClick={sendVoiceMessage}
-          className="w-[80px] h-[55px] text-[#D72229] flex items-center justify-center rounded-l-[20px] bg-[#F3F5FF] hover:bg-[#e8eaf0] transition-all duration-200"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-        </button>
-      )}
+      {/* ================= Inputs المخفية ================= */}
+      {/* 1. التقاط صورة بالكاميرا مباشرة */}
+      <input
+        type="file"
+        ref={cameraInputRef}
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileSelected}
+      />
 
-      {/* زر الميكروفون */}
-      {!isTyping && canShowMic && (
-        <button
-          onPointerDown={startRecording}
-          className="w-[80px] h-[55px] flex items-center justify-center rounded-l-[20px] bg-[#F3F5FF] hover:bg-[#e8eaf0] transition-all duration-200"
-        >
-          <img src="/icons/mic.svg" alt="mic" className="w-5 h-5" />
-        </button>
-      )}
+      {/* 2. اختيار صورة من المعرض */}
+      <input
+        type="file"
+        ref={galleryInputRef}
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handleFileSelected}
+        multiple
+      />
 
-      {/* حقل الإدخال */}
-      <div className="flex bg-[#F3F5FF] w-full h-[55px] px-4 py-2 rounded-r-[20px] text-[15px] items-center relative gap-2">
-        {/* زر الستكرز */}
-        <div className="flex items-center gap-2">
+      {/* 3. اختيار مستند (PDF، ملفات نصية، إلخ) */}
+      <input
+        type="file"
+        ref={documentInputRef}
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.7z,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        className="hidden"
+        onChange={handleFileSelected}
+        multiple
+      />
+
+      <div className="flex items-center gap-1 relative">
+        {/* <button>
           <Stickers onSelectSticker={handleSendSticker} />
-        </div>
+        </button> */}
+        
+      <button 
+  type="button"
+  onClick={() => galleryInputRef.current?.click()}
+  className="p-2 hover:bg-gray-100 rounded-full transition flex items-center justify-center"
+>
+  <img 
+    src="/imgs/gellery.svg" 
+    alt="معرض" 
+    style={{ 
+      width: '20px', 
+      height: '20px' 
+    }} 
+  />
+</button>
 
-        {/* حقل النص */}
-        <input
-          value={text}
-          onChange={(e) => onInputChange(e.target.value)}
-          disabled={isRecording}
-          placeholder={isRecording ? "تسجيل..." : "اكتب رسالتك هنا"}
-          className="w-full outline-none bg-transparent text-right"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && isTyping) handleSend();
-          }}
-        />
-
-        {/* ================= Inputs المخفية ================= */}
-        {/* 1. التقاط صورة بالكاميرا مباشرة */}
-        <input
-          type="file"
-          ref={cameraInputRef}
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={handleSelectMedia}
-          multiple
-        />
-
-        {/* 2. اختيار صورة من المعرض */}
-        <input
-          type="file"
-          ref={galleryInputRef}
-          accept="image/*,video/*"
-          className="hidden"
-          onChange={handleSelectMedia}
-          multiple
-        />
-
-        {/* 3. اختيار مستند */}
-        <input
-          type="file"
-          ref={documentInputRef}
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.7z,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-          className="hidden"
-          onChange={handleSelectMedia}
-          multiple
-        />
-
-        {/* الأزرار الجانبية */}
-        <div className="flex items-center gap-1 relative">
-          {/* زر المعرض */}
+        {/* ================= زر رفع الملفات مع القائمة المنسدلة ================= */}
+        <div className="relative">
           <button
             type="button"
-            onClick={() => galleryInputRef.current?.click()}
-            className="p-2 hover:bg-gray-200 rounded-full transition flex items-center justify-center"
-            title="اختيار من المعرض"
+            onClick={() => setShowAttachMenu(!showAttachMenu)}
+            className="p-1 hover:bg-white/20 rounded-lg transition"
           >
-            <img src="/imgs/gellery.svg" alt="معرض" style={{ width: '24px', height: '24px' }} />
+            <img src="/imgs/fileUpload.svg" alt="upload" style={{ 
+      width: '20px', 
+      height: '20px' 
+    }}  />
           </button>
 
-          {/* ================= زر رفع الملفات مع القائمة المنسدلة ================= */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowAttachMenu(!showAttachMenu)}
-              className="p-2 hover:bg-gray-200 rounded-full transition flex items-center justify-center"
-              title="رفع ملف"
+          {/* القائمة المنسدلة */}
+          {showAttachMenu && (
+            <div 
+           className="absolute bottom-full mb-5 -right-30 translate-x-4 rounded-[20px]  flex flex-col gap-1 border border-gray-100 z-50"
+            style={{ 
+              width: '169px',
+              height: '140px',
+              background: '#F3F5FF',
+              borderTopLeftRadius: '20px',
+              borderTopRightRadius: '20px',
+             }}
             >
-              <img src="/imgs/fileUpload.svg" alt="upload" style={{ width: '24px', height: '24px' }} />
-            </button>
+             
 
-            {/* القائمة المنسدلة */}
-            {showAttachMenu && (
-              <div
-                className="absolute bottom-full mb-2 -right-10 translate-x-4 rounded-[20px] flex flex-col gap-1 border border-gray-200 z-50 shadow-lg"
-                style={{
-                  width: '169px',
-                  background: '#F3F5FF',
-                  borderRadius: '20px',
-                  overflow: 'hidden',
-                }}
-              >
-                {/* خيار الكاميرا */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    cameraInputRef.current?.click();
-                    setShowAttachMenu(false);
-                  }}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/50 transition-all duration-200"
-                  style={{ 
-                    borderBottom: '1px solid rgba(60,60,67,0.1)',
-                  }}
-                >
-                  <span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 600, fontSize: '15px', color: '#000000', textAlign: 'right' }}>
-                    الكاميرا
-                  </span>
-                  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <img src="/imgs/camera.svg" alt="كاميرا" style={{ width: '20px', height: '20px' }} />
-                  </div>
-                </button>
+              {/* خيار الكاميرا */}
+            <button
+  type="button"
+  onClick={() => {
+    cameraInputRef.current?.click();
+    setShowAttachMenu(false);
+  }}
+  className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-gray-50 transition"
+  style={{ 
+    borderBottom: '0.33px solid #3C3C434D' 
+  }}
+>
+  {/* الكلمة في اليمين */}
+  <span 
+    style={{ 
+      fontFamily: 'Cairo, sans-serif',
+      fontWeight: 600,
+      fontSize: '15px',
+      lineHeight: '100%',
+      color: '#000000',
+      textAlign: 'right'
+    }}
+  >
+    الكاميرا
+  </span>
 
-                {/* خيار المعرض */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    galleryInputRef.current?.click();
-                    setShowAttachMenu(false);
-                  }}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/50 transition-all duration-200"
-                  style={{ 
-                    borderBottom: '1px solid rgba(60,60,67,0.1)',
-                  }}
-                >
-                  <span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 600, fontSize: '15px', color: '#000000', textAlign: 'right' }}>
-                    المعرض
-                  </span>
-                  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <img src="/imgs/gellery (2).svg" alt="معرض" style={{ width: '20px', height: '20px' }} />
-                  </div>
-                </button>
+  {/* الصورة في اليسار داخل الدائرة */}
+  <div className="w-8 h-8 rounded-full bg-[#F3F5FF] flex items-center justify-center flex-shrink-0">
+    <img 
+      src="/imgs/camera.svg" 
+      alt="كاميرا" 
+      style={{ 
+        width: '19.85px', 
+        height: '19px' 
+      }} 
+    />
+  </div>
+</button>
 
-                {/* خيار المستندات */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    documentInputRef.current?.click();
-                    setShowAttachMenu(false);
-                  }}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/50 transition-all duration-200"
-                >
-                  <span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 600, fontSize: '15px', color: '#000000', textAlign: 'right' }}>
-                    مستند
-                  </span>
-                  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <img src="/imgs/document.svg" alt="مستند" style={{ width: '20px', height: '20px' }} />
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
+              {/* خيار المعرض */}
+             <button
+  type="button"
+  onClick={() => {
+    galleryInputRef.current?.click();
+    setShowAttachMenu(false);
+  }}
+  className="w-full flex items-center justify-between px-1.5 py-1 hover:bg-gray-50 transition"
+  style={{ 
+    borderBottom: '0.33px solid #3C3C434D' 
+  }}
+>
+  {/* الكلمة في اليمين */}
+  <span 
+    style={{ 
+      fontFamily: 'Cairo, sans-serif',
+      fontWeight: 600,
+      fontSize: '15px',
+      lineHeight: '100%',
+      color: '#000000',
+      textAlign: 'right'
+    }}
+  >
+    المعرض
+  </span>
+
+  {/* الصورة في اليسار داخل الدائرة */}
+  <div className="w-8 h-8 rounded-full bg-[#F3F5FF] flex items-center justify-center flex-shrink-0">
+    <img 
+      src="/imgs/gellery (2).svg" 
+      alt="معرض" 
+      style={{ 
+        width: '19.85px', 
+        height: '19px' 
+      }} 
+    />
+  </div>
+</button>
+
+              {/* خيار المستندات */}
+              <button
+  type="button"
+  onClick={() => {
+    documentInputRef.current?.click();
+    setShowAttachMenu(false);
+  }}
+  className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-gray-50 transition"
+>
+  {/* الكلمة في اليمين */}
+  <span 
+    style={{ 
+      fontFamily: 'Cairo, sans-serif',
+      fontWeight: 600,
+      fontSize: '15px',
+      lineHeight: '100%',
+      color: '#000000',
+      textAlign: 'right'
+    }}
+  >
+    مستند
+  </span>
+
+  {/* الصورة في اليسار داخل الدائرة */}
+  <div className="w-8 h-8 rounded-full bg-[#F3F5FF] flex items-center justify-center flex-shrink-0">
+    <img 
+      src="/imgs/document.svg" 
+      alt="مستند" 
+      style={{ 
+        width: '19.85px', 
+        height: '19px' 
+      }} 
+    />
+  </div>
+</button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   </div>
 )}
-      {/* ================= Input Area with Reply ================= */}
-
       {/* ================= القائمة المنسدلة ================= */}
       {showMenu && (
-        <div
+        <div 
           className="absolute z-[9999] top-[60px] left-4"
           style={{
             width: '154px',
             borderRadius: '20px',
             backgroundColor: "#F5F5F5",
+            // boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -3415,10 +3774,10 @@ const renderReplyInput = () => {
                 <span className="font-semibold text-[15px] text-black">
                   {isUserCurrentlyBlocked ? 'رفع الحظر' : 'حظر'}
                 </span>
-                <img
-                  src="/imgs/block.svg"
-                  alt={isUserCurrentlyBlocked ? "رفع الحظر" : "حظر"}
-                  className="w-4 h-4"
+                <img 
+                  src="/imgs/block.svg" 
+                  alt={isUserCurrentlyBlocked ? "رفع الحظر" : "حظر"} 
+                  className="w-4 h-4" 
                 />
               </button>
 
@@ -3512,25 +3871,25 @@ const renderReplyInput = () => {
 
       {/* Block Confirmation Modal */}
       {blockConfirmVisible && (
-        <div
+        <div 
           className="fixed inset-0 z-[99999] flex items-center justify-center"
           onClick={handleCancelBlock}
         >
-          <div
+          <div 
             className="w-[386px] h-[214px] rounded-[30px] bg-[#0000001A] backdrop-blur-[30px] flex flex-col items-center justify-between py-6 px-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="font-semibold text-[20px] leading-[100%] text-center text-[#D72229] mt-6 mb-0" style={{ fontFamily: 'Cairo, sans-serif' }}>
               {isUserCurrentlyBlocked ? 'رفع الحظر' : 'حظر'} لـ "{chatName || receiverData?.name || (isGroup ? 'هذه المجموعة' : 'هذا المستخدم')}"؟
             </h2>
-
+            
             <p className="font-semibold text-[14px] leading-loose text-center text-black max-w-[250px] mx-auto" style={{ fontFamily: 'Cairo, sans-serif' }}>
-              {isUserCurrentlyBlocked
+              {isUserCurrentlyBlocked 
                 ? 'بعد رفع الحظر، سيتمكن هذا المستخدم من التواصل معك مرة أخرى.'
                 : 'مش هيقدر يكلمك أو يشوف منشوراتك بعد كدا'
               }
             </p>
-
+            
             <div className="flex gap-4 justify-center w-full mt-2">
               <button
                 onClick={handleCancelBlock}
@@ -3565,3 +3924,4 @@ const renderReplyInput = () => {
     </div>
   );
 }
+
