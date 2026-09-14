@@ -1,3 +1,4 @@
+// src>app>chats>_compoents>ChatList.tsx
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -15,7 +16,7 @@ import ChatFilters from './ChatFilters';
 import { motion } from "framer-motion";
 import { toast } from 'react-hot-toast';
 import { Phone, Video } from "lucide-react";
-import Loader from '@/components/Loader';
+// import Loader from '@/components/Loader';
 
 
 type FilterType = 'all' | 'read' | 'unread' | 'starred' | 'groups' | 'calls';
@@ -27,20 +28,77 @@ type Props = {
 };
 
 /* ================= NORMALIZE ================= */
+// function normalizeChats(rawChats: any[], myId: string): ChatItem[] {
+//   if (!Array.isArray(rawChats)) return [];
+
+//   const map: Record<string, ChatItem> = {};
+  
+//   rawChats.forEach((chat) => {
+//     const otherId = chat.otherUserId || chat.id;
+//     const lastMsgText = typeof chat.lastMessage === 'string' 
+//       ? chat.lastMessage 
+//       : chat.lastMessage?.text || chat.lastMessage || '';
+
+//     const msgObj: Message = {
+//       _id: chat.id,
+//       sender: chat.lastMessage?.sender || otherId,
+//       receiver: myId,
+//       message: lastMsgText,
+//       timestamp: chat.timestamp || new Date().toISOString(),
+//       seenBy: chat.seen ?? chat.lastMessage?.seen ?? false,
+//       type: chat.lastMessageType || 'text',
+//     };
+
+//     map[otherId] = {
+//       chatId: otherId,
+//       chatType: chat.chatType || 'private',
+//       name: chat.name || 'مستخدم',
+//       avatar: chat.avatar || '',
+//       description: chat.description || '',
+//       userinfo: {
+//         _id: otherId,
+//         name: chat.name || 'مستخدم',
+//         img: chat.avatar || '/imgs/user.png',
+//         avatar: chat.avatar || '/imgs/user.png',
+//       },
+//       lastMessage: msgObj,
+//       unreadCount: chat.unreadCount || 0,
+//       seen: chat.seen ?? false,
+//       isGroup: chat.chatType === 'group',
+//       isFavorite: chat.isStarred || false,
+//       typing: false,
+//       members: chat.members || [],
+//       isAdmin: chat.isAdmin || false,
+//     };
+//   });
+
+//   return Object.values(map).sort(
+//     (a, b) =>
+//       new Date(b.lastMessage?.timestamp || 0).getTime() -
+//       new Date(a.lastMessage?.timestamp || 0).getTime()
+//   );
+// }
 function normalizeChats(rawChats: any[], myId: string): ChatItem[] {
   if (!Array.isArray(rawChats)) return [];
 
   const map: Record<string, ChatItem> = {};
   
   rawChats.forEach((chat) => {
-    const otherId = chat.otherUserId || chat.id;
+    const isGroup = chat.chatType === 'group' || chat.isGroup === true;
+    
+    // توحيد المعرف الأساسي للمجموعة أو الشات الفردي
+    const realGroupId = chat.groupId || chat.id || chat._id;
+    const chatKey = isGroup 
+      ? realGroupId 
+      : (chat.otherUserId || chat.id || chat.chatId);
+
     const lastMsgText = typeof chat.lastMessage === 'string' 
       ? chat.lastMessage 
       : chat.lastMessage?.text || chat.lastMessage || '';
 
     const msgObj: Message = {
-      _id: chat.id,
-      sender: chat.lastMessage?.sender || otherId,
+      _id: chat.id || chatKey,
+      sender: chat.lastMessage?.sender || chatKey,
       receiver: myId,
       message: lastMsgText,
       timestamp: chat.timestamp || new Date().toISOString(),
@@ -48,14 +106,15 @@ function normalizeChats(rawChats: any[], myId: string): ChatItem[] {
       type: chat.lastMessageType || 'text',
     };
 
-    map[otherId] = {
-      chatId: otherId,
-      chatType: chat.chatType || 'private',
+    map[chatKey] = {
+      chatId: chatKey,
+      groupId: isGroup ? realGroupId : undefined,
+      chatType: chat.chatType || (isGroup ? 'group' : 'private'),
       name: chat.name || 'مستخدم',
       avatar: chat.avatar || '',
       description: chat.description || '',
       userinfo: {
-        _id: otherId,
+        _id: chatKey,
         name: chat.name || 'مستخدم',
         img: chat.avatar || '/imgs/user.png',
         avatar: chat.avatar || '/imgs/user.png',
@@ -63,12 +122,12 @@ function normalizeChats(rawChats: any[], myId: string): ChatItem[] {
       lastMessage: msgObj,
       unreadCount: chat.unreadCount || 0,
       seen: chat.seen ?? false,
-      isGroup: chat.chatType === 'group',
+      isGroup: isGroup,
       isFavorite: chat.isStarred || false,
       typing: false,
       members: chat.members || [],
       isAdmin: chat.isAdmin || false,
-    };
+    } as any;
   });
 
   return Object.values(map).sort(
@@ -417,33 +476,96 @@ const showConfirmToast = (
   // };
 
   // ================= BULK ACTIONS =================
-const handleBulkDelete = async () => {
-  if (selectedChats.length === 0) return;
+// const handleBulkDelete = async () => {
+//   if (selectedChats.length === 0) return;
   
-  const chatCount = selectedChats.length;
-  const isPlural = chatCount > 1;
+//   const chatCount = selectedChats.length;
+//   const isPlural = chatCount > 1;
   
-  showConfirmToast(
-    ` أنت على وشك حذف ${chatCount} محادثة${isPlural ? 'ات' : ''}\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بهذه المحادثات، ولن تتمكن من استعادتها بعد الحذف.`,
-    async () => {
-      for (const chatId of selectedChats) {
-        const chat = chats.find(c => c.chatId === chatId);
-        if (chat) {
-          await handleDeleteChat(chatId, chat.chatType);
-        }
-      }
-      clearSelection();
-    },
-    () => {
-      toast('تم إلغاء عملية الحذف الجماعي', {
-        icon: '↩️',
-        duration: 2000,
-      });
-    },
-    `نعم، احذف ${chatCount} محادثة${isPlural ? 'ات' : ''}`,
-    'إلغاء'
-  );
-};
+//   showConfirmToast(
+//     ` أنت على وشك حذف ${chatCount} محادثة${isPlural ? 'ات' : ''}\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بهذه المحادثات، ولن تتمكن من استعادتها بعد الحذف.`,
+//     async () => {
+//       for (const chatId of selectedChats) {
+//         const chat = chats.find(c => c.chatId === chatId);
+//         if (chat) {
+//           await handleDeleteChat(chatId, chat.chatType);
+//         }
+//       }
+//       clearSelection();
+//     },
+//     () => {
+//       toast('تم إلغاء عملية الحذف الجماعي', {
+//         icon: '↩️',
+//         duration: 2000,
+//       });
+//     },
+//     `نعم، احذف ${chatCount} محادثة${isPlural ? 'ات' : ''}`,
+//     'إلغاء'
+//   );
+// };
+// const handleBulkDelete = async () => {
+//   if (selectedChats.length === 0) return;
+
+//   const chatCount = selectedChats.length;
+//   const chatLabel = chatCount === 1 ? 'محادثة واحدة' : `${chatCount} محادثات`;
+
+//   showConfirmToast(
+//     `أنت على وشك حذف ${chatLabel}\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بهذه المحادثات، ولن تتمكن من استعادتها بعد الحذف.`,
+//     async () => {
+//       try {
+//         // قائمة بحاويات الحذف
+//         const deletePromises = selectedChats.map(async (selectedId) => {
+//           const chat: any = chats.find(c => 
+//             c.chatId === selectedId || 
+//             c.groupId === selectedId ||
+//             c.id === selectedId ||
+//             c._id === selectedId
+//           );
+          
+//           if (chat) {
+//             const isGroup = chat.chatType === 'group' || chat.isGroup === true;
+//             const targetId = isGroup 
+//               ? (chat.groupId || chat.id || chat.chatId || selectedId) 
+//               : (chat.chatId || selectedId);
+//             const chatType = isGroup ? 'group' : 'direct';
+            
+//             return await performDeleteChat(targetId, chatType, false);
+//           } else {
+//             // في حال عدم وجود الكائن بالـ State نعتبره مجموعة ونمرر المعرف المباشر
+//             return await performDeleteChat(selectedId, 'group', false);
+//           }
+//         });
+
+//         await Promise.all(deletePromises);
+
+//         // ✅ التصفية الشاملة من الـ State
+//         const filterFn = (c: any) => {
+//           return !selectedChats.some(id => 
+//             id === c.chatId || 
+//             id === c.groupId || 
+//             id === c.id || 
+//             id === c._id
+//           );
+//         };
+
+//         setChats(prev => prev.filter(filterFn));
+//         setFilteredChats(prev => prev.filter(filterFn));
+
+//         toast.success(`تم حذف ${chatLabel} بنجاح`);
+//       } catch (error) {
+//         console.error("Error during bulk delete:", error);
+//         toast.error("حدث خطأ أثناء حذف بعض المحادثات");
+//       } finally {
+//         clearSelection();
+//       }
+//     },
+//     () => {
+//       toast('تم إلغاء عملية الحذف الجماعي', { icon: '↩️', duration: 2000 });
+//     },
+//     `نعم، احذف ${chatLabel}`,
+//     'إلغاء'
+//   );
+// };
   const handleBulkArchive = async () => {
     if (selectedChats.length === 0) return;
     
@@ -534,71 +656,143 @@ const handleBulkDelete = async () => {
   };
 
   // ================= FETCH GROUP DETAILS =================
-  const fetchGroupDetails = async (groupId: string) => {
-    if (!token) return null;
-    try {
-      const url = `${apiBase}/chats/groups/GetGroup/${groupId}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
+  // const fetchGroupDetails = async (groupId: string) => {
+  //   if (!token) return null;
+  //   try {
+  //     const url = `${apiBase}/chats/groups/GetGroup/${groupId}`;
+  //     const res = await fetch(url, {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //     });
+  //     if (!res.ok) return null;
+  //     const data = await res.json();
       
-      const groupData = data.response || data || {};
-      return {
-        ...groupData,
-        admins: groupData.admins || groupData.administrators || [],
-        owner: groupData.owner || groupData.createdBy || groupData.ownerId,
-      };
-    } catch (error) {
-      console.error('Error fetching group details:', error);
-      return null;
-    }
-  };
+  //     const groupData = data.response || data || {};
+  //     return {
+  //       ...groupData,
+  //       admins: groupData.admins || groupData.administrators || [],
+  //       owner: groupData.owner || groupData.createdBy || groupData.ownerId,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error fetching group details:', error);
+  //     return null;
+  //   }
+  // };
 
+  const fetchGroupDetails = async (groupId: string) => {
+  if (!token) return null;
+  try {
+    const url = `${apiBase}/chats/groups/GetGroup/${groupId}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    
+    const groupData = data.response || data || {};
+
+    // ✅ تحويل members للشكل الموحد مع الصور الفعلية
+    const formattedMembers = (groupData.members || []).map((m: any) => ({
+      _id: m.userId || m._id,
+      userId: m.userId || m._id,
+      name: m.name || 'مستخدم',
+      img: m.image || m.img || m.avatar || '/imgs/user.png',      // ✅ دعم كل الاحتمالات
+      avatar: m.image || m.img || m.avatar || '/imgs/user.png',
+      image: m.image || m.img || m.avatar || '/imgs/user.png',
+      username: m.username || m.name || '',
+      role: m.role,
+      isAdmin: m.role === 'admin' || m.role === 'owner',
+      isOwner: m.role === 'owner',
+      joinedAt: m.joinedAt,
+    }));
+
+    return {
+      ...groupData,
+      members: formattedMembers,                                  // ✅ الأعضاء بالصور الفعلية
+      admins: groupData.admins || groupData.administrators || [],
+      owner: groupData.owner || groupData.createdBy || groupData.ownerId,
+    };
+  } catch (error) {
+    console.error('Error fetching group details:', error);
+    return null;
+  }
+};
   const fetchChats = async (category: FilterType = 'all') => {
-    if (!myUserId || !token) return null;
-    try {
-      const url = `${apiBase}/chats/chats/${myUserId}?category=${category}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
-      const rawList = data.response || data.userchats || [];
-      
-      const enrichedList = await Promise.all(
-        rawList.map(async (chat: any) => {
-          if (chat.chatType === 'group' && chat.id) {
-            const groupDetails = await fetchGroupDetails(chat.id);
-            if (groupDetails) {
-              return {
-                ...chat,
-                description: groupDetails.description || '',
-                name: groupDetails.name || chat.name,
-                members: groupDetails.members || [],
-                admins: groupDetails.admins || [],
-                owner: groupDetails.owner || groupDetails.createdBy,
-              };
-            }
+  if (!myUserId || !token) return null;
+  try {
+    const url = `${apiBase}/chats/chats/${myUserId}?category=${category}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const data = await res.json();
+    const rawList = data.response || data.userchats || [];
+
+    // ✅ ADD THIS LOG - عشان نشوف الـ raw data
+    console.log('📥 RAW CHATS FROM API:', rawList.map((c: any) => ({
+      id: c.id,
+      _id: c._id,
+      groupId: c.groupId,
+      otherUserId: c.otherUserId,
+      chatType: c.chatType,
+      name: c.name,
+      isGroup: c.chatType === 'group',
+    })));
+
+    const enrichedList = await Promise.all(
+      rawList.map(async (chat: any) => {
+        if (chat.chatType === 'group' && chat.id) {
+          const groupDetails = await fetchGroupDetails(chat.id);
+          if (groupDetails) {
+            return {
+              ...chat,
+              description: groupDetails.description || '',
+              name: groupDetails.name || chat.name,
+              members: groupDetails.members || [],
+              admins: groupDetails.admins || [],
+              owner: groupDetails.owner || groupDetails.createdBy,
+            };
           }
-          return chat;
-        })
-      );
-      
-      const normalizedChats = normalizeChats(enrichedList, myUserId);
-      return normalizedChats;
-    } catch (error) {
-      console.error('Error fetching chats:', error);
-      return null;
-    }
-  };
+        }
+        return chat;
+      })
+    );
+
+    // ✅ ADD THIS LOG - عشان نشوف بعد الـ enrichment
+    console.log('📥 ENRICHED CHATS:', enrichedList.map((c: any) => ({
+      id: c.id,
+      groupId: c.groupId,
+      otherUserId: c.otherUserId,
+      chatType: c.chatType,
+      name: c.name,
+      isGroup: c.chatType === 'group',
+    })));
+
+    const normalizedChats = normalizeChats(enrichedList, myUserId);
+
+    // ✅ ADD THIS LOG - عشان نشوف بعد الـ normalize
+    console.log('📥 NORMALIZED CHATS:', normalizedChats.map((c: any) => ({
+      chatId: c.chatId,
+      groupId: c.groupId,
+      chatType: c.chatType,
+      name: c.name,
+      isGroup: c.isGroup,
+    })));
+
+    return normalizedChats;
+  } catch (error) {
+    console.error('Error fetching chats:', error);
+    return null;
+  }
+};
 
   useEffect(() => {
     async function load() {
@@ -730,13 +924,14 @@ const handleBulkDelete = async () => {
     }
   };
 
+   
   useEffect(() => {
-    if (activeFilter === 'all') {
-      setFilteredChats(chats);
-    } else {
-      setFilteredChats(filterChatsClientSide(chats, activeFilter));
-    }
-  }, [chats, activeFilter]);
+  if (activeFilter === 'all') {
+    setFilteredChats(chats);
+  } else {
+    setFilteredChats(filterChatsClientSide(chats, activeFilter));
+  }
+}, [chats, activeFilter]);
 
   const searchedChats = filteredChats.filter((chat) => {
     const userName = chat.userinfo?.name || '';
@@ -828,88 +1023,165 @@ const handleBulkDelete = async () => {
   };
 
   // ================= CREATE GROUP SUBMIT =================
-  const handleCreateGroupSubmit = async () => {
-    if (!groupName.trim() || !token) {
-      toast.error('يرجى إدخال اسم المجموعة');
-      return;
-    }
+  // const handleCreateGroupSubmit = async () => {
+  //   if (!groupName.trim() || !token) {
+  //     toast.error('يرجى إدخال اسم المجموعة');
+  //     return;
+  //   }
     
-    setIsSubmittingGroup(true);
+  //   setIsSubmittingGroup(true);
 
-    try {
-      const createRes = await fetch(`${apiBase}/chats/groups/CreateGroup`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: groupName,
-          description: groupDescription || "no"
-        })
-      });
+  //   try {
+  //     const createRes = await fetch(`${apiBase}/chats/groups/CreateGroup`, {
+  //       method: 'POST',
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         name: groupName,
+  //         description: groupDescription || "no"
+  //       })
+  //     });
 
-      const createData = await createRes.json();
-      if (!createData.success || !createData.response?.groupId) {
-        throw new Error(createData.response || "Failed to create group");
-      }
+  //     const createData = await createRes.json();
+  //     if (!createData.success || !createData.response?.groupId) {
+  //       throw new Error(createData.response || "Failed to create group");
+  //     }
 
-      const groupId = createData.response.groupId;
-      const members = [myUserId, ...selectedMembers];
+  //     const groupId = createData.response.groupId;
+  //     const members = [myUserId, ...selectedMembers];
       
-      const addMembersRes = await fetch(`${apiBase}/chats/groups/AddMembers/${groupId}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ members })
-      });
+  //     const addMembersRes = await fetch(`${apiBase}/chats/groups/AddMembers/${groupId}`, {
+  //       method: 'POST',
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ members })
+  //     });
 
-      const addMembersData = await addMembersRes.json();
-      if (!addMembersData.success) {
-        throw new Error(addMembersData.response || "Failed to add members");
-      }
+  //     const addMembersData = await addMembersRes.json();
+  //     if (!addMembersData.success) {
+  //       throw new Error(addMembersData.response || "Failed to add members");
+  //     }
 
-      for (const adminId of tempAdmins) {
-        try {
-          await fetch(`${apiBase}/chats/groups/PromoteAdmin/${groupId}`, {
+  //     for (const adminId of tempAdmins) {
+  //       try {
+  //         await fetch(`${apiBase}/chats/groups/PromoteAdmin/${groupId}`, {
+  //           method: 'POST',
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             'Content-Type': 'application/json',
+  //           },
+  //           body: JSON.stringify({ memberid: adminId })
+  //         });
+  //       } catch (error) {
+  //         console.error(`Failed to promote admin ${adminId}:`, error);
+  //       }
+  //     }
+
+  //     setIsCreateGroupOpen(false);
+  //     setIsMemberSelectionOpen(false);
+  //     setGroupName("");
+  //     setGroupDescription("");
+  //     setSelectedMembers([]);
+  //     setTempAdmins([]);
+  //     setGroupSearchTerm("");
+      
+  //     const normalized = await fetchChats('all');
+  //     if (normalized) {
+  //       setChats(normalized);
+  //       setFilteredChats(normalized);
+  //     }
+      
+  //     toast.success(' تم إنشاء المجموعة بنجاح');
+  //     router.push(`/chats/${groupId}`);
+      
+  //   } catch (error: any) {
+  //     console.error("Error creating group:", error);
+  //     toast.error(` فشل إنشاء المجموعة: ${error.message || 'خطأ غير معروف'}`);
+  //   } finally {
+  //     setIsSubmittingGroup(false);
+  //   }
+  // };
+
+  const handleCreateGroupSubmit = async () => {
+  if (!groupName.trim() || !token) {
+    toast.error('يرجى إدخال اسم المجموعة');
+    return;
+  }
+  
+  setIsSubmittingGroup(true);
+
+  try {
+    const formData = new FormData();
+    formData.append('name', groupName.trim());
+    formData.append('description', groupDescription.trim() || '');
+
+    // استبعاد صاحب المجموعة من قائمة الأعضاء لتجنب التكرار
+    const membersOnly = selectedMembers.filter((id) => id !== myUserId);
+
+    membersOnly.forEach((memberId) => {
+      formData.append('members', memberId);
+    });
+
+    const createRes = await fetch(`${apiBase}/chats/groups/CreateGroup`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    const createData = await createRes.json();
+    if (!createData.success || !createData.response?.groupId) {
+      throw new Error(createData.response || "Failed to create group");
+    }
+
+    const groupId = createData.response.groupId;
+
+    // ترقية المشرفين بشكل متوازي
+    if (tempAdmins.length > 0) {
+      await Promise.all(
+        tempAdmins.map((adminId) =>
+          fetch(`${apiBase}/chats/groups/PromoteAdmin/${groupId}`, {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ memberid: adminId })
-          });
-        } catch (error) {
-          console.error(`Failed to promote admin ${adminId}:`, error);
-        }
-      }
-
-      setIsCreateGroupOpen(false);
-      setIsMemberSelectionOpen(false);
-      setGroupName("");
-      setGroupDescription("");
-      setSelectedMembers([]);
-      setTempAdmins([]);
-      setGroupSearchTerm("");
-      
-      const normalized = await fetchChats('all');
-      if (normalized) {
-        setChats(normalized);
-        setFilteredChats(normalized);
-      }
-      
-      toast.success(' تم إنشاء المجموعة بنجاح');
-      router.push(`/chats/${groupId}`);
-      
-    } catch (error: any) {
-      console.error("Error creating group:", error);
-      toast.error(` فشل إنشاء المجموعة: ${error.message || 'خطأ غير معروف'}`);
-    } finally {
-      setIsSubmittingGroup(false);
+            body: JSON.stringify({ memberid: adminId }),
+          }).catch((err) => console.error(`Failed to promote admin ${adminId}:`, err))
+        )
+      );
     }
-  };
+
+    // إعادة إعادة ضبط الحالة (State)
+    setIsCreateGroupOpen(false);
+    setIsMemberSelectionOpen(false);
+    setGroupName("");
+    setGroupDescription("");
+    setSelectedMembers([]);
+    setTempAdmins([]);
+    setGroupSearchTerm("");
+    
+    const normalized = await fetchChats('all');
+    if (normalized) {
+      setChats(normalized);
+      setFilteredChats(normalized);
+    }
+    
+    toast.success('تم إنشاء المجموعة بنجاح');
+    router.push(`/chats/${groupId}`);
+    
+  } catch (error: any) {
+    console.error("Error creating group:", error);
+    toast.error(`فشل إنشاء المجموعة: ${error.message || 'خطأ غير معروف'}`);
+  } finally {
+    setIsSubmittingGroup(false);
+  }
+};
 
   const toggleMemberSelection = (chatId: string) => {
     setSelectedMembers(prev => 
@@ -918,272 +1190,536 @@ const handleBulkDelete = async () => {
   };
 
   // ================= GROUP AVATAR RENDERER =================
-  const renderGroupAvatar = (chat: ChatItem) => {
-    let members = chat.members || [];
+  // const renderGroupAvatar = (chat: ChatItem) => {
+  //   let members = chat.members || [];
     
-    if (members.length === 0) {
-      const otherMember = {
-        _id: chat.chatId,
-        name: chat.name,
-        img: chat.userinfo?.img || chat.avatar || '/imgs/user.png',
-        avatar: chat.userinfo?.avatar || chat.avatar || '/imgs/user.png',
-      };
+  //   if (members.length === 0) {
+  //     const otherMember = {
+  //       _id: chat.chatId,
+  //       name: chat.name,
+  //       img: chat.userinfo?.img || chat.avatar || '/imgs/user.png',
+  //       avatar: chat.userinfo?.avatar || chat.avatar || '/imgs/user.png',
+  //     };
       
-      let currentUserImg = '/imgs/user.png';
-      try {
-        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        currentUserImg = userData.img || userData.avatar || '/imgs/user.png';
-      } catch (e) {
-        currentUserImg = '/imgs/user.png';
-      }
+  //     let currentUserImg = '/imgs/user.png';
+  //     try {
+  //       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+  //       currentUserImg = userData.img || userData.avatar || '/imgs/user.png';
+  //     } catch (e) {
+  //       currentUserImg = '/imgs/user.png';
+  //     }
       
-      const currentUser = {
-        _id: myUserId,
-        name: 'أنت',
-        img: currentUserImg,
-        avatar: currentUserImg,
-      };
-      members = [currentUser, otherMember];
-    }
+  //     const currentUser = {
+  //       _id: myUserId,
+  //       name: 'أنت',
+  //       img: currentUserImg,
+  //       avatar: currentUserImg,
+  //     };
+  //     members = [currentUser, otherMember];
+  //   }
     
-    const memberCount = members.length;
+  //   const memberCount = members.length;
     
-    const getMemberImage = (index: number) => {
-      const member = members[index];
-      return member?.img || member?.avatar || '/imgs/user.png';
+  //   const getMemberImage = (index: number) => {
+  //     const member = members[index];
+  //     return member?.img || member?.avatar || '/imgs/user.png';
+  //   };
+
+  //   const GroupIcon = () => (
+  //     <div 
+  //       style={{
+  //         position: 'absolute',
+  //         width: '19px',
+  //         height: '19px',
+  //         top: '50%',
+  //         left: '50%',
+  //         transform: 'translate(-50%, -50%)',
+  //         borderRadius: '8px',
+  //         background: '#FFFFFF',
+  //         display: 'flex',
+  //         alignItems: 'center',
+  //         justifyContent: 'center',
+  //         zIndex: 10,
+  //         pointerEvents: 'none',
+  //         boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
+  //       }}
+  //     >
+  //       <img 
+  //         src="/imgs/Group.svg" 
+  //         alt="Group" 
+  //         style={{
+  //           width: '10.909222602844238px',
+  //           height: '10.909222602844238px',
+  //         }}
+  //       />
+  //     </div>
+  //   );
+
+  //   if (memberCount < 2) {
+  //     return (
+  //       <div 
+  //         className="relative w-[60px] h-[60px] rounded-[15px] overflow-hidden flex-shrink-0  flex items-center justify-center"
+  //       >
+  //         <img 
+  //           src="imgs/person1.svg"
+  //           alt="Member" 
+  //           className="w-full h-full object-cover rounded-[15px] p-1" 
+  //         />
+  //         <GroupIcon />
+  //       </div>
+  //     );
+  //   }
+
+  //   if (memberCount === 2) {
+  //     return (
+  //       <div
+  //         className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0"
+  //       >
+  //         <img
+  //           src="imgs/person1.svg"
+  //           alt="Member 1"
+  //           className="absolute object-cover"
+  //           style={{
+  //             width: '34.0913200378418',
+  //             height: '34.0913200378418',
+  //             top: '9px',
+  //             left: '25px',
+  //             objectFit: 'cover',
+  //             borderRadius: '15px',
+  //             zIndex: 1,
+  //           }}
+  //         />
+  //         <img
+  //           src="imgs/person2.svg"
+  //           alt="Member 2"
+  //           className="absolute object-cover"
+  //           style={{
+  //             width: '34.0913200378418',
+  //             height: '34.0913200378418',
+  //             top: '9px',
+  //             left: '1px',
+  //             objectFit: 'cover',
+  //             borderRadius: '15px',
+  //             zIndex: 2,
+  //           }}
+  //         />
+  //         <GroupIcon />
+  //       </div>
+  //     );
+  //   }
+
+  //   if (memberCount === 3) { 
+  //     return ( 
+  //       <div 
+  //         className="relative w-[60px] h-[60px]  overflow-hidden flex-shrink-0 " 
+  //       > 
+  //         <img 
+  //           src="imgs/person1.svg" 
+  //           alt="Member 1" 
+  //           className="absolute object-cover  rounded-[15px]" 
+  //           style={{ 
+  //             width: '34px', 
+  //             height: '34px', 
+  //             top: '4px', 
+  //             right: '6px', 
+  //             zIndex: 1, 
+  //           }} 
+  //         /> 
+  //         <img 
+  //           src="imgs/person2.svg" 
+  //           alt="Member 2" 
+  //           className="absolute object-cover  rounded-[15px]" 
+  //           style={{ 
+  //             width: '34px', 
+  //             height: '34px', 
+  //             top: '4px', 
+  //             left: '-2px', 
+  //             zIndex: 1, 
+  //           }} 
+  //         /> 
+  //         <img 
+  //           src="imgs/person2.svg" 
+  //           alt="Member 3" 
+  //           className="absolute object-cover  rounded-[15px]" 
+  //           style={{ 
+  //             width: '34px', 
+  //             height: '34px', 
+  //             bottom: '4px', 
+  //             left: '50%', 
+  //             transform: 'translateX(-50%)', 
+  //             zIndex: 2, 
+  //           }} 
+  //         /> 
+  //         <GroupIcon /> 
+  //       </div> 
+  //     ); 
+  //   }
+
+  //   if (memberCount === 4) {
+  //     return (
+  //       <div 
+  //         className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0 "
+  //       >
+  //         <img 
+  //           src="imgs/person1.svg" 
+  //           alt="Member 1" 
+  //           className="absolute object-cover  rounded-[15px]" 
+  //           style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
+  //         /> 
+  //         <img 
+  //           src="imgs/person2.svg"  
+  //           alt="Member 2" 
+  //           className="absolute object-cover  rounded-[15px]" 
+  //           style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
+  //         /> 
+  //         <img 
+  //           src="imgs/person2.svg" 
+  //           alt="Member 3" 
+  //           className="absolute object-cover  rounded-[15px]" 
+  //           style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }} 
+  //         /> 
+  //         <img 
+  //           src="imgs/person1.svg" 
+  //           alt="Member 4" 
+  //           className="absolute object-cover rounded-[15px] " 
+  //           style={{ width: '34px', height: '34px', bottom: '2px', right: '2px', zIndex: 1 }} 
+  //         /> 
+  //         <GroupIcon /> 
+  //       </div>
+  //     );
+  //   }
+
+  //   if (memberCount >= 5) {
+  //     const extraCount = memberCount - 3; 
+  //     return (
+  //       <div className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0">
+  //         <img 
+  //           src="imgs/person1.svg" 
+  //           alt="Member 1" 
+  //           className="absolute object-cover rounded-[15px]" 
+  //           style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
+  //         /> 
+  //         <img 
+  //           src="imgs/person2.svg" 
+  //           alt="Member 2" 
+  //           className="absolute object-cover rounded-[15px]" 
+  //           style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
+  //         /> 
+  //         <div 
+  //           className="absolute flex items-center justify-center bg-[#DADADA] text-[#000000] font-bold text-[12px] rounded-[15px] shadow-sm"
+  //           style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }}
+  //         >
+  //           {extraCount}
+  //         </div>
+  //         <img 
+  //           src="imgs/person1.svg" 
+  //           alt="Member 3" 
+  //           className="absolute object-cover rounded-[15px]" 
+  //           style={{ 
+  //             width: '34.09px', 
+  //             height: '34.09px', 
+  //             bottom: '2px', 
+  //             right: '2px', 
+  //             zIndex: 1,
+  //           }} 
+  //         />
+  //         <GroupIcon /> 
+  //       </div>
+  //     );
+  //   }
+
+  //   return (
+  //     <div 
+  //       className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0"
+  //     >
+  //       <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
+  //         {members.slice(0, 3).map((member: any, index: number) => {
+  //           let colSpan = index === 2 ? 'col-span-2' : 'col-span-1';
+  //           return (
+  //             <img
+  //               key={index}
+  //               src={getMemberImage(index)}
+  //               alt="Member"
+  //               className={`w-full h-full object-cover ${colSpan} row-span-1`}
+  //             />
+  //           );
+  //         })}
+  //         {members.length > 3 && (
+  //           <div 
+  //             className="absolute bottom-0 right-0 w-1/2 h-1/2 flex items-center justify-center bg-black/70 text-white text-[10px] font-bold rounded-br-[25px] z-20"
+  //           >
+  //             +{members.length - 3}
+  //           </div>
+  //         )}
+  //       </div>
+  //       <GroupIcon />
+  //     </div>
+  //   );
+  // };
+
+  // ================= GROUP AVATAR RENDERER =================
+const renderGroupAvatar = (chat: ChatItem) => {
+  let members = chat.members || [];
+  
+  if (members.length === 0) {
+    const otherMember = {
+      _id: chat.chatId,
+      name: chat.name,
+      img: chat.userinfo?.img || chat.avatar || '/imgs/user.png',
+      avatar: chat.userinfo?.avatar || chat.avatar || '/imgs/user.png',
     };
+    
+    let currentUserImg = '/imgs/user.png';
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+      currentUserImg = userData.img || userData.avatar || '/imgs/user.png';
+    } catch (e) {
+      currentUserImg = '/imgs/user.png';
+    }
+    
+    const currentUser = {
+      _id: myUserId,
+      name: 'أنت',
+      img: currentUserImg,
+      avatar: currentUserImg,
+    };
+    members = [currentUser, otherMember];
+  }
+  
+  const memberCount = members.length;
+  
+  // ✅ دالة جلب صورة العضو الفعلية من الـ API
+  const getMemberImage = (index: number) => {
+    const member = members[index];
+    return member?.img || member?.avatar || member?.image || '/imgs/user.png';
+  };
 
-    const GroupIcon = () => (
-      <div 
+  const GroupIcon = () => (
+    <div 
+      style={{
+        position: 'absolute',
+        width: '19px',
+        height: '19px',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        borderRadius: '8px',
+        background: '#FFFFFF',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+        pointerEvents: 'none',
+        boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
+      }}
+    >
+      <img 
+        src="/imgs/Group.svg" 
+        alt="Group" 
         style={{
-          position: 'absolute',
-          width: '19px',
-          height: '19px',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          borderRadius: '8px',
-          background: '#FFFFFF',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10,
-          pointerEvents: 'none',
-          boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
+          width: '10.909222602844238px',
+          height: '10.909222602844238px',
         }}
-      >
-        <img 
-          src="/imgs/Group.svg" 
-          alt="Group" 
-          style={{
-            width: '10.909222602844238px',
-            height: '10.909222602844238px',
-          }}
-        />
-      </div>
-    );
+      />
+    </div>
+  );
 
-    if (memberCount < 2) {
-      return (
-        <div 
-          className="relative w-[60px] h-[60px] rounded-[15px] overflow-hidden flex-shrink-0  flex items-center justify-center"
-        >
-          <img 
-            src="imgs/person1.svg"
-            alt="Member" 
-            className="w-full h-full object-cover rounded-[15px] p-1" 
-          />
-          <GroupIcon />
-        </div>
-      );
-    }
-
+ if (memberCount < 2) {
+  return (
+    <div className="relative w-[60px] h-[60px] rounded-[15px] overflow-hidden flex-shrink-0 flex items-center justify-center">
+      <img 
+        src={getMemberImage(0)} 
+        alt="Member" 
+        className="w-full h-full object-cover rounded-[25px] p-1" 
+      />
+      <GroupIcon />
+    </div>
+  );
+}
     if (memberCount === 2) {
-      return (
-        <div
-          className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0"
-        >
-          <img
-            src="imgs/person1.svg"
-            alt="Member 1"
-            className="absolute object-cover"
-            style={{
-              width: '34.0913200378418',
-              height: '34.0913200378418',
-              top: '9px',
-              left: '25px',
-              objectFit: 'cover',
-              borderRadius: '15px',
-              zIndex: 1,
-            }}
-          />
-          <img
-            src="imgs/person2.svg"
-            alt="Member 2"
-            className="absolute object-cover"
-            style={{
-              width: '34.0913200378418',
-              height: '34.0913200378418',
-              top: '9px',
-              left: '1px',
-              objectFit: 'cover',
-              borderRadius: '15px',
-              zIndex: 2,
-            }}
-          />
-          <GroupIcon />
-        </div>
-      );
-    }
+  return (
+    <div className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0">
+      <img
+        src={getMemberImage(1)}   
+        alt="Member 1"
+        className="absolute object-cover"
+        style={{
+          width: '34.0913200378418px',
+          height: '34.0913200378418px',
+          top: '9px',
+          left: '25px',
+          objectFit: 'cover',
+          borderRadius: '15px',
+          zIndex: 1,
+        }}
+      />
+      <img
+        src={getMemberImage(0)} // الصورة الفعلية للعضو الأول
+        alt="Member 2"
+        className="absolute object-cover"
+        style={{
+          width: '34.0913200378418px',
+          height: '34.0913200378418px',
+          top: '9px',
+          left: '1px',
+          objectFit: 'cover',
+          borderRadius: '15px',
+          zIndex: 2,
+        }}
+      />
+      <GroupIcon />
+    </div>
+  );
+}
 
-    if (memberCount === 3) { 
-      return ( 
-        <div 
-          className="relative w-[60px] h-[60px]  overflow-hidden flex-shrink-0 " 
-        > 
-          <img 
-            src="imgs/person1.svg" 
-            alt="Member 1" 
-            className="absolute object-cover  rounded-[15px]" 
-            style={{ 
-              width: '34px', 
-              height: '34px', 
-              top: '4px', 
-              right: '6px', 
-              zIndex: 1, 
-            }} 
-          /> 
-          <img 
-            src="imgs/person2.svg" 
-            alt="Member 2" 
-            className="absolute object-cover  rounded-[15px]" 
-            style={{ 
-              width: '34px', 
-              height: '34px', 
-              top: '4px', 
-              left: '-2px', 
-              zIndex: 1, 
-            }} 
-          /> 
-          <img 
-            src="imgs/person2.svg" 
-            alt="Member 3" 
-            className="absolute object-cover  rounded-[15px]" 
-            style={{ 
-              width: '34px', 
-              height: '34px', 
-              bottom: '4px', 
-              left: '50%', 
-              transform: 'translateX(-50%)', 
-              zIndex: 2, 
-            }} 
-          /> 
-          <GroupIcon /> 
-        </div> 
-      ); 
-    }
+  if (memberCount === 3) { 
+    return ( 
+      <div 
+        className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0" 
+      > 
+        <img 
+          src={getMemberImage(1)}  // ✅ الصورة الفعلية
+          alt="Member 1" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ 
+            width: '34px', 
+            height: '34px', 
+            top: '4px', 
+            right: '6px', 
+            zIndex: 1, 
+          }} 
+        /> 
+        <img 
+          src={getMemberImage(2)}  // ✅ الصورة الفعلية
+          alt="Member 2" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ 
+            width: '34px', 
+            height: '34px', 
+            top: '4px', 
+            left: '-2px', 
+            zIndex: 1, 
+          }} 
+        /> 
+        <img 
+          src={getMemberImage(0)}  // ✅ الصورة الفعلية
+          alt="Member 3" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ 
+            width: '34px', 
+            height: '34px', 
+            bottom: '4px', 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            zIndex: 2, 
+          }} 
+        /> 
+        <GroupIcon /> 
+      </div> 
+    ); 
+  }
 
-    if (memberCount === 4) {
-      return (
-        <div 
-          className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0 "
-        >
-          <img 
-            src="imgs/person1.svg" 
-            alt="Member 1" 
-            className="absolute object-cover  rounded-[15px]" 
-            style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
-          /> 
-          <img 
-            src="imgs/person2.svg"  
-            alt="Member 2" 
-            className="absolute object-cover  rounded-[15px]" 
-            style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
-          /> 
-          <img 
-            src="imgs/person2.svg" 
-            alt="Member 3" 
-            className="absolute object-cover  rounded-[15px]" 
-            style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }} 
-          /> 
-          <img 
-            src="imgs/person1.svg" 
-            alt="Member 4" 
-            className="absolute object-cover rounded-[15px] " 
-            style={{ width: '34px', height: '34px', bottom: '2px', right: '2px', zIndex: 1 }} 
-          /> 
-          <GroupIcon /> 
-        </div>
-      );
-    }
-
-    if (memberCount >= 5) {
-      const extraCount = memberCount - 3; 
-      return (
-        <div className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0">
-          <img 
-            src="imgs/person1.svg" 
-            alt="Member 1" 
-            className="absolute object-cover rounded-[15px]" 
-            style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
-          /> 
-          <img 
-            src="imgs/person2.svg" 
-            alt="Member 2" 
-            className="absolute object-cover rounded-[15px]" 
-            style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
-          /> 
-          <div 
-            className="absolute flex items-center justify-center bg-[#DADADA] text-[#000000] font-bold text-[12px] rounded-[15px] shadow-sm"
-            style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }}
-          >
-            {extraCount}
-          </div>
-          <img 
-            src="imgs/person1.svg" 
-            alt="Member 3" 
-            className="absolute object-cover rounded-[15px]" 
-            style={{ 
-              width: '34.09px', 
-              height: '34.09px', 
-              bottom: '2px', 
-              right: '2px', 
-              zIndex: 1,
-            }} 
-          />
-          <GroupIcon /> 
-        </div>
-      );
-    }
-
+  if (memberCount === 4) {
     return (
       <div 
-        className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0"
+        className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0"
       >
-        <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
-          {members.slice(0, 3).map((member: any, index: number) => {
-            let colSpan = index === 2 ? 'col-span-2' : 'col-span-1';
-            return (
-              <img
-                key={index}
-                src={getMemberImage(index)}
-                alt="Member"
-                className={`w-full h-full object-cover ${colSpan} row-span-1`}
-              />
-            );
-          })}
-          {members.length > 3 && (
-            <div 
-              className="absolute bottom-0 right-0 w-1/2 h-1/2 flex items-center justify-center bg-black/70 text-white text-[10px] font-bold rounded-br-[25px] z-20"
-            >
-              +{members.length - 3}
-            </div>
-          )}
-        </div>
-        <GroupIcon />
+        <img 
+          src={getMemberImage(0)}  // ✅ الصورة الفعلية
+          alt="Member 1" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
+        /> 
+        <img 
+          src={getMemberImage(1)}  // ✅ الصورة الفعلية
+          alt="Member 2" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
+        /> 
+        <img 
+          src={getMemberImage(2)}  // ✅ الصورة الفعلية
+          alt="Member 3" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }} 
+        /> 
+        <img 
+          src={getMemberImage(3)}  // ✅ الصورة الفعلية
+          alt="Member 4" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ width: '34px', height: '34px', bottom: '2px', right: '2px', zIndex: 1 }} 
+        /> 
+        <GroupIcon /> 
       </div>
     );
-  };
+  }
+
+  if (memberCount >= 5) {
+    const extraCount = memberCount - 3; 
+    return (
+      <div className="relative w-[60px] h-[60px] overflow-hidden flex-shrink-0">
+        <img 
+          src={getMemberImage(0)}  // ✅ الصورة الفعلية
+          alt="Member 1" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ width: '34px', height: '34px', top: '2px', left: '2px', zIndex: 3 }} 
+        /> 
+        <img 
+          src={getMemberImage(1)}  // ✅ الصورة الفعلية
+          alt="Member 2" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ width: '34px', height: '34px', top: '2px', right: '2px', zIndex: 2 }} 
+        /> 
+        <div 
+          className="absolute flex items-center justify-center bg-[#DADADA] text-[#000000] font-bold text-[12px] rounded-[15px] shadow-sm"
+          style={{ width: '34px', height: '34px', bottom: '2px', left: '2px', zIndex: 4 }}
+        >
+          {extraCount}
+        </div>
+        <img 
+          src={getMemberImage(2)}  // ✅ الصورة الفعلية
+          alt="Member 3" 
+          className="absolute object-cover rounded-[15px]" 
+          style={{ 
+            width: '34.09px', 
+            height: '34.09px', 
+            bottom: '2px', 
+            right: '2px', 
+            zIndex: 1,
+          }} 
+        />
+        <GroupIcon /> 
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="relative w-[60px] h-[60px] rounded-[25px] border border-white overflow-hidden flex-shrink-0"
+    >
+      <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
+        {members.slice(0, 3).map((member: any, index: number) => {
+          let colSpan = index === 2 ? 'col-span-2' : 'col-span-1';
+          return (
+            <img
+              key={index}
+              src={getMemberImage(index)}  // ✅ الصورة الفعلية
+              alt="Member"
+              className={`w-full h-full object-cover ${colSpan} row-span-1`}
+            />
+          );
+        })}
+        {members.length > 3 && (
+          <div 
+            className="absolute bottom-0 right-0 w-1/2 h-1/2 flex items-center justify-center bg-black/70 text-white text-[10px] font-bold rounded-br-[25px] z-20"
+          >
+            +{members.length - 3}
+          </div>
+        )}
+      </div>
+      <GroupIcon />
+    </div>
+  );
+};
 
   // ================= BLOCK/UNBLOCK USER =================
   // const handleBlockUser = async (chatId: string) => {
@@ -1465,66 +2001,334 @@ const handleBlockUser = async (chatId: string) => {
   // };
 
   // ================= DELETE CHAT =================
+// const handleDeleteChat = async (chatId: string, chatType: string) => {
+//   if (!token) return;
+  
+//   // البحث عن اسم المحادثة
+//   const chat = chats.find(c => c.chatId === chatId);
+//   const chatName = chat?.name || 'هذه المحادثة';
+//   const isGroupChat = chatType === 'group' || chat?.isGroup;
+  
+//   const confirmMessage = isGroupChat
+//     ? `أنت على وشك حذف المجموعة "${chatName}" بالكامل\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمجموعة، ولن تتمكن من استعادتها بعد الحذف.`
+//     : ` أنت على وشك حذف المحادثة مع "${chatName}"\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمحادثة، ولن تتمكن من استعادتها بعد الحذف.`;
+  
+//   showConfirmToast(
+//     confirmMessage,
+//     async () => {
+//       try {
+//         const response = await fetch(`${apiBase}/chats/chats/delete`, {
+//           method: 'DELETE',
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             'Content-Type': 'application/json',
+//           },
+//           body: JSON.stringify({ 
+//             chatId: chatId,
+//             chatType: chatType
+//           })
+//         });
+
+//         const data = await response.json();
+        
+//         if (data.success) {
+//           toast.success(' تم حذف المحادثة بنجاح');
+//           setChats(prev => prev.filter(c => c.chatId !== chatId));
+//           setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+          
+//           if (activeChatId === chatId) {
+//             router.push('/chats');
+//           }
+          
+//           setOpenDropdown(null);
+//         } else {
+//           toast.error(` فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
+//         }
+//       } catch (error) {
+//         console.error('Error deleting chat:', error);
+//         toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
+//       }
+//     },
+//     () => {
+//       setOpenDropdown(null);
+//       toast('تم إلغاء عملية الحذف', {
+//         icon: '↩️',
+//         duration: 2000,
+//       });
+//     },
+//     'نعم، احذف', // زر التأكيد
+//     'إلغاء' // زر الإلغاء
+//   );
+// };
+// 1. دالة الحذف المباشر (تتعامل مع الـ API وتحديد النوع والتحكم بالإشعارات)
+// const performDeleteChat = async (chatId: string, chatType: string, showToast: boolean = true) => {
+//   if (!token) return false;
+
+//   const chat = chats.find(c => c.chatId === chatId);
+//   // ✅ تحديد النوع بشكل أكثر دقة
+//   const isGroupChat = chatType === 'group' || chat?.isGroup === true || chat?.chatType === 'group';
+
+//   // ✅ اختيار المسار والـ Method حسب نوع المحادثة
+//   const endpoint = isGroupChat
+//     ? `${apiBase}/chats/groups/DeleteGroup/${chatId}`
+//     : `${apiBase}/chats/delete/${chatId}`;
+
+//   const method = isGroupChat ? 'POST' : 'DELETE';
+
+//   console.log(`🗑️ Deleting chat: ${chatId} | isGroup: ${isGroupChat} | endpoint: ${endpoint} | method: ${method}`);
+
+//   try {
+//     const response = await fetch(endpoint, {
+//       method: method,
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//         'Content-Type': 'application/json',
+//       },
+//     });
+
+//     const data = await response.json();
+//     console.log('🗑️ Delete response:', data);
+
+//     // ✅ تحقق من success بشكل أكثر شمولاً
+//     const isSuccess = 
+//       response.ok && (
+//         data.success === true ||
+//         data.response?.deleted === true ||
+//         data.status === 'success'
+//       );
+
+//     if (isSuccess) {
+//       if (showToast) {
+//         toast.success('تم حذف المحادثة بنجاح');
+//       }
+//       return true;
+//     } else {
+//       if (showToast) {
+//         toast.error(`فشل حذف المحادثة: ${data.response?.message || data.response || data.message || 'خطأ غير معروف'}`);
+//       }
+//       return false;
+//     }
+//   } catch (error) {
+//     console.error('Error deleting chat:', error);
+//     if (showToast) {
+//       toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
+//     }
+//     return false;
+//   }
+// };
+// // 2. دالة الحذف الفردي (تعرض رسالة التأكيد وتحدث الـ State)
+// const handleDeleteChat = async (chatId: string, chatType: string) => {
+//   if (!token) return;
+
+//   const chat = chats.find(c => c.chatId === chatId);
+//   const chatName = chat?.name || 'هذه المحادثة';
+//   const isGroupChat = chatType === 'group' || chat?.isGroup === true || chat?.chatType === 'group';
+
+//   const confirmMessage = isGroupChat
+//     ? `أنت على وشك حذف المجموعة "${chatName}" بالكامل\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمجموعة، ولن تتمكن من استعادتها بعد الحذف.`
+//     : `أنت على وشك حذف المحادثة مع "${chatName}"\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمحادثة، ولن تتمكن من استعادتها بعد الحذف.`;
+
+//   showConfirmToast(
+//     confirmMessage,
+//     async () => {
+//       const isSuccess = await performDeleteChat(chatId, chatType, true);
+
+//       if (isSuccess) {
+//         // ✅ تحديث الـ state بشكل فوري ومتزامن
+//         setChats(prev => prev.filter(c => c.chatId !== chatId));
+//         setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+
+//         // ✅ لو المحادثة الحالية هي المفتوحة، ارجعي لصفحة الشات
+//         if (activeChatId === chatId) {
+//           router.push('/chats');
+//         }
+//       }
+//       setOpenDropdown(null);
+//     },
+//     () => {
+//       setOpenDropdown(null);
+//       toast('تم إلغاء عملية الحذف', { icon: '↩️', duration: 2000 });
+//     },
+//     'نعم، احذف',
+//     'إلغاء'
+//   );
+// };
+
+// 1. دالة الحذف المباشر (تتعامل مع الـ API مباشرة)
+ const performDeleteChat = async (chatId: string, chatType: string, showToast: boolean = true) => {
+  if (!token) {
+    if (showToast) toast.error('يرجى تسجيل الدخول أولاً');
+    return false;
+  }
+
+  const chat: any = chats.find(c => 
+    c.chatId === chatId || 
+    c.groupId === chatId || 
+    c.id === chatId || 
+    c._id === chatId
+  );
+
+  const isGroupChat = chatType === 'group' || chat?.isGroup === true || chat?.chatType === 'group';
+  const targetId = isGroupChat 
+    ? (chat?.groupId || chat?.id || chat?._id || chatId) 
+    : (chat?.chatId || chatId);
+
+  // 1. الرابط المباشر
+  const endpoint = isGroupChat
+    ? `${apiBase}/chats/groups/DeleteGroup/${targetId}`
+    : `${apiBase}/chats/delete/${targetId}`;
+
+  try {
+    // 💡 المحاولة الأولى: استخدام طريقة DELETE (بدل POST)
+    let response = await fetch(endpoint, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // 💡 المحاولة الثانية: إذا كان السيرفر يتطلب Case مختلفة للرابط (DeleteGroup vs deleteGroup)
+    if (response.status === 404 && isGroupChat) {
+      const fallbackEndpoint = `${apiBase}/chats/groups/deleteGroup/${targetId}`;
+      response = await fetch(fallbackEndpoint, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = { success: response.ok, response: responseText };
+    }
+
+    const isSuccess = response.ok && (
+      data.success === true ||
+      data.response?.deleted === true ||
+      data.status === 'success' ||
+      response.status === 200
+    );
+
+    if (isSuccess) {
+      if (showToast) toast.success(isGroupChat ? 'تم حذف المجموعة بنجاح' : 'تم حذف المحادثة بنجاح');
+      return true;
+    } else {
+      if (showToast) toast.error(`فشل الحذف من السيرفر (${response.status})`);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error during delete:', error);
+    if (showToast) toast.error('حدث خطأ في الاتصال بالسيرفر');
+    return false;
+  }
+};
+const handleBulkDelete = async () => {
+  console.log('🔘 [CLICKED BULK DELETE], Selected items:', selectedChats);
+
+  if (!selectedChats || selectedChats.length === 0) {
+    console.warn('⚠️ القائمة المحددة فارغة');
+    return;
+  }
+
+  try {
+    // 1. تنفيذ الحذف عبر الـ API لكل عناصر المصفوفة
+    for (const selectedId of selectedChats) {
+      const chat: any = chats.find(c => 
+        c.chatId === selectedId || 
+        c.groupId === selectedId || 
+        c.id === selectedId || 
+        c._id === selectedId
+      );
+
+      const isGroup = chat ? (chat.chatType === 'group' || chat.isGroup) : true;
+      const targetId = chat ? (chat.groupId || chat.id || chat.chatId || selectedId) : selectedId;
+      const type = isGroup ? 'group' : 'direct';
+
+      await performDeleteChat(targetId, type, false);
+    }
+
+    // 2. تحديث الـ State بعد الحذف
+    setChats(prev => prev.filter(c => 
+      !selectedChats.includes(c.chatId) && 
+      !selectedChats.includes(c.groupId) && 
+      !selectedChats.includes(c.id)
+    ));
+
+    setFilteredChats(prev => prev.filter(c => 
+      !selectedChats.includes(c.chatId) && 
+      !selectedChats.includes(c.groupId) && 
+      !selectedChats.includes(c.id)
+    ));
+
+    toast.success('تم حذف العناصر المحددة');
+  } catch (err) {
+    console.error('❌ [BULK DELETE FAILED]:', err);
+  } finally {
+    clearSelection();
+  }
+};
+// 2. دالة الحذف الفردي للمجموعة/المحادثة
 const handleDeleteChat = async (chatId: string, chatType: string) => {
   if (!token) return;
+
+  const chat: any = chats.find(c => 
+    c.chatId === chatId || 
+    c.groupId === chatId || 
+    c.id === chatId
+  );
   
-  // البحث عن اسم المحادثة
-  const chat = chats.find(c => c.chatId === chatId);
   const chatName = chat?.name || 'هذه المحادثة';
-  const isGroupChat = chatType === 'group' || chat?.isGroup;
+  const isGroupChat = chatType === 'group' || chat?.isGroup === true || chat?.chatType === 'group';
   
+  const deleteId = isGroupChat 
+    ? (chat?.groupId || chat?.chatId || chatId)
+    : (chat?.chatId || chatId);
+
   const confirmMessage = isGroupChat
     ? `أنت على وشك حذف المجموعة "${chatName}" بالكامل\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمجموعة، ولن تتمكن من استعادتها بعد الحذف.`
-    : ` أنت على وشك حذف المحادثة مع "${chatName}"\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمحادثة، ولن تتمكن من استعادتها بعد الحذف.`;
-  
+    : `أنت على وشك حذف المحادثة مع "${chatName}"\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمحادثة، ولن تتمكن من استعادتها بعد الحذف.`;
+
   showConfirmToast(
     confirmMessage,
     async () => {
-      try {
-        const response = await fetch(`${apiBase}/chats/chats/delete`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            chatId: chatId,
-            chatType: chatType
-          })
-        });
+      const isSuccess = await performDeleteChat(deleteId, chatType, true);
 
-        const data = await response.json();
-        
-        if (data.success) {
-          toast.success(' تم حذف المحادثة بنجاح');
-          setChats(prev => prev.filter(c => c.chatId !== chatId));
-          setFilteredChats(prev => prev.filter(c => c.chatId !== chatId));
+      if (isSuccess) {
+        const filterOutDeleted = (item: any) => {
+          const itemChatId = item.chatId;
+          const itemGroupId = item.groupId;
           
-          if (activeChatId === chatId) {
-            router.push('/chats');
-          }
-          
-          setOpenDropdown(null);
-        } else {
-          toast.error(` فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
+          return (
+            itemChatId !== chatId && 
+            itemChatId !== deleteId &&
+            itemGroupId !== chatId && 
+            itemGroupId !== deleteId
+          );
+        };
+
+        setChats(prev => prev.filter(filterOutDeleted));
+        setFilteredChats(prev => prev.filter(filterOutDeleted));
+
+        if (activeChatId === chatId || activeChatId === deleteId) {
+          router.push('/chats');
         }
-      } catch (error) {
-        console.error('Error deleting chat:', error);
-        toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
       }
+      setOpenDropdown(null);
     },
     () => {
       setOpenDropdown(null);
-      toast('تم إلغاء عملية الحذف', {
-        icon: '↩️',
-        duration: 2000,
-      });
+      toast('تم إلغاء عملية الحذف', { icon: '↩️', duration: 2000 });
     },
-    'نعم، احذف', // زر التأكيد
-    'إلغاء' // زر الإلغاء
+    'نعم، احذف',
+    'إلغاء'
   );
 };
-
   // ================= LEAVE GROUP =================
   // const handleLeaveGroup = async (chatId: string) => {
   //   if (!token) return;
@@ -1887,34 +2691,111 @@ const handleLeaveGroup = async (chatId: string) => {
     console.log(`Starting ${type} call with ${chat.chatId}`);
   };
 
-  // ================= DROPDOWN ACTIONS =================
-  const handleDropdownAction = (action: string, chatId: string, chatType: string) => {
-    setOpenDropdown(null);
-    console.log(`Action: ${action} on chat: ${chatId}`);
-    switch(action) {
-      case 'block':
-        handleBlockUser(chatId);
-        break;
-      case 'report':
-        handleReportClick(chatId);
-        break;
-      case 'search':
-        toast.info('جاري البحث في المحادثة...');
-        break;
-      case 'archive':
-        handleArchiveChat(chatId, chatType);
-        break;
-      case 'delete':
-        handleDeleteChat(chatId, chatType);
-        break;
-      case 'leave':
-        handleLeaveGroup(chatId);
-        break;
-      case 'call':
-        handleCallClick(chatId);
-        break;
+ const getGroupIdForChat = async (chatId: string): Promise<string | null> => {
+  if (!token) return null;
+  
+  try {
+    // جرّبي تجيبي المجموعة مباشرة بالـ chatId
+    const res = await fetch(`${apiBase}/chats/groups/GetGroup/${chatId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      return data.response?._id || data.response?.groupId || chatId;
     }
-  };
+  } catch (e) {
+    console.error('Failed to get group id:', e);
+  }
+  return chatId;
+}; 
+  // ================= DROPDOWN ACTIONS =================
+  // const handleDropdownAction = (action: string, chatId: string, chatType: string) => {
+  //   setOpenDropdown(null);
+  //   console.log(`Action: ${action} on chat: ${chatId}`);
+  //    console.log('🎯 Dropdown Action:', {
+  //   action,
+  //   chatId,
+  //   chatType,
+  //   chatObject: chat,
+  //   groupId: chat?.groupId,
+  //   isGroup: chat?.isGroup,
+  // });
+  //   switch(action) {
+  //     case 'block':
+  //       handleBlockUser(chatId);
+  //       break;
+  //     case 'report':
+  //       handleReportClick(chatId);
+  //       break;
+  //     case 'search':
+  //       toast.info('جاري البحث في المحادثة...');
+  //       break;
+  //     case 'archive':
+  //       handleArchiveChat(chatId, chatType);
+  //       break;
+  //     case 'delete':
+  //       handleDeleteChat(chatId, chatType);
+  //       break;
+  //     case 'leave':
+  //       handleLeaveGroup(chatId);
+  //       break;
+  //     case 'call':
+  //       handleCallClick(chatId);
+  //       break;
+  //   }
+  // };
+  const handleDropdownAction = (action: string, chatId: string, chatType: string) => {
+  setOpenDropdown(null);
+  
+  // ✅ جيبي الـ chat object الأول
+  const chat: any = chats.find(c => 
+    c.chatId === chatId || 
+    (c as any).groupId === chatId || 
+    (c as any).id === chatId ||
+    (c as any)._id === chatId
+  );
+  
+  console.log('🎯 Dropdown Action:', {
+    action,
+    chatId,
+    chatType,
+    chatObject: chat,
+    groupId: chat?.groupId,
+    chatIdFromObj: chat?.chatId,
+    id: chat?.id,
+    _id: chat?._id,
+    isGroup: chat?.isGroup,
+    chatTypeFromObj: chat?.chatType,
+  });
+  
+  switch(action) {
+    case 'block':
+      handleBlockUser(chatId);
+      break;
+    case 'report':
+      handleReportClick(chatId);
+      break;
+    case 'search':
+      toast.info('جاري البحث في المحادثة...');
+      break;
+    case 'archive':
+      handleArchiveChat(chatId, chatType);
+      break;
+    case 'delete':
+      handleDeleteChat(chatId, chatType);
+      break;
+    case 'leave':
+      handleLeaveGroup(chatId);
+      break;
+    case 'call':
+      handleCallClick(chatId);
+      break;
+  }
+};
 
   if (loading) {
     return <div className="p-4 text-center">جارٍ التحميل...</div>;
