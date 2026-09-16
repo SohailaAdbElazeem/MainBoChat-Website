@@ -5,6 +5,8 @@ import { useMemo, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useLoginModal } from "@/contexts/LoginModalContext";
 import { useTranslation } from "@/contexts/TranslationContext";
+import { useCallContext } from '@/contexts/CallContext';
+import CallModal from '@/app/chats/_components/components/calls/CallModal';
 
 type ItemId = "home" | "videos" | "messages" | "notifications" | "settings" | "profile" | "chats";
 
@@ -26,6 +28,18 @@ export default function Sidebar({
   const { openLoginModal } = useLoginModal();
   const [userId, setUserId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+
+
+   // ✅ جديد: استخدمي الـ context
+  const {
+    isCallModalOpen,
+    selectedCallChat,
+    callMinutes,
+    isStarting,
+    closeCallModal,
+    startCallHandler,
+  } = useCallContext();
+
 
    const { language } = useTranslation();
   const isAr = language === "ar";
@@ -196,8 +210,44 @@ export default function Sidebar({
         })}
       </nav>
 
-      <div className="max-w-[380px] mb-2">{/* banner */}</div>
+      {/* <div className="max-w-[380px] mb-2">banner</div> */}
+
+
+      {/* ////// */}
       
+{/* ===== CallModal مكان الـ banner ===== */}
+{isCallModalOpen && selectedCallChat && (
+  <CallModal
+    isOpen={isCallModalOpen}
+    calleeName={
+      selectedCallChat?.userinfo?.name ||
+      selectedCallChat?.name ||
+      'مستخدم'
+    }
+    calleeUsername={
+      selectedCallChat?.userinfo?.username
+        ? `@${selectedCallChat.userinfo.username}`
+        : selectedCallChat?.userinfo?.name
+        ? `@${selectedCallChat.userinfo.name}`
+        : '@user'
+    }
+    calleeAvatar={
+      selectedCallChat?.userinfo?.img || '/imgs/user.png'
+    }
+    callTitle="مكالمة صوتية صادرة"
+    freeMinutes={callMinutes.free}
+    totalMinutes={callMinutes.total}
+    isStarting={isStarting}
+    onClose={closeCallModal}
+    onStart={(type) => {
+      if (startCallHandler) {
+        startCallHandler(type);
+      }
+    }}
+  />
+)}
+
+      {/* ////////// */}
       {/* أسفل القائمة: روابط سياسة الخصوصية والحقوق */}
       <div className={`space-y-3 text-sm text-black/70 mt-auto ${isAr ? "mr-3 ml-2" : "ml-3 mr-2"} ${userId ? 'pb-10' : 'pb-20'}`}>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">  
