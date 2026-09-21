@@ -6763,14 +6763,29 @@ export default function ChatList({
       case 'leave':
         await handleLeaveGroup(chatId, chatName);
         break;
+      // case 'call':
+      //   // ✅ فتح CallModal في SidebarArabic
+      //   openCallModal({
+      //     chatId,
+      //     name: chat?.name || 'مستخدم',
+      //     userinfo: chat?.userinfo,
+      //   });
+      //   break;
       case 'call':
-        // ✅ فتح CallModal في SidebarArabic
-        openCallModal({
-          chatId,
-          name: chat?.name || 'مستخدم',
-          userinfo: chat?.userinfo,
-        });
-        break;
+  // ✅ تمرير كل البيانات عشان CallContext يقدر يحدد إنه جروب
+  openCallModal({
+    chatId,
+    name: chat?.name || 'مستخدم',
+    userinfo: chat?.userinfo,
+    isGroup: Boolean(chat?.isGroup),
+    type: chat?.isGroup ? 'group' : 'single',
+    chatType: chat?.chatType,
+    members: Array.isArray(chat?.members) ? chat.members : [],
+    participants: Array.isArray((chat as any)?.participants)
+      ? (chat as any).participants
+      : [],
+  } as any);
+  break;
     }
   };
 
