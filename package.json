@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@zegocloud/zego-uikit-prebuilt": "^2.18.4",
     "dom-to-image-more": "^3.10.0",
     "framer-motion": "^13.1.1",
     "google-auth-library": "^10.2.1",
