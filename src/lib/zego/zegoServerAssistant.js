@@ -1,6 +1,8 @@
+// src>lib>zego>zegoServerAssistant.js
 "use strict";
 exports.__esModule = true;
 var crypto_1 = require("crypto");
+
 var ErrorCode;
 (function (ErrorCode) {
     ErrorCode[ErrorCode["success"] = 0] = "success";
@@ -9,9 +11,11 @@ var ErrorCode;
     ErrorCode[ErrorCode["secretInvalid"] = 5] = "secretInvalid";
     ErrorCode[ErrorCode["effectiveTimeInSecondsInvalid"] = 6] = "effectiveTimeInSecondsInvalid";
 })(ErrorCode || (ErrorCode = {}));
+
 function RndNum(a, b) {
     return Math.ceil((a + (b - a)) * Math.random());
 }
+
 function makeRandomIv() {
     var str = '0123456789abcdefghijklmnopqrstuvwxyz';
     var result = [];
@@ -21,6 +25,7 @@ function makeRandomIv() {
     }
     return result.join('');
 }
+
 function getAlgorithm(keyBase64) {
     var key = Buffer.from(keyBase64);
     if (key.length === 64) {
@@ -36,6 +41,7 @@ function getAlgorithm(keyBase64) {
     }
     throw new Error('Invalid key length: ' + key.length);
 }
+
 function aesEncrypt(plainText, key, iv) {
     var keyBuffer = Buffer.from(key);
     if (keyBuffer.length === 64) {
@@ -48,30 +54,19 @@ function aesEncrypt(plainText, key, iv) {
     var out = Buffer.concat([encrypted, final]);
     return Uint8Array.from(out).buffer;
 }
+
 function generateToken04(appId, userId, secret, effectiveTimeInSeconds, payload) {
     if (!appId || typeof appId !== 'number') {
-        throw {
-            errorCode: ErrorCode.appIDInvalid,
-            errorMessage: 'appID invalid'
-        };
+        throw { errorCode: ErrorCode.appIDInvalid, errorMessage: 'appID invalid' };
     }
     if (!userId || typeof userId !== 'string') {
-        throw {
-            errorCode: ErrorCode.userIDInvalid,
-            errorMessage: 'userId invalid'
-        };
+        throw { errorCode: ErrorCode.userIDInvalid, errorMessage: 'userId invalid' };
     }
     if (!secret || typeof secret !== 'string' || (secret.length !== 32 && secret.length !== 64)) {
-        throw {
-            errorCode: ErrorCode.secretInvalid,
-            errorMessage: 'secret must be a 32 or 64 byte string'
-        };
+        throw { errorCode: ErrorCode.secretInvalid, errorMessage: 'secret must be a 32 or 64 byte string' };
     }
     if (!effectiveTimeInSeconds || typeof effectiveTimeInSeconds !== 'number') {
-        throw {
-            errorCode: ErrorCode.effectiveTimeInSecondsInvalid,
-            errorMessage: 'effectiveTimeInSeconds invalid'
-        };
+        throw { errorCode: ErrorCode.effectiveTimeInSecondsInvalid, errorMessage: 'effectiveTimeInSeconds invalid' };
     }
     var createTime = Math.floor(new Date().getTime() / 1000);
     var tokenInfo = {
