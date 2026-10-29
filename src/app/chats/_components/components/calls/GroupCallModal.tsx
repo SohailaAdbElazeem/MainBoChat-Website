@@ -94,7 +94,7 @@ export default function GroupCallModal({
             textAlign: 'center',
             verticalAlign: 'middle',
             color: '#7C7D7E',
-            marginBottom: '12px',
+            marginBottom: '90px',
             padding: '0 16px',
           }}
         >

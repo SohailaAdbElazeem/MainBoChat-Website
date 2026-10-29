@@ -1,5 +1,3 @@
-
-
 // src/lib/zego/zimService.ts
 
 export type InvitationType = "audio" | "video";
@@ -62,6 +60,7 @@ class ZimService {
   private onInvitationTimeout?: (callID: string) => void;
   private onInvitationAccepted?: (info: CallResponseInfo) => void;
   private onInvitationRejected?: (info: CallResponseInfo) => void;
+  private onCallEnded?: () => void; // ✅ جديد
 
   async init(config: {
     appId: number;
@@ -80,9 +79,6 @@ class ZimService {
       if (!this.ZIM) return false;
 
       this.zim = this.ZIM.create({ appID: config.appId });
-
-      console.log("🔍 [DEBUG] sendMessage?", typeof this.zim.sendMessage);
-      console.log("🔍 [DEBUG] sendPeerMessage?", typeof this.zim.sendPeerMessage);
 
       // 1) استقبال دعوة
       this.zim.on("callInvitationReceived", (zim: any, info: any) => {
@@ -154,27 +150,29 @@ class ZimService {
             console.log("📥 [peerMessageReceived] msg:", msg, "type:", msg.type);
 
             if (msg.type === 2 && msg.message) {
-              // Command Message (Uint8Array)
               try {
                 const jsonText = uint8ArrayToString(msg.message);
                 console.log("📥 Decoded (Command):", jsonText);
                 const parsed = JSON.parse(jsonText);
 
                 if (parsed.action === "REJECT_CALL") {
-                  console.log("📥 → REJECT_CALL");
+                  console.log("📥 → REJECT_CALL triggered via Command");
                   this.onInvitationRejected?.({ callID: parsed.callID });
                 } else if (parsed.action === "ACCEPT_CALL") {
-                  console.log("📥 → ACCEPT_CALL");
+                  console.log("📥 → ACCEPT_CALL triggered via Command");
                   this.onInvitationAccepted?.({
                     callID: parsed.callID,
                     extendedData: parsed.extendedData,
                   });
+                } else if (parsed.action === "END_CALL") {
+                  // ✅ جديد: الطرف التاني أنهى المكالمة
+                  console.log("📥 → END_CALL triggered via Command");
+                  this.onCallEnded?.();
                 }
               } catch (e) {
                 console.error("❌ Decode Command error:", e);
               }
             } else if (msg.type === 1 && msg.message) {
-              // Text Message (string)
               try {
                 const jsonText =
                   typeof msg.message === "string"
@@ -184,14 +182,18 @@ class ZimService {
                 const parsed = JSON.parse(jsonText);
 
                 if (parsed.action === "REJECT_CALL") {
-                  console.log("📥 → REJECT_CALL");
+                  console.log("📥 → REJECT_CALL triggered via Text");
                   this.onInvitationRejected?.({ callID: parsed.callID });
                 } else if (parsed.action === "ACCEPT_CALL") {
-                  console.log("📥 → ACCEPT_CALL");
+                  console.log("📥 → ACCEPT_CALL triggered via Text");
                   this.onInvitationAccepted?.({
                     callID: parsed.callID,
                     extendedData: parsed.extendedData,
                   });
+                } else if (parsed.action === "END_CALL") {
+                  // ✅ جديد: الطرف التاني أنهى المكالمة
+                  console.log("📥 → END_CALL triggered via Text");
+                  this.onCallEnded?.();
                 }
               } catch (e) {
                 console.error("❌ Decode Text error:", e);
@@ -238,70 +240,24 @@ class ZimService {
     const payload = JSON.stringify({ action, callID, extendedData });
     const uint8Array = stringToUint8Array(payload);
     const commandMessage = { type: 2, message: uint8Array };
-    const textMessage = { type: 1, message: payload };
 
-    // محاولة 1: Command + config {priority:1}
     try {
-      console.log("📤 Trying: sendMessage(cmd, user, 0, {priority:1})");
       const result = await this.zim.sendMessage(commandMessage, targetUserId, 0, { priority: 1 });
       console.log("✅ SUCCESS (cmd + priority):", result);
       return true;
     } catch (e: any) {
-      console.warn("⚠️ Failed:", e?.code, e?.message);
+      console.warn("⚠️ Failed command message, trying text...", e?.message);
     }
 
-    // محاولة 2: Command + config {}
     try {
-      console.log("📤 Trying: sendMessage(cmd, user, 0, {})");
-      const result = await this.zim.sendMessage(commandMessage, targetUserId, 0, {});
-      console.log("✅ SUCCESS (cmd + empty):", result);
-      return true;
-    } catch (e: any) {
-      console.warn("⚠️ Failed:", e?.code, e?.message);
-    }
-
-    // محاولة 3: Command بدون config
-    try {
-      console.log("📤 Trying: sendMessage(cmd, user, 0)");
-      const result = await this.zim.sendMessage(commandMessage, targetUserId, 0);
-      console.log("✅ SUCCESS (cmd no config):", result);
-      return true;
-    } catch (e: any) {
-      console.warn("⚠️ Failed:", e?.code, e?.message);
-    }
-
-    // محاولة 4: Text + config {priority:1}
-    try {
-      console.log("📤 Trying: sendMessage(text, user, 0, {priority:1})");
+      const textMessage = { type: 1, message: payload };
       const result = await this.zim.sendMessage(textMessage, targetUserId, 0, { priority: 1 });
-      console.log("✅ SUCCESS (text + priority):", result);
+      console.log("✅ SUCCESS (text message):", result);
       return true;
     } catch (e: any) {
-      console.warn("⚠️ Failed:", e?.code, e?.message);
+      console.error(`❌ [sendSignalMessage] All attempts failed for: ${action}`, e?.message);
+      return false;
     }
-
-    // محاولة 5: Text + config {}
-    try {
-      console.log("📤 Trying: sendMessage(text, user, 0, {})");
-      const result = await this.zim.sendMessage(textMessage, targetUserId, 0, {});
-      console.log("✅ SUCCESS (text + empty):", result);
-      return true;
-    } catch (e: any) {
-      console.warn("⚠️ Failed:", e?.code, e?.message);
-    }
-
-    // محاولة 6: Text بدون config
-    try {
-      console.log("📤 Trying: sendMessage(text, user, 0)");
-      const result = await this.zim.sendMessage(textMessage, targetUserId, 0);
-      console.log("✅ SUCCESS (text no config):", result);
-      return true;
-    } catch (e: any) {
-      console.warn("⚠️ Failed:", e?.code, e?.message);
-    }
-
-    console.error(`❌ [sendSignalMessage] All attempts failed for: ${action}`);
-    return false;
   }
 
   // ================== دعوة ==================
@@ -376,6 +332,7 @@ class ZimService {
   setOnInvitationTimeout(cb: (callID: string) => void) { this.onInvitationTimeout = cb; }
   setOnInvitationAccepted(cb: (info: CallResponseInfo) => void) { this.onInvitationAccepted = cb; }
   setOnInvitationRejected(cb: (info: CallResponseInfo) => void) { this.onInvitationRejected = cb; }
+  setOnCallEnded(cb: () => void) { this.onCallEnded = cb; } // ✅ جديد
 
   async destroy(): Promise<void> {
     if (this.zim) {
@@ -390,7 +347,6 @@ class ZimService {
 
 export const zimService = new ZimService();
 
-// ✅ ضيفه على window عشان تقدر توصل له من الـ Console
 if (typeof window !== "undefined") {
   (window as any).__zimService = zimService;
 }
