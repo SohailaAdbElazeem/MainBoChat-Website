@@ -158,7 +158,7 @@ export default function IncomingCallModal({
           alignItems: 'center',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
+          // boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
           animation: 'slideUp 0.3s ease-out',
         }}
       >
@@ -377,7 +377,7 @@ export default function IncomingCallModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: isDragging ? 'grabbing' : 'grab',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                // boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 transition: isDragging ? 'background 0.2s' : 'transform 0.3s, background 0.2s',
                 zIndex: 10,
                 userSelect: 'none',

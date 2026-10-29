@@ -40,6 +40,9 @@ export const CALL_STATUS_LABEL: Record<string, string> = {
   calling: 'جاري الاتصال...',
   ringing: 'مكالمة واردة',
   idle: 'مكالمة صوتية',
+  rejected: 'تم رفض المكالمة', 
+   missed: 'لم يتم الرد', 
+    ended: 'تم انتهاء الاتصال', 
 };
 
 // ⚠️ بيانات وهمية — استبدليها بجلب جهات الاتصال من API
