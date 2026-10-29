@@ -17,6 +17,7 @@ import Stickers from "../_components/Stickers";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from 'react-hot-toast';
+import { useZegoCall } from '@/components/ZegoCallProvider';
 
 // ================= Helper: Broadcast =================
 function emitChatUpdate(event: "message" | "typing" | "typing_stop" | "seen", metadata: any) {
@@ -444,6 +445,9 @@ export default function ChatPage() {
   const [viewerCurrentIndex, setViewerCurrentIndex] = useState(0);
 
   const router = useRouter();
+
+
+  const { startCall } = useZegoCall();
 
   // ================= Image Viewer Functions =================
   const openImageViewer = useCallback((imageUrl: string, allImages?: string[]) => {
@@ -2970,9 +2974,24 @@ const renderReplyInput = () => {
           </div>
         </div>
         <div className="flex items-center justify-start gap-2 relative">
-          <div className="rounded-[17px] bg-[#F5F5F5] w-[40px] h-[40px] flex items-center justify-center cursor-pointer">
+          {/* <div className="rounded-[17px] bg-[#F5F5F5] w-[40px] h-[40px] flex items-center justify-center cursor-pointer">
             <img src="/imgs/phoneChat.svg" className="w-[16px] h-[16px]" alt="phoneChat" />
-          </div>
+          </div> */}
+          <div 
+          onClick={() => {
+            if (receiverId && myId) {
+              startCall(
+                receiverId,
+                chatName || receiverData?.name || 'مستخدم',
+                false, // false = مكالمة صوتية، خليها true لو عايزة فيديو
+                receiverData?.img
+              );
+            }
+          }}
+          className="rounded-[17px] bg-[#F5F5F5] w-[40px] h-[40px] flex items-center justify-center cursor-pointer"
+        >
+          <img src="/imgs/phoneChat.svg" className="w-[16px] h-[16px]" alt="phoneChat" />
+        </div>
           <div className="rounded-[17px] bg-[#F5F5F5] w-[40px] h-[40px] flex items-center justify-center cursor-pointer relative">
             <img
               src="/imgs/optionChat.svg"
