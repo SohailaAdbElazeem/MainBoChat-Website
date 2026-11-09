@@ -5259,8 +5259,7 @@ export default function ChatPage() {
   }, []);
 
   const startRecording = useCallback(async () => {
-    if (isRecording) return;
-      console.log("🎤 startRecording called");   // ← ضيفي ده
+       console.log("🎤 startRecording called");   // ← ضيفي ده
     setIsRecording(true);
     setRecordingStopped(false);
     setAudioBlob(null);
