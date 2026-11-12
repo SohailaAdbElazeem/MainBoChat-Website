@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import wsService from "@/lib/websocketService";
 import { TypingBubble } from "../_components/TypingBubble";
@@ -20,7 +20,12 @@ import { toast } from 'react-hot-toast';
 import { useZegoCall } from '@/components/ZegoCallProvider';
 import BlockConfirmModal from '../_components/BlockConfirmModal';
 import BlockSuccessModal from '../_components/BlockSuccessModal';
+import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
 
+// ================= Wrappers لأن react-hot-toast مفيهاش .info/.warning =================
+const toastInfo = (msg: string, opts?: any) => toast(msg, opts);
+const toastWarning = (msg: string, opts?: any) => toast(msg, { icon: '⚠️', ...opts });
 // ================= Helper: Broadcast =================
 function emitChatUpdate(event: "message" | "typing" | "typing_stop" | "seen", metadata: any) {
   try {
@@ -529,6 +534,26 @@ export default function ChatPage() {
   const [blockConfirmVisible, setBlockConfirmVisible] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [showBlockSuccess, setShowBlockSuccess] = useState(false);
+  // ================= Block target (chat or member) =================
+  const [blockTarget, setBlockTarget] = useState<{ id: string; name: string; isMember: boolean } | null>(null);
+  const [blockSuccessAction, setBlockSuccessAction] = useState<'block' | 'unblock'>('block');
+   // ================= Delete Chat Modal states =================
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [deleteSuccessVisible, setDeleteSuccessVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+   // ================= Leave Group Modal states =================
+  const [leaveGroupConfirmVisible, setLeaveGroupConfirmVisible] = useState(false);
+  const [leaveGroupSuccessVisible, setLeaveGroupSuccessVisible] = useState(false);
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
+  // ================= Promote (ترقية مشرف) =================
+  const [promoteSelectionVisible, setPromoteSelectionVisible] = useState(false);
+  const [selectedPromoteMember, setSelectedPromoteMember] = useState<string>('');
+  const [isPromoting, setIsPromoting] = useState(false);
+    // ================= Promote Admin Modal states =================
+  const [promoteAdminModalVisible, setPromoteAdminModalVisible] = useState(false);
+  const [selectedPromoteAdminMember, setSelectedPromoteAdminMember] = useState<string>('');
+  const [isPromotingAdmin, setIsPromotingAdmin] = useState(false);
+  const [promoteAdminSuccessVisible, setPromoteAdminSuccessVisible] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
   const [isGroup, setIsGroup] = useState(false);
   const [chatName, setChatName] = useState<string>("");
@@ -545,10 +570,23 @@ export default function ChatPage() {
   const [groupOwnerImg, setGroupOwnerImg] = useState<string>('');
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [activeMemberMenuId, setActiveMemberMenuId] = useState<any>(null);
+  // ================= Member Admin/Remove states =================
+  const [isUpdatingMemberAdmin, setIsUpdatingMemberAdmin] = useState<string | null>(null);
+  const [isRemovingMember, setIsRemovingMember] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
-
+ // ================= Archive (Favorite) states =================
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+    // ================= Add Members Modal states =================
+  const [addMembersModalVisible, setAddMembersModalVisible] = useState(false);
+  const [addMembersSuccessVisible, setAddMembersSuccessVisible] = useState(false);
+  const [selectedMembersToAdd, setSelectedMembersToAdd] = useState<string[]>([]);
+  const [contactsList, setContactsList] = useState<any[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  const [isAddingMembers, setIsAddingMembers] = useState(false);
+  const [contactsSearchQuery, setContactsSearchQuery] = useState('');
   // ================= State for pending images =================
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
 
@@ -767,10 +805,19 @@ export default function ChatPage() {
 
   // ================= باقي الدوال =================
 
-  const handleBlockMember = (member: any) => {
-    toast.success(`تم حظر المستخدم ${member.name}`);
-  };
-
+  // const handleBlockMember = (member: any) => {
+  //   toast.success(`تم حظر المستخدم ${member.name}`);
+  // };
+const handleBlockMember = useCallback((member: any) => {
+  if (!member?.userId || !token) return;
+  setActiveMemberMenuId(null);
+  setBlockTarget({
+    id: member.userId,
+    name: member.name || 'هذا المستخدم',
+    isMember: true,
+  });
+  setBlockConfirmVisible(true);
+}, [token]);
   const handleReportMember = (member: any) => {
     toast.info(`تم تقديم بلاغ ضد المستخدم ${member.name}`);
   };
@@ -1101,80 +1148,174 @@ export default function ChatPage() {
     );
   }, [groupMembers, receiverData, myId, receiverId]);
 
+  // // ================= جلب بيانات المستخدم =================
+  // const fetchReceiverData = useCallback(async () => {
+  //   if (!receiverId || !token || !myId) return;
+
+  //   try {
+  //     let currentUserData = null;
+  //     try {
+  //       const currentUserRes = await fetch(`${API_BASE}/users/${myId}`, {
+  //         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  //       });
+  //       if (currentUserRes.ok) {
+  //         const currentUserJson = await currentUserRes.json();
+  //         currentUserData = currentUserJson.userpersonaldata;
+  //       }
+  //     } catch (e) {
+  //       console.error('Failed to fetch current user data:', e);
+  //     }
+
+  //     const chatResponse = await fetch(`${API_BASE}/chats/chats/${myId}`, {
+  //       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  //     });
+
+  //     let isGroupChat = false;
+  //     let groupName = '';
+  //     let isAdmin = false;
+
+  //     if (chatResponse.ok) {
+  //       const chatData = await chatResponse.json();
+  //       const chatList = chatData.response || chatData.userchats || [];
+
+  //       const foundChat = chatList.find((chat: any) => {
+  //         const otherId = chat.otherUserId || chat.id;
+  //         return otherId === receiverId;
+  //       });
+
+  //       if (foundChat) {
+  //         isGroupChat = foundChat.chatType === 'group' || foundChat.isGroup === true;
+  //         groupName = foundChat.groupName || foundChat.name || '';
+  //         isAdmin = foundChat.admin === myId || foundChat.owner === myId;
+
+  //         setIsGroup(isGroupChat);
+  //         setIsGroupAdmin(isAdmin);
+
+  //         if (!isGroupChat) {
+  //           const members = foundChat.memberAvatars || foundChat.members || [];
+  //           setGroupMembers(members);
+  //         }
+
+  //         if (isGroupChat && groupName) {
+  //           setChatName(groupName);
+  //         }
+  //       }
+  //     }
+
+  //     if (!isGroupChat) {
+  //       const userResponse = await fetch(`${API_BASE}/users/${receiverId}`, {
+  //         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  //       });
+  //       const userData = await userResponse.json();
+  //       setReceiverData(userData.userpersonaldata);
+ 
+  //       if (userData.userpersonaldata?.name) {
+  //         setChatName(userData.userpersonaldata.name);
+  //       } else {
+  //         setChatName('مستخدم');
+  //       }
+  //     } else {
+  //       setReceiverData(null);
+  //     }
+
+  //   } catch (error) {
+  //     console.error("Failed to fetch receiver data", error);
+  //   }
+  // }, [receiverId, token, myId]);
   // ================= جلب بيانات المستخدم =================
-  const fetchReceiverData = useCallback(async () => {
-    if (!receiverId || !token || !myId) return;
+const fetchReceiverData = useCallback(async () => {
+  if (!receiverId || !token || !myId) return;
 
+  try {
+    let currentUserData = null;
     try {
-      let currentUserData = null;
-      try {
-        const currentUserRes = await fetch(`${API_BASE}/users/${myId}`, {
-          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-        });
-        if (currentUserRes.ok) {
-          const currentUserJson = await currentUserRes.json();
-          currentUserData = currentUserJson.userpersonaldata;
-        }
-      } catch (e) {
-        console.error('Failed to fetch current user data:', e);
-      }
-
-      const chatResponse = await fetch(`${API_BASE}/chats/chats/${myId}`, {
+      const currentUserRes = await fetch(`${API_BASE}/users/${myId}`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
-
-      let isGroupChat = false;
-      let groupName = '';
-      let isAdmin = false;
-
-      if (chatResponse.ok) {
-        const chatData = await chatResponse.json();
-        const chatList = chatData.response || chatData.userchats || [];
-
-        const foundChat = chatList.find((chat: any) => {
-          const otherId = chat.otherUserId || chat.id;
-          return otherId === receiverId;
-        });
-
-        if (foundChat) {
-          isGroupChat = foundChat.chatType === 'group' || foundChat.isGroup === true;
-          groupName = foundChat.groupName || foundChat.name || '';
-          isAdmin = foundChat.admin === myId || foundChat.owner === myId;
-
-          setIsGroup(isGroupChat);
-          setIsGroupAdmin(isAdmin);
-
-          if (!isGroupChat) {
-            const members = foundChat.memberAvatars || foundChat.members || [];
-            setGroupMembers(members);
-          }
-
-          if (isGroupChat && groupName) {
-            setChatName(groupName);
-          }
-        }
+      if (currentUserRes.ok) {
+        const currentUserJson = await currentUserRes.json();
+        currentUserData = currentUserJson.userpersonaldata;
       }
-
-      if (!isGroupChat) {
-        const userResponse = await fetch(`${API_BASE}/users/${receiverId}`, {
-          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-        });
-        const userData = await userResponse.json();
-        setReceiverData(userData.userpersonaldata);
- 
-        if (userData.userpersonaldata?.name) {
-          setChatName(userData.userpersonaldata.name);
-        } else {
-          setChatName('مستخدم');
-        }
-      } else {
-        setReceiverData(null);
-      }
-
-    } catch (error) {
-      console.error("Failed to fetch receiver data", error);
+    } catch (e) {
+      console.error('Failed to fetch current user data:', e);
     }
-  }, [receiverId, token, myId]);
+
+    const chatResponse = await fetch(`${API_BASE}/chats/chats/${myId}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
+
+    let isGroupChat = false;
+    let groupName = '';
+    let isAdmin = false;
+
+    if (chatResponse.ok) {
+      const chatData = await chatResponse.json();
+      const chatList = chatData.response || chatData.userchats || [];
+
+      const foundChat = chatList.find((chat: any) => {
+        const otherId = chat.otherUserId || chat.id;
+        return otherId === receiverId;
+      });
+
+      if (foundChat) {
+        isGroupChat = foundChat.chatType === 'group' || foundChat.isGroup === true;
+        groupName = foundChat.groupName || foundChat.name || '';
+        isAdmin = foundChat.admin === myId || foundChat.owner === myId;
+
+        setIsGroup(isGroupChat);
+        setIsGroupAdmin(isAdmin);
+
+        // 🔍 Debug: اطبعي كل حقول الشات عشان تعرفي اسم حقل الأرشفة
+        console.log('🟦 foundChat keys:', Object.keys(foundChat));
+        console.log('🟦 foundChat full:', foundChat);
+
+        // ✅ قراءة حالة الأرشفة — بتجرب كل الاحتمالات
+        const favState =
+          foundChat.favorite === true ||
+          foundChat.isFavorite === true ||
+          foundChat.isFavorited === true ||
+          foundChat.favorited === true ||
+          foundChat.archived === true ||
+          foundChat.isArchived === true ||
+          foundChat.starred === true ||
+          foundChat.isStarred === true ||
+          foundChat.pinned === true ||
+          foundChat.isPinned === true;
+
+        console.log('🟦 isFavorited detected:', favState);
+        setIsFavorited(favState);
+
+        if (!isGroupChat) {
+          const members = foundChat.memberAvatars || foundChat.members || [];
+          setGroupMembers(members);
+        }
+
+        if (isGroupChat && groupName) {
+          setChatName(groupName);
+        }
+      }
+    }
+
+    if (!isGroupChat) {
+      const userResponse = await fetch(`${API_BASE}/users/${receiverId}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      const userData = await userResponse.json();
+      setReceiverData(userData.userpersonaldata);
+
+      if (userData.userpersonaldata?.name) {
+        setChatName(userData.userpersonaldata.name);
+      } else {
+        setChatName('مستخدم');
+      }
+    } else {
+      setReceiverData(null);
+    }
+
+  } catch (error) {
+    console.error("Failed to fetch receiver data", error);
+  }
+}, [receiverId, token, myId]);
 
   // ================= جلب بيانات المجموعة =================
   const fetchGroupData = useCallback(async () => {
@@ -1265,28 +1406,35 @@ export default function ChatPage() {
     const remainingCount = members.length - maxDisplay;
     return `${firstFive.join('، ')} +${remainingCount}`;
   }, []);
-
+   
   // ================= Update group name =================
   const handleUpdateGroupName = useCallback(async () => {
     if (!editName.trim() || !receiverId || !token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/chats/groups/update/${receiverId}`, {
+      const formData = new FormData();
+      formData.append('name', editName.trim());
+
+      const res = await fetch(`${API_BASE}/chats/groups/UpdateGroup/${receiverId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ groupName: editName.trim() }),
+         },
+        body: formData,
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
 
-      if (data.success) {
+      if (res.ok && data.success) {
         setChatName(editName.trim());
         toast.success('تم تحديث اسم المجموعة بنجاح');
       } else {
-        toast.error(`فشل التحديث: ${data.response || data.message || 'خطأ غير معروف'}`);
+        toast.error(`فشل التحديث: ${data.response || data.message || `HTTP ${res.status}`}`);
       }
     } catch (error) {
       console.error('Error updating group name:', error);
@@ -1294,28 +1442,34 @@ export default function ChatPage() {
     }
     setEditingField(null);
   }, [editName, receiverId, token]);
-
-  // ================= Update group description =================
+   // ================= Update group description =================
   const handleUpdateGroupDescription = useCallback(async () => {
     if (!editDescription.trim() || !receiverId || !token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/chats/groups/update/${receiverId}`, {
+      const formData = new FormData();
+      formData.append('description', editDescription.trim());
+
+      const res = await fetch(`${API_BASE}/chats/groups/UpdateGroup/${receiverId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ description: editDescription.trim() }),
+         },
+        body: formData,
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
 
-      if (data.success) {
+      if (res.ok && data.success) {
         setGroupDescription(editDescription.trim());
         toast.success('تم تحديث وصف المجموعة بنجاح');
       } else {
-        toast.error(`فشل التحديث: ${data.response || data.message || 'خطأ غير معروف'}`);
+        toast.error(`فشل التحديث: ${data.response || data.message || `HTTP ${res.status}`}`);
       }
     } catch (error) {
       console.error('Error updating group description:', error);
@@ -1323,7 +1477,6 @@ export default function ChatPage() {
     }
     setEditingField(null);
   }, [editDescription, receiverId, token]);
-
   // ================= التحقق من نوع المحادثة =================
   useEffect(() => {
     if (!receiverId || !token || !myId) return;
@@ -2111,90 +2264,28 @@ export default function ChatPage() {
   }, [sendImageFile]);
 
  
-  // ================= حظر المستخدم =================
-// const handleBlockUser = useCallback(async () => {
+  // ================= فتح مودال الحظر =================
+// const handleBlockUser = useCallback(() => {
 //   if (!receiverId || !myId || !token) return;
-
-//   const isBlocked = isUserBlocked(receiverId);
-//   const userName = chatName || receiverData?.name || 'هذا المستخدم';
-
-//   const confirmMessage = isBlocked
-//     ? ` أنت على وشك رفع الحظر عن "${userName}"\n\nبعد رفع الحظر، سيتمكن هذا المستخدم من التواصل معك مرة أخرى.`
-//     : `أنت على وشك حظر "${userName}"\n\nبعد الحظر، لن يتمكن هذا المستخدم من التواصل معك أو رؤية نشاطك.`;
-
-//   showConfirmToast(
-//     confirmMessage,
-//     async () => {
-//       try {
-//         const url = isBlocked
-//           ? `${API_BASE}/chats/unblock`
-//           : `${API_BASE}/chats/block`;
-
-//         const res = await fetch(url, {
-//           method: "POST",
-//           headers: {
-//             "Content-Type": "application/json",
-//             Authorization: `Bearer ${token}`,
-//           },
-//           body: JSON.stringify({ blocked_user_id: receiverId }),
-//         });
-
-//         if (res.ok) {
-//           const message = isBlocked
-//             ? ' ✅ تم رفع الحظر عن المستخدم بنجاح'
-//             : ' ✅ تم حظر المستخدم بنجاح';
-//           toast.success(message);
-
-//           if (isBlocked) {
-//             setBlockedUsers(prev => prev.filter(id => id !== receiverId));
-//             setIBlockedHim(false);
-//             localStorage.removeItem(`blocked_${receiverId}`);
-//           } else {
-//             setBlockedUsers(prev => [...prev, receiverId as string]);
-//             setIBlockedHim(true);
-//             localStorage.setItem(`blocked_${receiverId}`, 'true');
-//           }
-//         } else {
-//           let errMsg = `فشل ${isBlocked ? 'رفع الحظر' : 'الحظر'}`;
-//           try {
-//             const errData = await res.json();
-//             if (errData?.message || errData?.response) {
-//               errMsg += `: ${errData.message || errData.response}`;
-//             }
-//           } catch {}
-//           toast.error(errMsg);
-//         }
-//       } catch (error) {
-//         console.error("Failed to block/unblock user", error);
-//         toast.error("حدث خطأ أثناء محاولة تنفيذ العملية");
-//       }
-//       setShowMenu(false);
-//     },
-//     () => {
-//       setShowMenu(false);
-//       toast(`تم إلغاء ${isBlocked ? 'رفع الحظر' : 'الحظر'}`, {
-//         icon: '↩️',
-//         duration: 2000,
-//       });
-//     },
-//     isBlocked ? 'نعم، أرفع الحظر' : 'نعم، أحظر',
-//     'إلغاء'
-//   );
-// }, [receiverId, myId, token, chatName, receiverData, isUserBlocked]);
-// ================= فتح مودال الحظر =================
+//   setShowMenu(false);
+//   setShowGroupDetails(false);
+//   setShowSettingsMenu(false);
+//   setBlockConfirmVisible(true);
+// }, [receiverId, myId, token]);
 const handleBlockUser = useCallback(() => {
   if (!receiverId || !myId || !token) return;
   setShowMenu(false);
   setShowGroupDetails(false);
   setShowSettingsMenu(false);
+
+  const displayName =
+    chatName ||
+    receiverData?.name ||
+    (isGroup ? 'هذه المجموعة' : 'هذا المستخدم');
+
+  setBlockTarget({ id: receiverId, name: displayName, isMember: false });
   setBlockConfirmVisible(true);
-}, [receiverId, myId, token]);
-  // ================= إبلاغ عن المستخدم =================
-  // const handleReport = useCallback(() => {
-  //   setBlockConfirmVisible(true);
-  //   setShowMenu(false);
-  // }, []);
-  // ================= إبلاغ عن المستخدم =================
+}, [receiverId, myId, token, chatName, receiverData, isGroup]);
 // ================= إبلاغ عن المستخدم =================
 const handleReport = useCallback(() => {
   setShowMenu(false);
@@ -2202,14 +2293,7 @@ const handleReport = useCallback(() => {
   setShowSettingsMenu(false);
   toast.success('✅ تم إرسال الإبلاغ، شكرًا لك');
 }, []);
-
-  // ================= تأكيد الحظر =================
-  // const handleConfirmBlock = useCallback(async () => {
-  //   await handleBlockUser();
-  //   setBlockConfirmVisible(false);
-  // }, [handleBlockUser]);
-  // ================= تنفيذ الحظر/رفع الحظر من المودال =================
-// const handleConfirmBlock = useCallback(async () => {
+//  const handleConfirmBlock = useCallback(async () => {
 //   if (!receiverId || !myId || !token) return;
 
 //   setIsBlocking(true);
@@ -2230,10 +2314,6 @@ const handleReport = useCallback(() => {
 //     });
 
 //     if (res.ok) {
-//       toast.success(
-//         isBlocked ? '✅ تم رفع الحظر عن المستخدم بنجاح' : '✅ تم حظر المستخدم بنجاح'
-//       );
-
 //       if (isBlocked) {
 //         setBlockedUsers(prev => prev.filter(id => id !== receiverId));
 //         setIBlockedHim(false);
@@ -2243,6 +2323,9 @@ const handleReport = useCallback(() => {
 //         setIBlockedHim(true);
 //         localStorage.setItem(`blocked_${receiverId}`, 'true');
 //       }
+
+//       // ✅ بدل toast: نفتح مودال النجاح
+//       setShowBlockSuccess(true);
 //     } else {
 //       let errMsg = `فشل ${isBlocked ? 'رفع الحظر' : 'الحظر'}`;
 //       try {
@@ -2261,11 +2344,12 @@ const handleReport = useCallback(() => {
 //     setBlockConfirmVisible(false);
 //   }
 // }, [receiverId, myId, token, isUserBlocked]);
- const handleConfirmBlock = useCallback(async () => {
-  if (!receiverId || !myId || !token) return;
+const handleConfirmBlock = useCallback(async () => {
+  if (!blockTarget || !token) return;
 
   setIsBlocking(true);
-  const isBlocked = isUserBlocked(receiverId);
+  const targetId = blockTarget.id;
+  const isBlocked = blockedUsers.includes(targetId);
 
   try {
     const url = isBlocked
@@ -2278,21 +2362,27 @@ const handleReport = useCallback(() => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ blocked_user_id: receiverId }),
+      body: JSON.stringify({ blocked_user_id: targetId }),
     });
 
     if (res.ok) {
       if (isBlocked) {
-        setBlockedUsers(prev => prev.filter(id => id !== receiverId));
-        setIBlockedHim(false);
-        localStorage.removeItem(`blocked_${receiverId}`);
+        setBlockedUsers((prev) => prev.filter((id) => id !== targetId));
+        // لو بنرفع الحظر عن المحادثة الحالية نفسها
+        if (targetId === receiverId) {
+          setIBlockedHim(false);
+          localStorage.removeItem(`blocked_${targetId}`);
+        }
       } else {
-        setBlockedUsers(prev => [...prev, receiverId as string]);
-        setIBlockedHim(true);
-        localStorage.setItem(`blocked_${receiverId}`, 'true');
+        setBlockedUsers((prev) => [...prev, targetId]);
+        // لو بنحظر المحادثة الحالية نفسها
+        if (targetId === receiverId) {
+          setIBlockedHim(true);
+          localStorage.setItem(`blocked_${targetId}`, 'true');
+        }
       }
 
-      // ✅ بدل toast: نفتح مودال النجاح
+      setBlockSuccessAction(isBlocked ? 'unblock' : 'block');
       setShowBlockSuccess(true);
     } else {
       let errMsg = `فشل ${isBlocked ? 'رفع الحظر' : 'الحظر'}`;
@@ -2310,118 +2400,169 @@ const handleReport = useCallback(() => {
   } finally {
     setIsBlocking(false);
     setBlockConfirmVisible(false);
+    setBlockTarget(null);
   }
-}, [receiverId, myId, token, isUserBlocked]);
+}, [blockTarget, token, blockedUsers, receiverId]);
   // ================= إلغاء الحظر =================
-  const handleCancelBlock = useCallback(() => {
-    setBlockConfirmVisible(false);
-  }, []);
+  // const handleCancelBlock = useCallback(() => {
+  //   setBlockConfirmVisible(false);
+  // }, []);
+const handleCancelBlock = useCallback(() => {
+  setBlockConfirmVisible(false);
+  setBlockTarget(null);
+}, []);
+  // ================= فتح مودال حذف المحادثة =================
+  const handleDeleteChat = useCallback(() => {
+    if (!receiverId || !token) return;
+    setShowMenu(false);
+    setShowGroupDetails(false);
+    setShowSettingsMenu(false);
+    setDeleteConfirmVisible(true);
+  }, [receiverId, token]);
 
-  // ================= حذف المحادثة =================
-  const handleDeleteChat = useCallback(async () => {
+  // ================= تنفيذ الحذف الفعلي =================
+  const handleConfirmDelete = useCallback(async () => {
     if (!receiverId || !token) return;
 
-    const chatNameToShow = chatName || receiverData?.name || 'هذه المحادثة';
-    const isGroupChat = isGroup;
+    setIsDeleting(true);
 
-    const confirmMessage = isGroupChat
-      ? `أنت على وشك حذف المجموعة "${chatNameToShow}" بالكامل\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمجموعة، ولن تتمكن من استعادتها بعد الحذف.`
-      : ` أنت على وشك حذف المحادثة مع "${chatNameToShow}"\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمحادثة، ولن تتمكن من استعادتها بعد الحذف.`;
+    try {
+      const res = await fetch(`${API_BASE}/chats/delete`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: receiverId,
+          chatType: isGroup ? 'group' : 'private',
+        }),
+      });
 
-    showConfirmToast(
-      confirmMessage,
-      async () => {
-        try {
-          const res = await fetch(`${API_BASE}/chats/chats/delete`, {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              chatId: receiverId,
-              chatType: isGroupChat ? 'group' : 'private'
-            })
-          });
+      const data = await res.json();
 
-          const data = await res.json();
+      if (data.success) {
+        setMessages([]);
+        setDeleteConfirmVisible(false);
+        setDeleteSuccessVisible(true);
+      } else {
+        toast.error(`فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
+        setDeleteConfirmVisible(false);
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
+      setDeleteConfirmVisible(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [receiverId, token, isGroup]);
 
-          if (data.success) {
-            toast.success(' تم حذف المحادثة بنجاح');
-            router.push('/chats');
-          } else {
-            toast.error(`فشل حذف المحادثة: ${data.response || data.message || 'خطأ غير معروف'}`);
-          }
-        } catch (error) {
-          console.error('Error deleting chat:', error);
-          toast.error('حدث خطأ أثناء محاولة حذف المحادثة');
-        }
-        setShowMenu(false);
-      },
-      () => {
-        setShowMenu(false);
-        toast('تم إلغاء عملية الحذف', {
-          icon: '↩️',
-          duration: 2000,
-        });
-      },
-      'نعم، احذف',
-      'إلغاء'
+  // ================= إغلاق مودال الحذف =================
+  const handleCancelDelete = useCallback(() => {
+    setDeleteConfirmVisible(false);
+  }, []);
+
+  // ================= إغلاق مودال النجاح والانتقال =================
+  const handleDeleteSuccessClose = useCallback(() => {
+    setDeleteSuccessVisible(false);
+    router.push('/chats');
+  }, [router]);
+    // ================= هل المستخدم مشرف وحيد؟ =================
+  const isOnlyAdmin = useMemo(() => {
+    if (!isGroupAdmin) return false;
+    // لو هو المالك نفسه → الحالة مالك مش مشرف
+    if (groupOwner?.userId === myId) return false;
+    // هل فيه مشرف أو مالك تاني؟
+    const otherAdmins = groupMembers.filter(
+      (m) => m.userId !== myId && (m.isAdmin || m.isOwner)
     );
-  }, [receiverId, token, chatName, receiverData, isGroup, router]);
+    return otherAdmins.length === 0;
+  }, [isGroupAdmin, groupOwner, groupMembers, myId]);
 
-  // ================= الخروج من المجموعة =================
-  const handleLeaveGroup = useCallback(async () => {
+  // ================= الأعضاء القابلين للترقية =================
+  const promotableMembers = useMemo(() => {
+    return groupMembers.filter(
+      (m) => m.userId !== myId && !m.isAdmin && !m.isOwner
+    );
+  }, [groupMembers, myId]);
+    // ================= الأصدقاء المتاحين للإضافة =================
+  const availableContacts = useMemo(() => {
+    const existingIds = new Set(
+      groupMembers.map((m: any) => m.userId || m._id || m.id).filter(Boolean)
+    );
+
+    let list = contactsList.filter((c: any) => {
+      if (c.isGroup === true || c.chatType === 'group') return false;
+
+      const id = c.chatId || c.otherUserId || c._id || c.id;
+      if (!id) return false;
+      if (existingIds.has(id)) return false;
+      return true;
+    });
+
+    if (contactsSearchQuery.trim()) {
+      const q = contactsSearchQuery.trim().toLowerCase();
+      list = list.filter((c: any) => {
+        const name = (c.name || c.userinfo?.name || '').toLowerCase();
+        return name.includes(q);
+      });
+    }
+
+    return list;
+  }, [contactsList, groupMembers, contactsSearchQuery]);
+   
+  // ================= فتح مودال الخروج =================
+  const handleLeaveGroup = useCallback(() => {
     if (!receiverId || !token || !isGroup) return;
+    setShowMenu(false);
+    setShowGroupDetails(false);
+    setShowSettingsMenu(false);
+    setSelectedPromoteMember('');
+    setLeaveGroupConfirmVisible(true);
+  }, [receiverId, token, isGroup]);
 
-    const groupNameToShow = chatName || receiverData?.name || 'المجموعة';
+  // ================= تنفيذ الخروج =================
+  const handleConfirmLeaveGroup = useCallback(async () => {
+    if (!receiverId || !token) return;
 
-    showConfirmToast(
-      ` أنت على وشك الخروج من المجموعة "${groupNameToShow}"\n\nبعد الخروج، لن تتمكن من رؤية الرسائل الجديدة أو التفاعل مع أعضاء المجموعة.`,
-      async () => {
-        try {
-          const res = await fetch(`${API_BASE}/chats/groups/LeaveGroup/${receiverId}`, {
+    setIsLeavingGroup(true);
+
+    try {
+      // 🔹 لو مشرف وحيد → لازم يرقّي عضو الأول
+      if (isOnlyAdmin) {
+        if (!selectedPromoteMember) {
+          toast.error('لازم تختاري عضو ترفعيه مشرف قبل الخروج');
+          setIsLeavingGroup(false);
+          return;
+        }
+
+        setIsPromoting(true);
+        const promoteRes = await fetch(
+          `${API_BASE}/chats/groups/PromoteAdmin/${receiverId}`,
+          {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-          });
-
-          const data = await res.json();
-
-          if (data.success) {
-            toast.success(' تم الخروج من المجموعة بنجاح');
-            router.push('/chats');
-          } else if (data.response && data.response.toLowerCase().includes('transfer ownership')) {
-            toast.info('يجب تحويل ملكية المجموعة أولاً');
-          } else {
-            toast.error(`فشل الخروج من المجموعة: ${data.response || data.message || 'خطأ غير معروف'}`);
+            body: JSON.stringify({ memberid: selectedPromoteMember }),
           }
-        } catch (error) {
-          console.error('Error leaving group:', error);
-          toast.error('حدث خطأ أثناء محاولة الخروج من المجموعة');
+        );
+        const promoteData = await promoteRes.json();
+        setIsPromoting(false);
+
+        if (!promoteData.success) {
+          toast.error(
+            `فشل ترقية العضو: ${promoteData.response || promoteData.message || 'خطأ غير معروف'}`
+          );
+          setIsLeavingGroup(false);
+          return;
         }
-        setShowMenu(false);
-      },
-      () => {
-        setShowMenu(false);
-        toast('تم إلغاء الخروج من المجموعة', {
-          icon: '↩️',
-          duration: 2000,
-        });
-      },
-      'نعم، أخرج',
-      'إلغاء'
-    );
-  }, [receiverId, token, chatName, receiverData, isGroup, router]);
+      }
 
-  // ================= طلب مشرف في المجموعة =================
-  const handleRequestAdmin = useCallback(async () => {
-    if (!receiverId || !token || !isGroup) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/chats/groups/RequestAdmin/${receiverId}`, {
+      // 🔹 الخروج من المجموعة
+      const res = await fetch(`${API_BASE}/chats/groups/LeaveGroup/${receiverId}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -2432,17 +2573,316 @@ const handleReport = useCallback(() => {
       const data = await res.json();
 
       if (data.success) {
-        toast.success('✅ تم إرسال طلب المشرف إلى مدير المجموعة بنجاح');
+        setLeaveGroupConfirmVisible(false);
+        setLeaveGroupSuccessVisible(true);
+      } else if (data.response?.toLowerCase().includes('transfer ownership')) {
+        setLeaveGroupConfirmVisible(false);
+        toast.error('يجب تحويل ملكية المجموعة أولاً قبل الخروج');
       } else {
-        toast.error(`❌ فشل طلب المشرف: ${data.response || data.message || 'خطأ غير معروف'}`);
+        setLeaveGroupConfirmVisible(false);
+        toast.error(`فشل الخروج: ${data.response || data.message || 'خطأ غير معروف'}`);
       }
     } catch (error) {
-      console.error('Error requesting admin:', error);
-      toast.error('حدث خطأ أثناء محاولة طلب المشرف');
+      console.error('Error leaving group:', error);
+      toast.error('حدث خطأ أثناء محاولة الخروج');
+      setLeaveGroupConfirmVisible(false);
+    } finally {
+      setIsLeavingGroup(false);
     }
+  }, [receiverId, token, isOnlyAdmin, selectedPromoteMember]);
+    // ================= إغلاق مودال الخروج =================
+  const handleCancelLeaveGroup = useCallback(() => {
+    setLeaveGroupConfirmVisible(false);
+  }, []);
+  const handleLeaveSuccessClose = useCallback(() => {
+    setLeaveGroupSuccessVisible(false);
+    router.push('/chats');
+  }, [router]);
+  
+  // ================= فتح مودال ترقية عضو =================
+  const handleRequestAdmin = useCallback(() => {
+    if (!receiverId || !token || !isGroup) return;
     setShowMenu(false);
+    setShowGroupDetails(false);
+    setShowSettingsMenu(false);
+    setSelectedPromoteAdminMember('');
+    setPromoteAdminModalVisible(true);
   }, [receiverId, token, isGroup]);
 
+  // ================= تنفيذ ترقية العضو =================
+  const handleConfirmPromoteAdmin = useCallback(async () => {
+    if (!receiverId || !token || !selectedPromoteAdminMember) {
+      toast.error('لازم تختاري عضو الأول');
+      return;
+    }
+
+    setIsPromotingAdmin(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/chats/groups/PromoteAdmin/${receiverId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ memberid: selectedPromoteAdminMember }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setPromoteAdminModalVisible(false);
+        setPromoteAdminSuccessVisible(true);
+      } else {
+        toast.error(
+          `فشل ترقية العضو: ${data.response || data.message || 'خطأ غير معروف'}`
+        );
+      }
+    } catch (error) {
+      console.error('Error promoting admin:', error);
+      toast.error('حدث خطأ أثناء محاولة الترقية');
+    } finally {
+      setIsPromotingAdmin(false);
+    }
+  }, [receiverId, token, selectedPromoteAdminMember]);
+
+  // ================= إغلاق مودال الترقية =================
+  const handleCancelPromoteAdmin = useCallback(() => {
+    setPromoteAdminModalVisible(false);
+    setSelectedPromoteAdminMember('');
+  }, []);
+// ================= ترقية/تنزيل عضو من الإشراف =================
+const handleToggleMemberAdmin = useCallback(async (member: any) => {
+  if (!receiverId || !token) return;
+
+  setIsUpdatingMemberAdmin(member.userId);
+  const endpoint = member.isAdmin ? 'DemoteAdmin' : 'PromoteAdmin';
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/chats/groups/${endpoint}/${receiverId}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ memberid: member.userId }),
+      }
+    );
+
+    let data: any = {};
+    try { data = await res.json(); } catch {}
+
+    if (res.ok && data.success !== false) {
+      toast.success(member.isAdmin ? '✅ تم إزالة الإشراف' : '✅ تم ترقية العضو لمشرف');
+      fetchGroupData();
+    } else {
+      toast.error(data.response || data.message || `فشل: HTTP ${res.status}`);
+    }
+  } catch (e) {
+    console.error('Error toggling member admin:', e);
+    toast.error('حدث خطأ أثناء محاولة التحديث');
+  } finally {
+    setIsUpdatingMemberAdmin(null);
+  }
+}, [receiverId, token, fetchGroupData]);
+
+// ================= حذف عضو من المجموعة =================
+const handleRemoveMember = useCallback((member: any) => {
+  if (!receiverId || !token) return;
+
+  showConfirmToast(
+    `هل أنت متأكد من حذف "${member.name || 'هذا العضو'}" من المجموعة؟`,
+    async () => {
+      setIsRemovingMember(member.userId);
+
+      try {
+        const res = await fetch(
+          `${API_BASE}/chats/groups/RemoveMember/${receiverId}`,
+          {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ memberid: member.userId }),
+          }
+        );
+
+        let data: any = {};
+        try { data = await res.json(); } catch {}
+
+        if (res.ok && data.success !== false) {
+          toast.success('✅ تم حذف العضو من المجموعة');
+          fetchGroupData();
+        } else {
+          toast.error(data.response || data.message || `فشل: HTTP ${res.status}`);
+        }
+      } catch (e) {
+        console.error('Error removing member:', e);
+        toast.error('حدث خطأ أثناء محاولة الحذف');
+      } finally {
+        setIsRemovingMember(null);
+      }
+    },
+    undefined,
+    'نعم، احذف',
+    'إلغاء'
+  );
+}, [receiverId, token, fetchGroupData]);
+  // ================= إغلاق مودال نجاح الترقية =================
+  const handlePromoteAdminSuccessClose = useCallback(() => {
+    setPromoteAdminSuccessVisible(false);
+    fetchGroupData();
+  }, [fetchGroupData]);
+    // ================= أرشفة / إلغاء أرشفة المحادثة =================
+  const handleToggleArchive = useCallback(async () => {
+    if (!receiverId || !token) return;
+
+    setIsArchiving(true);
+
+    const endpoint = isFavorited ? 'unfavorite' : 'favorite';
+
+    try {
+      const res = await fetch(`${API_BASE}/chats/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: receiverId,
+          chatType: isGroup ? 'group' : 'private',
+        }),
+      });
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
+      if (res.ok && data.success !== false) {
+        setIsFavorited((prev) => !prev);
+        toast.success(
+          isFavorited ? '✅ تم إلغاء أرشفة المحادثة' : '✅ تم أرشفة المحادثة بنجاح'
+        );
+        setShowGroupDetails(false);
+      } else {
+        toast.error(
+          data.response || data.message || `فشل: HTTP ${res.status}`
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling archive:', error);
+      toast.error('حدث خطأ أثناء محاولة الأرشفة');
+    } finally {
+      setIsArchiving(false);
+    }
+  }, [receiverId, token, isGroup, isFavorited]);
+    // ================= جلب قائمة الأصدقاء =================
+  const fetchContactsForAdding = useCallback(async () => {
+    if (!token || !myId) return;
+
+    setIsLoadingContacts(true);
+    try {
+      // ✅ نستخدم /chats/chats/:myId زي CreateGroupModal
+      const res = await fetch(`${API_BASE}/chats/chats/${myId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        console.error('Failed to fetch contacts:', res.status);
+        setContactsList([]);
+        return;
+      }
+
+      const data = await res.json();
+      const list = data.response || data.userchats || [];
+      setContactsList(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error('Error fetching contacts:', e);
+      setContactsList([]);
+    } finally {
+      setIsLoadingContacts(false);
+    }
+  }, [token, myId]);
+
+    // ================= فتح مودال إضافة أعضاء =================
+  const handleOpenAddMembers = useCallback(() => {
+    if (!isGroup || !receiverId || !token) return;
+    setShowGroupDetails(false);
+    setSelectedMembersToAdd([]);
+    setContactsSearchQuery('');
+    setAddMembersModalVisible(true);
+    fetchContactsForAdding();
+  }, [isGroup, receiverId, token, fetchContactsForAdding]);
+
+  // ================= تحديد / إلغاء تحديد عضو =================
+  const handleToggleMemberSelection = useCallback((userId: string) => {
+    setSelectedMembersToAdd((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  }, []);
+
+  // ================= تنفيذ إضافة الأعضاء =================
+  const handleConfirmAddMembers = useCallback(async () => {
+    if (!receiverId || !token || selectedMembersToAdd.length === 0) return;
+
+    setIsAddingMembers(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/chats/groups/AddMembers/${receiverId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ members: selectedMembersToAdd }),
+      });
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
+      if (res.ok && data.success !== false) {
+        setAddMembersModalVisible(false);
+        setAddMembersSuccessVisible(true);
+      } else {
+        toast.error(
+          data.response || data.message || `فشل: HTTP ${res.status}`
+        );
+      }
+    } catch (e) {
+      console.error('Error adding members:', e);
+      toast.error('حدث خطأ أثناء إضافة الأعضاء');
+    } finally {
+      setIsAddingMembers(false);
+    }
+  }, [receiverId, token, selectedMembersToAdd]);
+
+  // ================= إغلاق مودال الإضافة =================
+  const handleCancelAddMembers = useCallback(() => {
+    setAddMembersModalVisible(false);
+    setSelectedMembersToAdd([]);
+    setContactsSearchQuery('');
+  }, []);
+
+  // ================= إغلاق مودال النجاح =================
+  const handleAddMembersSuccessClose = useCallback(() => {
+    setAddMembersSuccessVisible(false);
+    fetchGroupData();
+  }, [fetchGroupData]);
   // ================= Cleanup =================
   useEffect(() => {
     return () => {
@@ -2715,7 +3155,15 @@ const handleReport = useCallback(() => {
                           }}
                           className="w-6 h-6 flex items-center justify-center"
                         >
-                          <img src="/imgs/edit.svg" alt="تعديل" className="w-4 h-4" />
+                           <img
+                        src="/imgs/AditGroup.svg"
+                        alt="تعديل"
+                        style={{
+                          width: '15.027753829956055px',
+                          height: '14.929990768432617px',
+                          opacity: 1,
+                        }}
+                      />
                         </button>
                       )}
                     </>
@@ -2839,7 +3287,16 @@ const handleReport = useCallback(() => {
                           }}
                           className="w-5 h-5 flex items-center justify-center flex-shrink-0"
                         >
-                          <img src="/imgs/edit.svg" alt="تعديل" className="w-3.5 h-3.5" />
+                          {/* <img src="/imgs/edit.svg" alt="تعديل" className="w-3.5 h-3.5" /> */}
+                          <img
+                            src="/imgs/AditGroup.svg"
+                            alt="تعديل"
+                            style={{
+                              width: '15.027753829956055px',
+                              height: '14.929990768432617px',
+                              opacity: 1,
+                            }}
+                          />
                         </button>
                       )}
                     </div>
@@ -2885,13 +3342,11 @@ const handleReport = useCallback(() => {
                     <span className="text-[10px] text-[#B4B4B9]">بحث</span>
                   </button>
 
+                 
                   {isGroupAdmin && (
                     <button
                       className="flex flex-col items-center gap-1 group transition-all duration-200"
-                      onClick={() => {
-                        setShowGroupDetails(false);
-                        toast.info('جاري إضافة أشخاص إلى المجموعة...');
-                      }}
+                      onClick={handleOpenAddMembers}
                     >
                       <div className="w-[45px] h-[45px] rounded-full bg-[#FFFFFF] flex items-center justify-center group-hover:bg-[#F5F5F5] transition-all duration-200">
                         <img src="/imgs/addperson.svg" alt="إضافة" className="w-[18px] h-[18px]" />
@@ -2900,18 +3355,60 @@ const handleReport = useCallback(() => {
                     </button>
                   )}
 
+                 
+
                   <button
-                    className="flex flex-col items-center gap-1 group transition-all duration-200"
-                    onClick={() => {
-                      setShowGroupDetails(false);
-                      toast.info('جاري أرشفة المجموعة...');
-                    }}
-                  >
-                    <div className="w-[45px] h-[45px] rounded-full bg-[#FFFFFF] flex items-center justify-center group-hover:bg-[#F5F5F5] transition-all duration-200">
-                      <img src="/imgs/archiveIntrChat.svg" alt="أرشفة" className="w-[18px] h-[18px]" />
-                    </div>
-                    <span className="text-[10px] text-[#B4B4B9]">أرشفة</span>
-                  </button>
+                className="flex flex-col items-center gap-1 group transition-all duration-200"
+                onClick={handleToggleArchive}
+                disabled={isArchiving}
+              >
+                <div
+                  className={`w-[45px] h-[45px] rounded-full flex items-center justify-center transition-all duration-200 ${
+                    isFavorited
+                      ? 'bg-[#FFFFFF] group-hover:bg-[#F5F5F5] text-white'
+                      : 'bg-[#FFFFFF] group-hover:bg-[#F5F5F5]'
+                  } ${isArchiving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isArchiving ? (
+                    <svg
+                      className="animate-spin"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke={isFavorited ? 'white' : '#D72229'}
+                        strokeWidth="3"
+                        opacity="0.3"
+                      />
+                      <path
+                        d="M12 2a10 10 0 0 1 10 10"
+                        stroke={isFavorited ? 'white' : 'white'}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  ) : (
+                    <img
+                      src="/imgs/archiveIntrChat.svg"
+                      alt="أرشفة"
+                      className="w-[18px] h-[18px]"
+                       
+                    />
+                  )}
+                </div>
+                <span className="text-[10px] text-[#B4B4B9]">
+                  {isArchiving
+                    ? 'جاري...'
+                    : isFavorited
+                      ? 'إلغاء الأرشفة'
+                      : 'أرشفة'}
+                </span>
+              </button>
 
                   <div className="relative settings-menu-container">
                     <button
@@ -3091,7 +3588,7 @@ const handleReport = useCallback(() => {
                               )}
                             </div>
                           </div>
-
+{/* 
                           {member.userId !== myId && (
                             <div className="relative">
                               <button
@@ -3140,7 +3637,185 @@ const handleReport = useCallback(() => {
                                 </div>
                               )}
                             </div>
-                          )}
+                          )} */}
+                          {member.userId !== myId && (
+  <div className="flex items-center gap-1">
+    {/* زر أدمن / مش أدمن */}
+    {isGroupAdmin && !member.isOwner && (
+      <button
+  onClick={(e) => {
+    e.stopPropagation();
+    handleToggleMemberAdmin(member);
+  }}
+  disabled={isUpdatingMemberAdmin === member.userId}
+  // className="flex items-center justify-center transition disabled:opacity-50"
+  // style={{
+  //   width: '30px',
+  //   height: '30px',
+  //   borderRadius: '20px',
+  //   background: '#FFFFFF',
+  // }}
+   className="flex items-center justify-center transition-colors duration-200 disabled:opacity-50 bg-white hover:bg-[#F5F5F5] active:bg-[#EBEBEB]"
+  style={{
+    width: '35px',
+    height: '35px',
+    borderRadius: '20px',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+  }}
+  title={member.isAdmin ? 'إزالة الإشراف' : 'ترقية لمشرف'}
+>
+  {isUpdatingMemberAdmin === member.userId ? (
+    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="#D72229" strokeWidth="3" opacity="0.3" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="#D72229" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  ) : (
+    <img
+      src={member.isAdmin ? '/imgs/AdmineGroup.svg' : '/imgs/NoAdminGroup.svg'}
+      alt={member.isAdmin ? 'Admin' : 'Not Admin'}
+      className="w-[14px] h-[14px] object-contain"
+    />
+  )}
+</button>
+      // <button
+      //   onClick={(e) => {
+      //     e.stopPropagation();
+      //     handleToggleMemberAdmin(member);
+      //   }}
+      //   disabled={isUpdatingMemberAdmin === member.userId}
+      //   className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition disabled:opacity-50"
+      //   title={member.isAdmin ? 'إزالة الإشراف' : 'ترقية لمشرف'}
+      // >
+      //   {isUpdatingMemberAdmin === member.userId ? (
+      //     <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+      //       <circle cx="12" cy="12" r="10" stroke="#D72229" strokeWidth="3" opacity="0.3" />
+      //       <path d="M12 2a10 10 0 0 1 10 10" stroke="#D72229" strokeWidth="3" strokeLinecap="round" />
+      //     </svg>
+      //   ) : (
+      //     <img
+      //       src={member.isAdmin ? '/imgs/AdmineGroup.svg' : '/imgs/NoAdminGroup.svg'}
+      //       alt={member.isAdmin ? 'Admin' : 'Not Admin'}
+      //       className="w-[14px] h-[14px] object-contain"
+      //     />
+      //   )}
+      // </button>
+    )}
+
+    {/* زر حذف العضو */}
+    {isGroupAdmin && !member.isOwner && (
+      // <button
+      //   onClick={(e) => {
+      //     e.stopPropagation();
+      //     handleRemoveMember(member);
+      //   }}
+      //   disabled={isRemovingMember === member.userId}
+      //   className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 transition disabled:opacity-50"
+      //   title="حذف من المجموعة"
+      // >
+      //   {isRemovingMember === member.userId ? (
+      //     <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+      //       <circle cx="12" cy="12" r="10" stroke="#D72229" strokeWidth="3" opacity="0.3" />
+      //       <path d="M12 2a10 10 0 0 1 10 10" stroke="#D72229" strokeWidth="3" strokeLinecap="round" />
+      //     </svg>
+      //   ) : (
+      //     <img src="/imgs/delete.svg" alt="حذف" className="w-4 h-4" />
+      //   )}
+      // </button>
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    handleRemoveMember(member);
+  }}
+  disabled={isRemovingMember === member.userId}
+  className="flex items-center justify-center transition-colors duration-200 disabled:opacity-50 bg-white hover:bg-[#F5F5F5] active:bg-[#EBEBEB]"
+  style={{
+    width: '35px',
+    height: '35px',
+    borderRadius: '20px',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+  }}
+  title="حذف من المجموعة"
+>
+  {isRemovingMember === member.userId ? (
+    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="#D72229" strokeWidth="3" opacity="0.3" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="#D72229" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  ) : (
+    <img src="/imgs/deletePerson.svg" alt="حذف" className="w-4 h-4" />
+  )}
+</button>
+    )}
+
+    {/* زر الإعدادات القديم (زي ما هو) */}
+    <div className="relative">
+      {/* <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setActiveMemberMenuId(isMemberMenuOpen ? null : (member.userId || index));
+        }}
+        // className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200 transition"
+ 
+      >
+        <img src="/imgs/setting (3).svg" alt="إعدادات العضو" className="w-4 h-4" />
+      </button> */}
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    setActiveMemberMenuId(isMemberMenuOpen ? null : (member.userId || index));
+  }}
+  className="flex items-center justify-center transition-colors duration-200 bg-white hover:bg-[#F5F5F5] active:bg-[#EBEBEB]"
+  style={{
+    width: '30px',
+    height: '30px',
+    borderRadius: '20px',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+  }}
+  title="إعدادات العضو"
+>
+  <img src="/imgs/setting (3).svg" alt="إعدادات العضو" className="w-4 h-4" />
+</button>
+      {isMemberMenuOpen && (
+        <div
+          className="absolute left-0 top-full mt-1 z-[99999]"
+          style={{
+            width: '130px',
+            borderRadius: '15px',
+            backgroundColor: "#F5F5F5",
+            padding: '4px 0',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              setActiveMemberMenuId(null);
+              handleBlockMember(member);
+            }}
+            className="w-full px-3 py-2 text-sm hover:bg-white flex items-center justify-between transition"
+            style={{ borderBottom: '0.33px solid #3C3C434D' }}
+          >
+            <span className="font-semibold text-[13px] text-black">حظر</span>
+            <img src="/imgs/block.svg" alt="حظر" className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveMemberMenuId(null);
+              handleReportMember(member);
+            }}
+            className="w-full px-3 py-2 text-sm hover:bg-white flex items-center justify-between transition"
+          >
+            <span className="font-semibold text-[13px] text-[#D72229]">إبلاغ</span>
+            <img src="/imgs/report.svg" alt="إبلاغ" className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
                         </div>
                       );
                     })}
@@ -3183,7 +3858,12 @@ const handleReport = useCallback(() => {
             }}
             className="rounded-[17px] bg-[#F5F5F5] w-[40px] h-[40px] flex items-center justify-center cursor-pointer"
           >
-            <img src="/imgs/phoneChat.svg" className="w-[16px] h-[16px]" alt="phoneChat" />
+            {/* <img src="/imgs/phoneChat.svg" className="w-[16px] h-[16px]" alt="phoneChat" /> */}
+            <img
+              src={isGroup ? "/imgs/phonegrope.svg" : "/imgs/phoneChat.svg"}
+              className="w-[16px] h-[16px]"
+              alt={isGroup ? "groupCall" : "phoneChat"}
+            />
           </div>
           <div className="rounded-[17px] bg-[#F5F5F5] w-[40px] h-[40px] flex items-center justify-center cursor-pointer relative">
             <img
@@ -3742,20 +4422,184 @@ const handleReport = useCallback(() => {
       )} */}
 
 {/* Block Confirmation Modal */}
-<BlockConfirmModal
+{/* <BlockConfirmModal
   open={blockConfirmVisible}
   username={chatName || receiverData?.name || (isGroup ? 'هذه المجموعة' : 'هذا المستخدم')}
   action={isUserCurrentlyBlocked ? 'unblock' : 'block'}
   onCancel={handleCancelBlock}
   onConfirm={handleConfirmBlock}
   loading={isBlocking}
-/>
+/> */}
 {/* Block Success Modal */}
-<BlockSuccessModal
+{/* <BlockSuccessModal
   open={showBlockSuccess}
   action={isUserCurrentlyBlocked ?  'block':'unblock' }
   onClose={() => setShowBlockSuccess(false)}
-/>
+/> */}
+<div
+  style={{
+    position: 'relative',
+    zIndex: 2147483647, // أقصى قيمة ممكنة للـ z-index
+  }}
+>
+  <BlockConfirmModal
+    open={blockConfirmVisible}
+    username={
+      blockTarget?.name ||
+      chatName ||
+      receiverData?.name ||
+      (isGroup ? 'هذه المجموعة' : 'هذا المستخدم')
+    }
+    action={
+      blockTarget && blockedUsers.includes(blockTarget.id)
+        ? 'unblock'
+        : 'block'
+    }
+    onCancel={handleCancelBlock}
+    onConfirm={handleConfirmBlock}
+    loading={isBlocking}
+  />
+
+  <BlockSuccessModal
+    open={showBlockSuccess}
+    action={blockSuccessAction}
+    onClose={() => setShowBlockSuccess(false)}
+  />
+</div>
+      {/* ================= Delete Chat Confirmation Modal ================= */}
+      {deleteConfirmVisible && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={handleCancelDelete}
+        >
+          <div
+            className="bg-white rounded-[25px] w-full max-w-[420px] p-6 shadow-2xl"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              className="text-center mb-4"
+              style={{
+                fontWeight: 600,
+                fontSize: '20px',
+                color: '#D72229',
+              }}
+            >
+              {isGroup ? 'حذف المجموعة' : 'حذف المحادثة'}
+            </h2>
+
+            <p
+              className="text-center mb-6 whitespace-pre-line"
+              style={{
+                fontWeight: 500,
+                fontSize: '14px',
+                lineHeight: '1.7',
+                color: '#000000',
+              }}
+            >
+              {isGroup
+                ? `أنت على وشك حذف المجموعة "${chatName || 'هذه المجموعة'}" بالكامل\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمجموعة، ولن تتمكن من استعادتها بعد الحذف.`
+                : `أنت على وشك حذف المحادثة مع "${chatName || receiverData?.name || 'هذا المستخدم'}"\n\nسيتم حذف جميع الرسائل والمحتوى الخاص بالمحادثة، ولن تتمكن من استعادتها بعد الحذف.`}
+            </p>
+
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+                className="flex-1 h-[50px] rounded-[15px] border border-[#D72229] text-[#D72229] font-semibold text-[15px] hover:bg-[#D72229]/5 transition disabled:opacity-50"
+              >
+                إلغاء
+              </button>
+
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="flex-1 h-[50px] rounded-[15px] bg-[#D72229] text-white font-semibold text-[15px] hover:bg-[#b81e24] transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <svg
+                      className="animate-spin"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" opacity="0.3" />
+                      <path
+                        d="M12 2a10 10 0 0 1 10 10"
+                        stroke="white"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    جاري الحذف...
+                  </>
+                ) : (
+                  'نعم، احذف'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= Delete Chat Success Modal ================= */}
+      {deleteSuccessVisible && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={handleDeleteSuccessClose}
+        >
+          <div
+            className="bg-white rounded-[25px] w-full max-w-[380px] p-6 shadow-2xl text-center"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-[70px] h-[70px] mx-auto mb-4 rounded-full bg-[#22C55E]/10 flex items-center justify-center">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 6L9 17L4 12"
+                  stroke="#22C55E"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            <h2
+              className="mb-2"
+              style={{
+                fontWeight: 600,
+                fontSize: '18px',
+                color: '#000000',
+              }}
+            >
+              {isGroup ? 'تم حذف المجموعة' : 'تم حذف المحادثة'}
+            </h2>
+
+            <p
+              className="mb-6"
+              style={{
+                fontWeight: 400,
+                fontSize: '14px',
+                color: '#7C7D7E',
+              }}
+            >
+              {isGroup
+                ? 'تم حذف المجموعة وجميع رسائلها بنجاح'
+                : 'تم حذف المحادثة وجميع رسائلها بنجاح'}
+            </p>
+
+            <button
+              onClick={handleDeleteSuccessClose}
+              className="w-full h-[50px] rounded-[15px] bg-[#D72229] text-white font-semibold text-[15px] hover:bg-[#b81e24] transition"
+            >
+              حسناً
+            </button>
+          </div>
+        </div>
+      )}
       {/* ================= Image Viewer Modal ================= */}
       {imageViewerOpen && viewerImages.length > 0 && (
         <ImageViewer
@@ -3765,6 +4609,873 @@ const handleReport = useCallback(() => {
           onNext={nextImage}
           onPrev={prevImage}
         />
+      )}
+
+            {/* ================= Leave Group Confirmation Modal ================= */}
+      {leaveGroupConfirmVisible && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={handleCancelLeaveGroup}
+        >
+          <div
+            className="bg-white rounded-[25px] w-full max-w-[420px] p-6 shadow-2xl"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              className="text-center mb-4"
+              style={{
+                fontWeight: 600,
+                fontSize: '20px',
+                color: '#D72229',
+              }}
+            >
+              الخروج من المجموعة
+            </h2>
+
+            <p
+              className="text-center mb-6 whitespace-pre-line"
+              style={{
+                fontWeight: 500,
+                fontSize: '14px',
+                lineHeight: '1.7',
+                color: '#000000',
+              }}
+            >
+              {`أنت على وشك الخروج من المجموعة "${chatName || 'هذه المجموعة'}"\n\nبعد الخروج، لن تتمكن من رؤية الرسائل الجديدة أو التفاعل مع أعضاء المجموعة.`}
+            </p>
+
+            {/* تحذير المشرف الوحيد */}
+            {isOnlyAdmin && (
+              <div className="mb-4 p-3 bg-[#FFF7E6] border border-[#F59E0B]/30 rounded-[12px]">
+                <p
+                  className="text-right mb-2"
+                  style={{
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    color: '#B45309',
+                  }}
+                >
+                  ⚠️ أنت المشرف الوحيد في المجموعة
+                </p>
+                <p
+                  className="text-right mb-3"
+                  style={{
+                    fontWeight: 400,
+                    fontSize: '12px',
+                    color: '#7C7D7E',
+                  }}
+                >
+                  لازم تختاري عضو ترفعيه مشرف قبل الخروج:
+                </p>
+
+                {promotableMembers.length === 0 ? (
+                  <p
+                    className="text-right"
+                    style={{ fontSize: '12px', color: '#D72229' }}
+                  >
+                    مفيش أعضاء قابلين للترقية
+                  </p>
+                ) : (
+                  <select
+                    value={selectedPromoteMember}
+                    onChange={(e) => setSelectedPromoteMember(e.target.value)}
+                    disabled={isLeavingGroup}
+                    className="w-full h-[42px] px-3 rounded-[10px] border border-[#F59E0B]/40 bg-white text-right outline-none"
+                    style={{ fontFamily: 'Cairo, sans-serif', fontSize: '14px' }}
+                  >
+                    <option value="">-- اختاري عضو --</option>
+                    {promotableMembers.map((member) => (
+                      <option key={member.userId} value={member.userId}>
+                        {member.name || 'مستخدم'}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleCancelLeaveGroup}
+                disabled={isLeavingGroup}
+                className="flex-1 h-[50px] rounded-[15px] border border-[#D72229] text-[#D72229] font-semibold text-[15px] hover:bg-[#D72229]/5 transition disabled:opacity-50"
+              >
+                إلغاء
+              </button>
+
+              <button
+                onClick={handleConfirmLeaveGroup}
+                disabled={isLeavingGroup || (isOnlyAdmin && !selectedPromoteMember)}
+                className="flex-1 h-[50px] rounded-[15px] bg-[#D72229] text-white font-semibold text-[15px] hover:bg-[#b81e24] transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isLeavingGroup ? (
+                  <>
+                    <svg
+                      className="animate-spin"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" opacity="0.3" />
+                      <path
+                        d="M12 2a10 10 0 0 1 10 10"
+                        stroke="white"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    {isOnlyAdmin ? 'جاري الترقية والخروج...' : 'جاري الخروج...'}
+                  </>
+                ) : (
+                  isOnlyAdmin ? 'ترقية وخروج' : 'نعم، أخرج'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= Leave Group Success Modal ================= */}
+      {leaveGroupSuccessVisible && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={handleLeaveSuccessClose}
+        >
+          <div
+            className="bg-white rounded-[25px] w-full max-w-[380px] p-6 shadow-2xl text-center"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-[70px] h-[70px] mx-auto mb-4 rounded-full bg-[#22C55E]/10 flex items-center justify-center">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 6L9 17L4 12"
+                  stroke="#22C55E"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            <h2
+              className="mb-2"
+              style={{
+                fontWeight: 600,
+                fontSize: '18px',
+                color: '#000000',
+              }}
+            >
+              تم الخروج من المجموعة
+            </h2>
+
+            <p
+              className="mb-6"
+              style={{
+                fontWeight: 400,
+                fontSize: '14px',
+                color: '#7C7D7E',
+              }}
+            >
+              تم الخروج من المجموعة بنجاح
+            </p>
+
+            <button
+              onClick={handleLeaveSuccessClose}
+              className="w-full h-[50px] rounded-[15px] bg-[#D72229] text-white font-semibold text-[15px] hover:bg-[#b81e24] transition"
+            >
+              حسناً
+            </button>
+          </div>
+        </div>
+      )}
+
+
+
+            {/* ================= Promote Admin Modal ================= */}
+      {/* {promoteAdminModalVisible && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={handleCancelPromoteAdmin}
+        >
+          <div
+            className="bg-white rounded-[25px] w-full max-w-[420px] p-6 shadow-2xl max-h-[80vh] flex flex-col"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              className="text-center mb-2"
+              style={{
+                fontWeight: 600,
+                fontSize: '20px',
+                color: '#D72229',
+              }}
+            >
+              ترقية عضو لأدمن
+            </h2>
+
+            <p
+              className="text-center mb-4"
+              style={{
+                fontWeight: 400,
+                fontSize: '13px',
+                color: '#7C7D7E',
+                lineHeight: '1.6',
+              }}
+            >
+              {`اختاري عضو عشان يترقّى أدمن معاك في المجموعة "${chatName || 'هذه المجموعة'}"`}
+            </p>
+
+            {promotableMembers.length === 0 ? (
+              <p
+                className="text-center py-6"
+                style={{ fontSize: '14px', color: '#D72229', fontWeight: 500 }}
+              >
+                مفيش أعضاء قابلين للترقية
+              </p>
+            ) : (
+              <div
+                className="flex flex-col gap-2 overflow-y-auto mb-4"
+                style={{ maxHeight: '300px' }}
+              >
+                {promotableMembers.map((member) => {
+                  const isSelected = selectedPromoteAdminMember === member.userId;
+                  return (
+                    <button
+                      key={member.userId}
+                      onClick={() => setSelectedPromoteAdminMember(member.userId)}
+                      disabled={isPromotingAdmin}
+                      className={`flex items-center justify-between p-3 rounded-[15px] border-2 transition-all disabled:opacity-50 text-right ${
+                        isSelected
+                          ? 'border-[#D72229] bg-[#D72229]/5'
+                          : 'border-transparent bg-[#F5F5F5] hover:bg-[#EEEEEE]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <img
+                          src={member.img || member.avatar || '/imgs/user.png'}
+                          alt={member.name}
+                          className="w-[42px] h-[42px] rounded-[12px] object-cover flex-shrink-0"
+                        />
+                        <div className="flex flex-col text-right min-w-0">
+                          <span
+                            className="text-sm font-semibold text-black truncate"
+                            style={{ fontFamily: 'Cairo' }}
+                          >
+                            {member.name || 'مستخدم'}
+                          </span>
+                          <span
+                            className="text-[11px] text-[#B4B4B9] truncate"
+                            style={{ fontFamily: 'Cairo' }}
+                          >
+                            @{member.username || member.name || 'مستخدم'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                          isSelected
+                            ? 'border-[#D72229] bg-[#D72229]'
+                            : 'border-[#B4B4B9] bg-white'
+                        }`}
+                      >
+                        {isSelected && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <path
+                              d="M20 6L9 17L4 12"
+                              stroke="white"
+                              strokeWidth="3.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleCancelPromoteAdmin}
+                disabled={isPromotingAdmin}
+                className="flex-1 h-[50px] rounded-[15px] border border-[#D72229] text-[#D72229] font-semibold text-[15px] hover:bg-[#D72229]/5 transition disabled:opacity-50"
+              >
+                إلغاء
+              </button>
+
+              <button
+                onClick={handleConfirmPromoteAdmin}
+                disabled={isPromotingAdmin || !selectedPromoteAdminMember}
+                className="flex-1 h-[50px] rounded-[15px] bg-[#D72229] text-white font-semibold text-[15px] hover:bg-[#b81e24] transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isPromotingAdmin ? (
+                  <>
+                    <svg
+                      className="animate-spin"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" opacity="0.3" />
+                      <path
+                        d="M12 2a10 10 0 0 1 10 10"
+                        stroke="white"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    جاري الترقية...
+                  </>
+                ) : (
+                  'ترقية'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )} */}
+            {/* ================= Promote Admin Modal ================= */}
+      {promoteAdminModalVisible && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={handleCancelPromoteAdmin}
+        >
+          <div
+            className="bg-white rounded-[25px] w-full max-w-[420px] p-6 shadow-2xl max-h-[80vh] flex flex-col"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              className="text-center mb-2"
+              style={{
+                fontWeight: 600,
+                fontSize: '20px',
+                color: '#D72229',
+              }}
+            >
+              ترقية عضو لأدمن
+            </h2>
+
+            {/* ❌ لو مش أدمن/مالك → رسالة صلاحية */}
+            {!isGroupAdmin ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="w-[70px] h-[70px] mb-4 rounded-full bg-[#D72229]/10 flex items-center justify-center">
+                  <svg
+                    width="36"
+                    height="36"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#D72229"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                  </svg>
+                </div>
+
+                <p
+                  className="text-center mb-2"
+                  style={{
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    color: '#D72229',
+                  }}
+                >
+                  ليس لديك صلاحية
+                </p>
+
+                <p
+                  className="text-center px-4"
+                  style={{
+                    fontWeight: 400,
+                    fontSize: '13px',
+                    color: '#7C7D7E',
+                    lineHeight: '1.7',
+                  }}
+                >
+                  ترقية الأعضاء متاحة للأدمن والمالك فقط.
+                  <br />
+                  من فضلك اطلب من أحد المشرفين ترقيتك.
+                </p>
+              </div>
+            ) : promotableMembers.length === 0 ? (
+              /* ✅ أدمن بس مفيش أعضاء قابلين للترقية */
+              <p
+                className="text-center py-6"
+                style={{ fontSize: '14px', color: '#D72229', fontWeight: 500 }}
+              >
+                مفيش أعضاء قابلين للترقية
+              </p>
+            ) : (
+              /* ✅ أدمن + فيه أعضاء → اعرضي القائمة */
+              <>
+                <p
+                  className="text-center mb-4"
+                  style={{
+                    fontWeight: 400,
+                    fontSize: '13px',
+                    color: '#7C7D7E',
+                    lineHeight: '1.6',
+                  }}
+                >
+                  {`اختاري عضو عشان يترقّى أدمن معاك في المجموعة "${chatName || 'هذه المجموعة'}"`}
+                </p>
+
+                <div
+                  className="flex flex-col gap-2 overflow-y-auto mb-4"
+                  style={{ maxHeight: '300px' }}
+                >
+                  {promotableMembers.map((member) => {
+                    const isSelected = selectedPromoteAdminMember === member.userId;
+                    return (
+                      <button
+                        key={member.userId}
+                        onClick={() => setSelectedPromoteAdminMember(member.userId)}
+                        disabled={isPromotingAdmin}
+                        className={`flex items-center justify-between p-3 rounded-[15px] border-2 transition-all disabled:opacity-50 text-right ${
+                          isSelected
+                            ? 'border-[#D72229] bg-[#D72229]/5'
+                            : 'border-transparent bg-[#F5F5F5] hover:bg-[#EEEEEE]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <img
+                            src={member.img || member.avatar || '/imgs/user.png'}
+                            alt={member.name}
+                            className="w-[42px] h-[42px] rounded-[12px] object-cover flex-shrink-0"
+                          />
+                          <div className="flex flex-col text-right min-w-0">
+                            <span
+                              className="text-sm font-semibold text-black truncate"
+                              style={{ fontFamily: 'Cairo' }}
+                            >
+                              {member.name || 'مستخدم'}
+                            </span>
+                            <span
+                              className="text-[11px] text-[#B4B4B9] truncate"
+                              style={{ fontFamily: 'Cairo' }}
+                            >
+                              @{member.username || member.name || 'مستخدم'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                            isSelected
+                              ? 'border-[#D72229] bg-[#D72229]'
+                              : 'border-[#B4B4B9] bg-white'
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                              <path
+                                d="M20 6L9 17L4 12"
+                                stroke="white"
+                                strokeWidth="3.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* الأزرار */}
+            <div className="flex gap-3 justify-center mt-auto pt-2">
+              <button
+                onClick={handleCancelPromoteAdmin}
+                disabled={isPromotingAdmin}
+                className="flex-1 h-[50px] rounded-[15px] border border-[#D72229] text-[#D72229] font-semibold text-[15px] hover:bg-[#D72229]/5 transition disabled:opacity-50"
+              >
+                {isGroupAdmin && promotableMembers.length > 0 ? 'إلغاء' : 'حسناً'}
+              </button>
+
+              {/* زرار الترقية يظهر للأدمن بس + لو فيه أعضاء */}
+              {isGroupAdmin && promotableMembers.length > 0 && (
+                <button
+                  onClick={handleConfirmPromoteAdmin}
+                  disabled={isPromotingAdmin || !selectedPromoteAdminMember}
+                  className="flex-1 h-[50px] rounded-[15px] bg-[#D72229] text-white font-semibold text-[15px] hover:bg-[#b81e24] transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isPromotingAdmin ? (
+                    <>
+                      <svg
+                        className="animate-spin"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" opacity="0.3" />
+                        <path
+                          d="M12 2a10 10 0 0 1 10 10"
+                          stroke="white"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      جاري الترقية...
+                    </>
+                  ) : (
+                    'ترقية'
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= Promote Admin Success Modal ================= */}
+      {promoteAdminSuccessVisible && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={handlePromoteAdminSuccessClose}
+        >
+          <div
+            className="bg-white rounded-[25px] w-full max-w-[380px] p-6 shadow-2xl text-center"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-[70px] h-[70px] mx-auto mb-4 rounded-full bg-[#22C55E]/10 flex items-center justify-center">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 6L9 17L4 12"
+                  stroke="#22C55E"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            <h2
+              className="mb-2"
+              style={{
+                fontWeight: 600,
+                fontSize: '18px',
+                color: '#000000',
+              }}
+            >
+              تمت الترقية بنجاح
+            </h2>
+
+            <p
+              className="mb-6"
+              style={{
+                fontWeight: 400,
+                fontSize: '14px',
+                color: '#7C7D7E',
+              }}
+            >
+              العضو أصبح أدمن في المجموعة
+            </p>
+
+            <button
+              onClick={handlePromoteAdminSuccessClose}
+              className="w-full h-[50px] rounded-[15px] bg-[#D72229] text-white font-semibold text-[15px] hover:bg-[#b81e24] transition"
+            >
+              حسناً
+            </button>
+          </div>
+        </div>
+      )}
+
+            {/* ================= Add Members Modal ================= */}
+      {addMembersModalVisible && (
+        <motion.div
+          drag
+          dragMomentum={false}
+          className="fixed z-[999999] flex flex-col p-6 bg-[#F5F5F5] cursor-grab active:cursor-grabbing"
+          initial={{ x: 0, y: 0 }}
+          style={{
+            top: '130px',
+            left: '18px',
+            bottom: '24px',
+            width: '420px',
+            direction: 'rtl',
+            borderRadius: '35px',
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2 mb-4 flex-shrink-0">
+            <button
+              onClick={handleCancelAddMembers}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors p-0"
+            >
+              <img
+                src="/imgs/close.svg"
+                alt="returnPage"
+                style={{ width: '17px', height: '17px', opacity: 1 }}
+              />
+            </button>
+            <h2
+              style={{
+                fontFamily: 'Cairo',
+                fontWeight: 500,
+                fontSize: '25px',
+                lineHeight: '100%',
+                color: '#000000',
+              }}
+            >
+              اضافة اشخاص
+            </h2>
+          </div>
+
+          {/* Search */}
+          <div
+            className="flex items-center bg-white rounded-xl px-3 py-2 mb-3 shadow-sm mx-auto w-full flex-shrink-0"
+            style={{ maxWidth: '402px' }}
+          >
+            <Search className="text-[#B6B7B7] w-4 h-4 ml-2" />
+            <input
+              type="text"
+              placeholder="ابحث عن اسم شخص..."
+              value={contactsSearchQuery}
+              onChange={(e) => setContactsSearchQuery(e.target.value)}
+              className="w-full bg-transparent text-sm focus:outline-none"
+              style={{ fontFamily: 'Cairo', fontSize: '14px' }}
+            />
+          </div>
+
+          {/* Counter */}
+          <div className="flex items-center justify-between px-2 mb-3 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <img
+                src="/imgs/addperson.svg"
+                alt="صورة المستخدم"
+                className="w-[13px] h-[13px] object-cover"
+              />
+              <span className="text-sm font-semibold text-black">
+                عدد الاعضاء
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm">{selectedMembersToAdd.length}</span>
+              <span className="text-sm text-gray-500">الأشخاص</span>
+            </div>
+          </div>
+
+          {/* Members List */}
+          <div
+            className="flex-1 overflow-y-auto flex flex-col gap-2 mb-4 mx-auto w-full"
+            style={{ maxWidth: '402px', minHeight: '150px' }}
+          >
+            {isLoadingContacts ? (
+              <div
+                className="flex-1 flex items-center justify-center h-full"
+                style={{ minHeight: '200px' }}
+              >
+                <svg
+                  className="animate-spin"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle cx="12" cy="12" r="10" stroke="#D72229" strokeWidth="3" opacity="0.3" />
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#D72229" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              </div>
+            ) : availableContacts.length === 0 ? (
+              <div
+                className="flex-1 flex items-center justify-center h-full"
+                style={{ minHeight: '200px' }}
+              >
+                <div className="text-center">
+                  <img
+                    src="/imgs/noMember.svg"
+                    alt="لا يوجد أعضاء"
+                    className="w-[71px] h-[71px] object-contain mx-auto"
+                  />
+                </div>
+              </div>
+            ) : (
+              availableContacts.map((contact: any) => {
+                const contactId =
+                  contact.chatId ||
+                  contact.otherUserId ||
+                  contact._id ||
+                  contact.id;
+
+                const isChecked = selectedMembersToAdd.includes(contactId);
+                const displayName =
+                  contact.name || contact.userinfo?.name || 'مستخدم';
+    
+              const imgSrc =
+              (Array.isArray(contact.memberAvatars) && contact.memberAvatars.length > 0
+                ? (typeof contact.memberAvatars[0] === 'string'
+                    ? contact.memberAvatars[0]
+                    : contact.memberAvatars[0]?.img ||
+                      contact.memberAvatars[0]?.avatar ||
+                      contact.memberAvatars[0]?.image)
+                : null) ||
+              contact.userinfo?.img ||
+              contact.otherUser?.img ||
+              contact.img ||
+              contact.image ||
+              contact.avatar ||
+              '/imgs/user.png';
+
+                return (
+                  <div
+                    key={contactId}
+                    onClick={() => handleToggleMemberSelection(contactId)}
+                    className={`flex items-center justify-between px-2 py-3 rounded-2xl cursor-pointer transition-all ${
+                      isChecked
+                        ? 'border-2 border-[#D72229] shadow-sm'
+                        : 'border-2 border-transparent hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={imgSrc}
+                        className="w-10 h-10 rounded-full object-cover"
+                        alt={displayName}
+                      />
+                      <span className="text-sm font-semibold text-black">
+                        {displayName}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`w-[20px] h-[20px] rounded-[20px] flex items-center justify-center shadow-sm transition-all ${
+                        isChecked ? 'bg-[#D72229]' : 'bg-white'
+                      }`}
+                    >
+                      {isChecked && (
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M20 6L9 17L4 12"
+                            stroke="white"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Submit Footer */}
+          <div
+            className="flex justify-center items-center flex-shrink-0"
+            style={{
+              width: 'calc(100% + 48px)',
+              marginLeft: '-24px',
+              marginRight: '-24px',
+              marginBottom: '-24px',
+              padding: '16px 24px',
+              background: '#E3E3E366',
+              backdropFilter: 'blur(35px)',
+              borderBottomLeftRadius: '35px',
+              borderBottomRightRadius: '35px',
+              minHeight: '82px',
+            }}
+          >
+            <button
+              onClick={handleConfirmAddMembers}
+              disabled={isAddingMembers || selectedMembersToAdd.length === 0}
+              style={{
+                width: '100%',
+                maxWidth: '285px',
+                height: '50px',
+                borderRadius: '20px',
+                background: '#FFFFFF',
+                fontFamily: 'Cairo',
+                fontWeight: 600,
+                fontSize: '17px',
+                border: 'none',
+                cursor:
+                  isAddingMembers || selectedMembersToAdd.length === 0
+                    ? 'not-allowed'
+                    : 'pointer',
+                transition: 'all 0.2s ease',
+                opacity:
+                  isAddingMembers || selectedMembersToAdd.length === 0
+                    ? 0.5
+                    : 1,
+              }}
+              className="hover:bg-gray-100 shadow-md text-black"
+            >
+              {isAddingMembers ? 'جاري الإضافة...' : 'اضافة الاعضاء'}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ================= Add Members Success Modal ================= */}
+      {addMembersSuccessVisible && (
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={handleAddMembersSuccessClose}
+        >
+          <div
+            className="bg-white rounded-[25px] w-full max-w-[380px] p-6 shadow-2xl text-center"
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-[70px] h-[70px] mx-auto mb-4 rounded-full bg-[#22C55E]/10 flex items-center justify-center">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 6L9 17L4 12"
+                  stroke="#22C55E"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            <h2
+              className="mb-2"
+              style={{
+                fontWeight: 600,
+                fontSize: '18px',
+                color: '#000000',
+              }}
+            >
+              تمت الإضافة بنجاح
+            </h2>
+
+            <p
+              className="mb-6"
+              style={{
+                fontWeight: 400,
+                fontSize: '14px',
+                color: '#7C7D7E',
+              }}
+            >
+              تم إضافة الأعضاء للمجموعة
+            </p>
+
+            <button
+              onClick={handleAddMembersSuccessClose}
+              className="w-full h-[50px] rounded-[15px] bg-[#D72229] text-white font-semibold text-[15px] hover:bg-[#b81e24] transition"
+            >
+              حسناً
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

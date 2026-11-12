@@ -529,7 +529,7 @@ export default function CreateGroupModal({
                       className="w-[30px] h-[30px] rounded-[20px] bg-white backdrop-blur-[4px] flex items-center justify-center shadow-sm transition-all hover:bg-gray-100 cursor-pointer"
                     >
                       <img
-                        src={isAdmin ? '/imgs/admin (2).svg' : '/imgs/noAdmin (2).svg'}
+                        src={isAdmin ? '/imgs/AdmineGroup.svg' : '/imgs/NoAdminGroup.svg'}
                         alt={isAdmin ? 'Admin' : 'Not Admin'}
                         className="w-[12px] h-[13px] object-contain"
                       />
