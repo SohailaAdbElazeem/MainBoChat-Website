@@ -541,6 +541,10 @@ export default function ChatPage() {
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [deleteSuccessVisible, setDeleteSuccessVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+    // ================= Delete Message Modal states =================
+  const [deleteMessageConfirm, setDeleteMessageConfirm] = useState<Message | null>(null);
+  const [isDeletingMessage, setIsDeletingMessage] = useState(false);
+  const [deleteScope, setDeleteScope] = useState<'me' | 'everyone'>('me');
    // ================= Leave Group Modal states =================
   const [leaveGroupConfirmVisible, setLeaveGroupConfirmVisible] = useState(false);
   const [leaveGroupSuccessVisible, setLeaveGroupSuccessVisible] = useState(false);
@@ -594,6 +598,10 @@ export default function ChatPage() {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [viewerImages, setViewerImages] = useState<string[]>([]);
   const [viewerCurrentIndex, setViewerCurrentIndex] = useState(0);
+
+  // ================= Translation states =================
+const [translations, setTranslations] = useState<Record<string, string>>({});
+const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
 
   const router = useRouter();
 
@@ -744,70 +752,523 @@ export default function ChatPage() {
     toast.info(`جاري الرد على: ${message.message?.substring(0, 30)}...`);
   }, []);
 
-  const handleTranslate = useCallback(async (message: Message) => {
-    if (!message.message) return;
+  // const handleTranslate = useCallback(async (message: Message) => {
+  //   if (!message.message) return;
 
-    try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=${encodeURIComponent(message.message)}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const translated = data[0]?.map((item: any) => item[0]).join('');
+  //   try {
+  //     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=${encodeURIComponent(message.message)}`;
+  //     const res = await fetch(url);
+  //     const data = await res.json();
+  //     const translated = data[0]?.map((item: any) => item[0]).join('');
 
-      if (translated) {
-        toast.success(`الترجمة: ${translated}`, {
-          duration: 8000,
-          position: 'top-center',
-        });
-      } else {
-        toast.error('فشل ترجمة الرسالة');
-      }
-    } catch (error) {
-      console.error('Error translating message:', error);
-      toast.error('فشل ترجمة الرسالة');
-    }
+  //     if (translated) {
+  //       toast.success(`الترجمة: ${translated}`, {
+  //         duration: 8000,
+  //         position: 'top-center',
+  //       });
+  //     } else {
+  //       toast.error('فشل ترجمة الرسالة');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error translating message:', error);
+  //     toast.error('فشل ترجمة الرسالة');
+  //   }
+  // }, []);
+
+  // const handleDeleteMessage = useCallback(async (message: Message) => {
+  //   if (!token || !receiverId) return;
+
+  //   showConfirmToast(
+  //     'هل أنت متأكد من حذف هذه الرسالة؟',
+  //     async () => {
+  //       try {
+  //         const res = await fetch(`${API_BASE}/message/delete`, {
+  //           method: 'DELETE',
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             'Content-Type': 'application/json',
+  //           },
+  //           body: JSON.stringify({
+  //             messageId: message._id,
+  //             receiver: receiverId,
+  //           }),
+  //         });
+
+  //         if (res.ok) {
+  //           setMessages((prev) => prev.filter((msg) => msg._id !== message._id));
+  //           toast.success('تم حذف الرسالة بنجاح');
+  //         } else {
+  //           toast.error('فشل حذف الرسالة');
+  //         }
+  //       } catch (error) {
+  //         console.error('Error deleting message:', error);
+  //         toast.error('فشل حذف الرسالة');
+  //       }
+  //     },
+  //     undefined,
+  //     'نعم، احذف',
+  //     'إلغاء'
+  //   );
+  // }, [token, receiverId]);
+      // ================= فتح مودال حذف الرسالة =================
+  const handleDeleteMessage = useCallback((message: Message) => {
+    setDeleteMessageConfirm(message);
+    setDeleteScope('me'); // افتراضي: حذف لي فقط
   }, []);
 
-  const handleDeleteMessage = useCallback(async (message: Message) => {
-    if (!token || !receiverId) return;
+  // ================= تنفيذ الحذف الفعلي =================
+  // const confirmDeleteMessage = useCallback(async () => {
+  //   if (!deleteMessageConfirm || !token) return;
 
-    showConfirmToast(
-      'هل أنت متأكد من حذف هذه الرسالة؟',
-      async () => {
-        try {
-          const res = await fetch(`${API_BASE}/message/delete`, {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              messageId: message._id,
-              receiver: receiverId,
-            }),
-          });
+  //   setIsDeletingMessage(true);
 
-          if (res.ok) {
-            setMessages((prev) => prev.filter((msg) => msg._id !== message._id));
-            toast.success('تم حذف الرسالة بنجاح');
-          } else {
-            toast.error('فشل حذف الرسالة');
+  //   try {
+  //     const res = await fetch(`${API_BASE}/chats/message/delete`, {
+  //       method: 'DELETE',
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         messageId: deleteMessageConfirm._id,
+  //         scope: deleteScope,   // "me" | "everyone"
+  //       }),
+  //     });
+
+  //     if (res.ok) {
+  //       // لو scope=everyone، نبلّغ الطرف التاني بالـ WebSocket
+  //       if (deleteScope === 'everyone' && receiverId && myId) {
+  //         try {
+  //           wsService.send({
+  //             event: 'message_deleted',
+  //             metadata: {
+  //               sender: myId,
+  //               receiver: receiverId,
+  //               messageId: deleteMessageConfirm._id,
+  //               scope: 'everyone',
+  //             },
+  //           });
+  //         } catch (e) {
+  //           console.warn('WS notify failed:', e);
+  //         }
+  //       }
+
+  //       setMessages((prev) =>
+  //         prev.filter((msg) => msg._id !== deleteMessageConfirm._id)
+  //       );
+
+  //       toast.success(
+  //         deleteScope === 'everyone'
+  //           ? 'تم حذف الرسالة للجميع'
+  //           : 'تم حذف الرسالة'
+  //       );
+  //       setDeleteMessageConfirm(null);
+  //     } else {
+  //       let errMsg = 'فشل حذف الرسالة';
+  //       try {
+  //         const errData = await res.json();
+  //         if (errData?.message || errData?.response) {
+  //           errMsg += `: ${errData.message || errData.response}`;
+  //         }
+  //       } catch {}
+  //       toast.error(errMsg);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error deleting message:', error);
+  //     toast.error('فشل حذف الرسالة');
+  //   } finally {
+  //     setIsDeletingMessage(false);
+  //   }
+  // }, [deleteMessageConfirm, deleteScope, token, receiverId, myId]);
+  // ================= تنفيذ الحذف الفعلي =================
+  // const confirmDeleteMessage = useCallback(async () => {
+  //   if (!deleteMessageConfirm || !token) return;
+
+  //   setIsDeletingMessage(true);
+
+  //   try {
+  //     const res = await fetch(`${API_BASE}/chats/message/delete`, {
+  //       method: 'DELETE',
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         messageId: deleteMessageConfirm._id,
+  //         scope: deleteScope,
+  //       }),
+  //     });
+
+  //     if (res.ok) {
+  //       // ✅ حذف للجميع → إرسال WS notification للطرف التاني
+  //       if (deleteScope === 'everyone' && receiverId && myId) {
+  //         try {
+  //           wsService.send({
+  //             event: 'message_deleted',
+  //             metadata: {
+  //               sender: myId,
+  //               receiver: receiverId,
+  //               messageId: deleteMessageConfirm._id,
+  //               scope: 'everyone',
+  //             },
+  //           });
+  //         } catch (e) {
+  //           console.warn('WS notify failed:', e);
+  //         }
+  //       }
+
+  //       // ✅ scope='me' → نشيل الرسالة من القائمة
+  //       // ✅ scope='everyone' → نعلّمها كـ deleted (تظهر كـ placeholder)
+  //       setMessages((prev) => {
+  //         if (deleteScope === 'me') {
+  //           return prev.filter((msg) => msg._id !== deleteMessageConfirm._id);
+  //         }
+  //         return prev.map((msg) =>
+  //           msg._id === deleteMessageConfirm._id
+  //             ? ({ ...msg, _deleted: true } as any)
+  //             : msg
+  //         );
+  //       });
+
+  //       toast.success(
+  //         deleteScope === 'everyone'
+  //           ? 'تمت إزالة الرسالة للجميع'
+  //           : 'تم حذف الرسالة'
+  //       );
+  //       setDeleteMessageConfirm(null);
+  //     } else {
+  //       let errMsg = 'فشل حذف الرسالة';
+  //       try {
+  //         const errData = await res.json();
+  //         if (errData?.message || errData?.response) {
+  //           errMsg += `: ${errData.message || errData.response}`;
+  //         }
+  //       } catch {}
+  //       toast.error(errMsg);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error deleting message:', error);
+  //     toast.error('فشل حذف الرسالة');
+  //   } finally {
+  //     setIsDeletingMessage(false);
+  //   }
+  // }, [deleteMessageConfirm, deleteScope, token, receiverId, myId]);
+    // ================= تنفيذ الحذف الفعلي =================
+  const confirmDeleteMessage = useCallback(async () => {
+    if (!deleteMessageConfirm || !token) return;
+
+    setIsDeletingMessage(true);
+
+    // 🔍 DEBUG
+    console.log('🗑️ Deleting:', {
+      messageId: deleteMessageConfirm._id,
+      scope: deleteScope,
+      sender: deleteMessageConfirm.sender,
+      myId,
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/chats/message/delete`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messageId: deleteMessageConfirm._id,
+          scope: deleteScope,
+        }),
+      });
+
+      console.log('🗑️ Delete response status:', res.status);
+
+      if (res.ok) {
+        // ✅ إرسال WS للطرف التاني
+        if (deleteScope === 'everyone' && receiverId && myId) {
+          try {
+            wsService.send({
+              event: 'message_deleted',
+              metadata: {
+                sender: myId,
+                receiver: receiverId,
+                messageId: deleteMessageConfirm._id,
+                scope: 'everyone',
+              },
+            });
+          } catch (e) {
+            console.warn('WS notify failed:', e);
           }
-        } catch (error) {
-          console.error('Error deleting message:', error);
-          toast.error('فشل حذف الرسالة');
         }
-      },
-      undefined,
-      'نعم، احذف',
-      'إلغاء'
-    );
-  }, [token, receiverId]);
+
+        // ✅ scope='me' → نشيلها خالص
+        // ✅ scope='everyone' → نعلّمها بـ _deleted (تظهر placeholder)
+        setMessages((prev) => {
+          console.log('🔄 Updating messages, scope:', deleteScope);
+
+          if (deleteScope === 'me') {
+            return prev.filter((msg) => msg._id !== deleteMessageConfirm._id);
+          }
+
+          return prev.map((msg) => {
+            if (msg._id === deleteMessageConfirm._id) {
+              console.log('✅ Marking as deleted:', msg._id);
+              return { ...msg, _deleted: true } as any;
+            }
+            return msg;
+          });
+        });
+
+        toast.success(
+          deleteScope === 'everyone'
+            ? 'تمت إزالة الرسالة للجميع'
+            : 'تم حذف الرسالة'
+        );
+        setDeleteMessageConfirm(null);
+      } else {
+        let errMsg = 'فشل حذف الرسالة';
+        try {
+          const errData = await res.json();
+          console.error('❌ Delete failed:', errData);
+          if (errData?.message || errData?.response) {
+            errMsg += `: ${errData.message || errData.response}`;
+          }
+        } catch {}
+        toast.error(errMsg);
+      }
+    } catch (error) {
+      console.error('❌ Error deleting message:', error);
+      toast.error('فشل حذف الرسالة');
+    } finally {
+      setIsDeletingMessage(false);
+    }
+  }, [deleteMessageConfirm, deleteScope, token, receiverId, myId]);
+  // ================= إغلاق المودال =================
+  const cancelDeleteMessage = useCallback(() => {
+    if (isDeletingMessage) return;
+    setDeleteMessageConfirm(null);
+    setDeleteScope('me');
+  }, [isDeletingMessage]);
+  // ================= Translate via backend proxy =================
+ // const handleTranslate = useCallback(async (message: Message) => {
+//   if (!message.message?.trim()) return;
+
+//   // 🔁 لو مترجمة بالفعل → اضغطي تاني يخفيها
+//   if (translations[message._id]) {
+//     setTranslations((prev) => {
+//       const next = { ...prev };
+//       delete next[message._id];
+//       return next;
+//     });
+//     return;
+//   }
+
+//   // ⏳ علامة "جاري الترجمة..."
+//   setTranslatingIds((prev) => new Set(prev).add(message._id));
+
+//   try {
+//     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=${encodeURIComponent(message.message)}`;
+//     const res = await fetch(url);
+
+//     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+//     const data = await res.json();
+//     const translated: string = data?.[0]?.map((item: any) => item?.[0]).join("") || "";
+
+//     if (translated.trim()) {
+//       setTranslations((prev) => ({ ...prev, [message._id]: translated.trim() }));
+//     } else {
+//       toast.error("فشل ترجمة الرسالة");
+//     }
+//   } catch (error) {
+//     console.error("❌ translate error:", error);
+//     toast.error("فشل ترجمة الرسالة");
+//   } finally {
+//     setTranslatingIds((prev) => {
+//       const next = new Set(prev);
+//       next.delete(message._id);
+//       return next;
+//     });
+//   }
+// }, [translations]);
+// const handleTranslate = useCallback(async (message: Message) => {
+//   console.log("🎯 1. handleTranslate called:", {
+//     id: message._id,
+//     text: message.message,
+//   });
+
+//   if (!message.message?.trim()) {
+//     console.warn("⚠️ لا يوجد نص");
+//     toast.error("لا يوجد نص للترجمة");
+//     return;
+//   }
+
+//   if (translations[message._id]) {
+//     console.log("↩️ toggling OFF");
+//     setTranslations((prev) => {
+//       const next = { ...prev };
+//       delete next[message._id];
+//       return next;
+//     });
+//     return;
+//   }
+
+//   setTranslatingIds((prev) => new Set(prev).add(message._id));
+
+//   let translated = "";
+
+//   // ① Google
+//   try {
+//     console.log("🌐 2. Trying Google...");
+//     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=${encodeURIComponent(message.message)}`;
+//     const res = await fetch(url);
+//     console.log("🌐 3. Google status:", res.status);
+
+//     if (res.ok) {
+//       const data = await res.json();
+//       translated = data?.[0]?.map((item: any) => item?.[0]).join("") || "";
+//       console.log("🌐 4. Google result:", translated);
+//     }
+//   } catch (e) {
+//     console.warn("❌ Google failed:", e);
+//   }
+
+//   // ② MyMemory (fallback)
+//   if (!translated.trim()) {
+//     try {
+//       console.log("🌐 5. Trying MyMemory...");
+//       const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(message.message)}&langpair=auto|ar`;
+//       const res = await fetch(url);
+//       console.log("🌐 6. MyMemory status:", res.status);
+
+//       if (res.ok) {
+//         const data = await res.json();
+//         const t = data?.responseData?.translatedText || "";
+//         if (t && !/MYMEMORY WARNING|INVALID/i.test(t) && t.trim() !== message.message.trim()) {
+//           translated = t.trim();
+//           console.log("🌐 7. MyMemory result:", translated);
+//         }
+//       }
+//     } catch (e) {
+//       console.warn("❌ MyMemory failed:", e);
+//     }
+//   }
+
+//   // 💾 التخزين
+//   if (translated.trim()) {
+//     console.log("✅ 8. STORING translation for", message._id);
+//     setTranslations((prev) => ({ ...prev, [message._id]: translated.trim() }));
+//   } else {
+//     console.error("❌ 9. ALL failed - no translation");
+//     toast.error("فشل ترجمة الرسالة");
+//   }
+
+//   setTranslatingIds((prev) => {
+//     const next = new Set(prev);
+//     next.delete(message._id);
+//     return next;
+//   });
+// }, [translations]);
+
+// ================= Helper: كشف اللغة العربية =================
+const isArabicText = (text: string): boolean => {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(text);
+};
+
+// ================= handleTranslate (Auto-Detect) =================
+const handleTranslate = useCallback(async (message: Message) => {
+  console.log("🎯 1. handleTranslate called:", {
+    id: message._id,
+    text: message.message,
+  });
+
+  if (!message.message?.trim()) {
+    console.warn("⚠️ لا يوجد نص");
+    toast.error("لا يوجد نص للترجمة");
+    return;
+  }
+
+  // 🔁 toggle: لو مترجمة → اخفيها
+  if (translations[message._id]) {
+    console.log("↩️ toggling OFF");
+    setTranslations((prev) => {
+      const next = { ...prev };
+      delete next[message._id];
+      return next;
+    });
+    return;
+  }
+
+  setTranslatingIds((prev) => new Set(prev).add(message._id));
+
+  // 🧠 تحديد لغة الهدف:
+  // - لو النص عربي → ترجم للإنجليزي (tl=en)
+  // - لو النص إنجليزي/أي لغة → ترجم للعربي (tl=ar)
+  const isArabic = isArabicText(message.message);
+  const targetLang = isArabic ? 'en' : 'ar';
+  console.log("🌐 2. Detected:", isArabic ? 'Arabic' : 'Non-Arabic', "→ target:", targetLang);
+
+  let translated = "";
+
+  // ① Google (sl=auto بيكتشف المصدر أوتوماتيك)
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(message.message)}`;
+    const res = await fetch(url);
+    console.log("🌐 3. Google status:", res.status);
+
+    if (res.ok) {
+      const data = await res.json();
+      translated = data?.[0]?.map((item: any) => item?.[0]).join("") || "";
+      console.log("🌐 4. Google result:", translated);
+    }
+  } catch (e) {
+    console.warn("❌ Google failed:", e);
+  }
+
+  // ② MyMemory (fallback)
+  if (!translated.trim()) {
+    try {
+      const langpair = isArabic ? 'ar|en' : 'auto|ar';
+      console.log("🌐 5. Trying MyMemory with", langpair);
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(message.message)}&langpair=${langpair}`;
+      const res = await fetch(url);
+      console.log("🌐 6. MyMemory status:", res.status);
+
+      if (res.ok) {
+        const data = await res.json();
+        const t = data?.responseData?.translatedText || "";
+        if (t && !/MYMEMORY WARNING|INVALID/i.test(t) && t.trim() !== message.message.trim()) {
+          translated = t.trim();
+          console.log("🌐 7. MyMemory result:", translated);
+        }
+      }
+    } catch (e) {
+      console.warn("❌ MyMemory failed:", e);
+    }
+  }
+
+  // 💾 التخزين — بشرط النتيجة مختلفة عن الأصل
+  const original = message.message.trim();
+  const finalResult = translated.trim();
+
+  if (finalResult && finalResult !== original) {
+    console.log("✅ 8. STORING for", message._id, "→", finalResult);
+    setTranslations((prev) => ({ ...prev, [message._id]: finalResult }));
+  } else {
+    console.error("❌ 9. Failed or same as original");
+    toast.error("فشل ترجمة الرسالة");
+  }
+
+  setTranslatingIds((prev) => {
+    const next = new Set(prev);
+    next.delete(message._id);
+    return next;
+  });
+}, [translations]);
+
+ 
 
   // ================= باقي الدوال =================
-
-  // const handleBlockMember = (member: any) => {
-  //   toast.success(`تم حظر المستخدم ${member.name}`);
-  // };
+ 
 const handleBlockMember = useCallback((member: any) => {
   if (!member?.userId || !token) return;
   setActiveMemberMenuId(null);
@@ -1788,6 +2249,20 @@ const fetchReceiverData = useCallback(async () => {
     };
 
     const handler = async (payload: any) => {
+         // ✅ استقبال حذف رسالة من الطرف التاني
+      if (payload.event === "message_deleted") {
+        const { messageId, scope } = payload.metadata || {};
+        console.log('📩 WS message_deleted received:', { messageId, scope });
+        if (!messageId) return;
+        if (scope === 'everyone') {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m._id === messageId ? ({ ...m, _deleted: true } as any) : m
+            )
+          );
+        }
+        return;
+      }
       if (payload.event === "typing") {
         const sender = payload.metadata?.sender;
         const receiver = payload.metadata?.reicever;
@@ -3903,44 +4378,100 @@ const handleRemoveMember = useCallback((member: any) => {
         >
           {loading && messages.length === 0 && <Loader />}
           {messages.map((m, idx) => (
+            // <MessageItem
+            //   key={m._id}
+            //   m={m}
+            //   myId={myId}
+            //   onRetry={retrySend}
+            //   index={idx}
+            //   recieverImg={receiverData?.img || '/imgs/user.png'}
+            //   prevMessage={messages[idx - 1]}
+            //   isGroupAdmin={isGroupAdmin}
+            //   onReact={handleReact}
+            //   onEdit={handleEditMessage}
+            //   onReply={handleReply}
+            //   onTranslate={handleTranslate}
+            //   onDelete={handleDeleteMessage}
+            //   onCopy={(text) => {
+            //     navigator.clipboard.writeText(text);
+            //     toast.success('تم نسخ النص');
+            //   }}
+            //   showReactions={true}
+            //   onImageClick={(imageUrl) => {
+            //     const allImages = messages
+            //       .filter(msg => msg.type === 'image' && msg.media)
+            //       .map(msg => {
+            //         if (typeof msg.media === 'string') {
+            //           return msg.media.startsWith('http') ? msg.media : `${API_BASE}${msg.media}`;
+            //         } else if (msg.media && typeof msg.media === 'object') {
+            //           return (msg.media as any).url || (msg.media as any).fileContent || '';
+            //         }
+            //         return '';
+            //       })
+            //       .filter(url => url && url.length > 0);
+
+            //     const pendingImageUrls = pendingImages.map(img => img.url);
+            //     const allImagesWithPending = [...allImages, ...pendingImageUrls];
+
+            //     openImageViewer(imageUrl, allImagesWithPending);
+            //   }}
+            // />
             <MessageItem
-              key={m._id}
-              m={m}
-              myId={myId}
-              onRetry={retrySend}
-              index={idx}
-              recieverImg={receiverData?.img || '/imgs/user.png'}
-              prevMessage={messages[idx - 1]}
-              isGroupAdmin={isGroupAdmin}
-              onReact={handleReact}
-              onEdit={handleEditMessage}
-              onReply={handleReply}
-              onTranslate={handleTranslate}
-              onDelete={handleDeleteMessage}
-              onCopy={(text) => {
-                navigator.clipboard.writeText(text);
-                toast.success('تم نسخ النص');
-              }}
-              showReactions={true}
-              onImageClick={(imageUrl) => {
-                const allImages = messages
-                  .filter(msg => msg.type === 'image' && msg.media)
-                  .map(msg => {
-                    if (typeof msg.media === 'string') {
-                      return msg.media.startsWith('http') ? msg.media : `${API_BASE}${msg.media}`;
-                    } else if (msg.media && typeof msg.media === 'object') {
-                      return (msg.media as any).url || (msg.media as any).fileContent || '';
-                    }
-                    return '';
-                  })
-                  .filter(url => url && url.length > 0);
+  key={m._id}
+  m={m}
+  myId={myId}
+  onRetry={retrySend}
+  index={idx}
+  recieverImg={receiverData?.img || '/imgs/user.png'}
+  prevMessage={messages[idx - 1]}
+  isGroupAdmin={isGroupAdmin}
+  onReact={handleReact}
+  onEdit={handleEditMessage}
+  onReply={handleReply}
+  onTranslate={handleTranslate}
+  onDelete={handleDeleteMessage}
+  onCopy={(text) => {
+    navigator.clipboard.writeText(text);
+    toast.success('تم نسخ النص');
+  }}
 
-                const pendingImageUrls = pendingImages.map(img => img.url);
-                const allImagesWithPending = [...allImages, ...pendingImageUrls];
+  // ✅ Props الترجمة — بعد تصحيح msg → m
+  translation={translations[m._id]}
+  isTranslating={translatingIds.has(m._id)}
+  onCopyTranslation={(text) =>
+    navigator.clipboard.writeText(text).then(
+      () => toast.success("تم نسخ الترجمة"),
+      () => toast.error("فشل النسخ")
+    )
+  }
+  onClearTranslation={() =>
+    setTranslations((prev) => {
+      const next = { ...prev };
+      delete next[m._id];
+      return next;
+    })
+  }
 
-                openImageViewer(imageUrl, allImagesWithPending);
-              }}
-            />
+  showReactions={true}
+  onImageClick={(imageUrl) => {
+    const allImages = messages
+      .filter(msg => msg.type === 'image' && msg.media)
+      .map(msg => {
+        if (typeof msg.media === 'string') {
+          return msg.media.startsWith('http') ? msg.media : `${API_BASE}${msg.media}`;
+        } else if (msg.media && typeof msg.media === 'object') {
+          return (msg.media as any).url || (msg.media as any).fileContent || '';
+        }
+        return '';
+      })
+      .filter(url => url && url.length > 0);
+
+    const pendingImageUrls = pendingImages.map(img => img.url);
+    const allImagesWithPending = [...allImages, ...pendingImageUrls];
+
+    openImageViewer(imageUrl, allImagesWithPending);
+  }}
+/>
           ))}
           {remoteTyping && <TypingBubble mine={false} />}
           <div ref={bottomRef} />
@@ -4258,6 +4789,164 @@ const handleRemoveMember = useCallback((member: any) => {
     )}
   </div>
 )}
+
+      {/* ================= Modal: حذف الرسالة ================= */}
+       {/* ================= Modal: حذف الرسالة ================= */}
+      {deleteMessageConfirm && (
+        <div
+          className="fixed inset-0 z-[999999] bg-black/40 flex items-center justify-center p-4"
+          onClick={cancelDeleteMessage}
+          dir="rtl"
+        >
+          <div
+            className="bg-white rounded-[25px] shadow-2xl flex flex-col items-center p-6 w-full max-w-[420px]"
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontFamily: 'Cairo, sans-serif' }}
+          >
+            {/* أيقونة الحذف */}
+            <div
+              className="flex items-center justify-center rounded-full mb-4"
+              style={{ width: 70, height: 70, background: '#FEE2E2' }}
+            >
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"
+                  stroke="#D72229"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            {/* العنوان */}
+            <h3
+              className="text-[20px] font-bold text-[#000000] mb-2 text-center"
+              style={{ fontFamily: 'Cairo, sans-serif', lineHeight: 1.3 }}
+            >
+              حذف الرسالة
+            </h3>
+
+            {/* ✅ اختيار scope — بيظهر بس لو الرسالة من عندك */}
+            {deleteMessageConfirm.sender === myId ? (
+              <div className="w-full mb-5 mt-2 flex flex-col gap-2">
+                {/* خيار: لي فقط */}
+                <button
+                  type="button"
+                  onClick={() => setDeleteScope('me')}
+                  disabled={isDeletingMessage}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-[15px] border-2 transition-all"
+                  style={{
+                    borderColor: deleteScope === 'me' ? '#D72229' : '#E5E7EB',
+                    background: deleteScope === 'me' ? '#FEF2F2' : '#FFFFFF',
+                    fontFamily: 'Cairo, sans-serif',
+                    cursor: isDeletingMessage ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="text-[14px] font-bold text-[#000000]">حذف لي فقط</span>
+                    <span className="text-[11px] text-[#6B7280]">تُحذف من عندك بس</span>
+                  </div>
+                  <div
+                    className="rounded-full flex items-center justify-center shrink-0"
+                    style={{
+                      width: 22, height: 22,
+                      border: `2px solid ${deleteScope === 'me' ? '#D72229' : '#B4B4B9'}`,
+                      background: '#FFFFFF',
+                    }}
+                  >
+                    {deleteScope === 'me' && (
+                      <div style={{ width: 12, height: 12, background: '#D72229', borderRadius: '50%' }} />
+                    )}
+                  </div>
+                </button>
+
+                {/* خيار: للجميع */}
+                <button
+                  type="button"
+                  onClick={() => setDeleteScope('everyone')}
+                  disabled={isDeletingMessage}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-[15px] border-2 transition-all"
+                  style={{
+                    borderColor: deleteScope === 'everyone' ? '#D72229' : '#E5E7EB',
+                    background: deleteScope === 'everyone' ? '#FEF2F2' : '#FFFFFF',
+                    fontFamily: 'Cairo, sans-serif',
+                    cursor: isDeletingMessage ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="text-[14px] font-bold text-[#D72229]">حذف للجميع</span>
+                    <span className="text-[11px] text-[#6B7280]">تُحذف عندك وعند الطرف الآخر</span>
+                  </div>
+                  <div
+                    className="rounded-full flex items-center justify-center shrink-0"
+                    style={{
+                      width: 22, height: 22,
+                      border: `2px solid ${deleteScope === 'everyone' ? '#D72229' : '#B4B4B9'}`,
+                      background: '#FFFFFF',
+                    }}
+                  >
+                    {deleteScope === 'everyone' && (
+                      <div style={{ width: 12, height: 12, background: '#D72229', borderRadius: '50%' }} />
+                    )}
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <p
+                className="text-[14px] text-[#6B7280] text-center mb-6"
+                style={{ fontFamily: 'Cairo, sans-serif', lineHeight: 1.6 }}
+              >
+                هل أنت متأكد من حذف هذه الرسالة؟
+                <br />
+                <span className="text-[12px] text-[#B4B4B9]">لا يمكن التراجع عن هذا الإجراء</span>
+              </p>
+            )}
+
+            {/* الأزرار */}
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                onClick={confirmDeleteMessage}
+                disabled={isDeletingMessage}
+                className="flex-1 text-white rounded-[15px] font-semibold transition-all duration-200 disabled:opacity-60"
+                style={{
+                  height: 48,
+                  background: '#D72229',
+                  fontFamily: 'Cairo, sans-serif',
+                  fontSize: 14,
+                  border: 'none',
+                  cursor: isDeletingMessage ? 'wait' : 'pointer',
+                }}
+              >
+                {isDeletingMessage
+                  ? 'جاري الحذف...'
+                  : deleteMessageConfirm.sender === myId && deleteScope === 'everyone'
+                    ? 'احذف للجميع'
+                    : 'احذف'}
+              </button>
+              <button
+                type="button"
+                onClick={cancelDeleteMessage}
+                disabled={isDeletingMessage}
+                className="flex-1 rounded-[15px] font-semibold transition-all duration-200 disabled:opacity-60"
+                style={{
+                  height: 48,
+                  background: '#F3F5FF',
+                  color: '#000000',
+                  fontFamily: 'Cairo, sans-serif',
+                  fontSize: 14,
+                  border: 'none',
+                  cursor: isDeletingMessage ? 'not-allowed' : 'pointer',
+                }}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ================= القائمة المنسدلة ================= */}
       {showMenu && (
         <div
