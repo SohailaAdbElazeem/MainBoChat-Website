@@ -1261,25 +1261,54 @@ const isDocumentFile = (type: string): boolean => {
   return docTypes.includes(type);
 };
 
-const useMediaUrl = (media: any) => {
-  return useMemo(() => {
-    if (!media) return null;
+// const useMediaUrl = (media: any) => {
+//   return useMemo(() => {
+//     if (!media) return null;
 
-    const resolve = (item: any): string | null => {
-      if (!item) return null;
-      if (item instanceof File || item instanceof Blob) {
-        return URL.createObjectURL(item);
-      }
-      const raw = typeof item === "string" ? item : item.url || item.fileContent;
-      if (!raw || typeof raw !== "string") return null;
-      return /^(https?:|data:|blob:)/.test(raw)
-        ? raw
-        : `${API_BASE}${raw.startsWith("/") ? "" : "/"}${raw}`;
-    };
+//     const resolve = (item: any): string | null => {
+//       if (!item) return null;
+//       if (item instanceof File || item instanceof Blob) {
+//         return URL.createObjectURL(item);
+//       }
+//       const raw = typeof item === "string" ? item : item.url || item.fileContent;
+//       if (!raw || typeof raw !== "string") return null;
+//       return /^(https?:|data:|blob:)/.test(raw)
+//         ? raw
+//         : `${API_BASE}${raw.startsWith("/") ? "" : "/"}${raw}`;
+//     };
 
-    return resolve(Array.isArray(media) ? media[0] : media);
-  }, [media]);
+//     return resolve(Array.isArray(media) ? media[0] : media);
+//   }, [media]);
+// };
+
+const resolveMediaItem = (item: any): string | null => {
+  if (!item) return null;
+  if (item instanceof File || item instanceof Blob) {
+    return URL.createObjectURL(item);
+  }
+  const raw = typeof item === "string" ? item : item.url || item.fileContent;
+  if (!raw || typeof raw !== "string") return null;
+  return /^(https?:|data:|blob:)/.test(raw)
+    ? raw
+    : `${API_BASE}${raw.startsWith("/") ? "" : "/"}${raw}`;
 };
+
+const useMediaUrl = (media: any) =>
+  useMemo(() => {
+    if (!media) return null;
+    return resolveMediaItem(Array.isArray(media) ? media[0] : media);
+  }, [media]);
+
+const useGroupUrls = (msgs?: Message[]) =>
+  useMemo(() => {
+    if (!msgs || msgs.length < 2) return [];
+    return msgs
+      .map((g) => {
+        const media = g.media ?? (g as any).fileData;
+        return resolveMediaItem(Array.isArray(media) ? media[0] : media);
+      })
+      .filter(Boolean) as string[];
+  }, [msgs]);
 
 export const MessageItem = ({
   m,
@@ -1302,6 +1331,9 @@ export const MessageItem = ({
   isTranslating,
   onCopyTranslation,
   onClearTranslation,
+  onCallBack,
+  onJumpToMessage, 
+  groupMessages,
 }: {
   m: Message;
   myId: string | null;
@@ -1317,12 +1349,19 @@ export const MessageItem = ({
   onDelete?: (message: Message) => void;
   onCopy?: (text: string) => void;
   showReactions?: boolean;
-  onImageClick?: (imageUrl: string) => void;
+  // onImageClick?: (imageUrl: string) => void;
+  onImageClick?: (imageUrl: string, allImages?: string[]) => void;
   onFileClick?: (fileUrl: string, fileName: string) => void;
   translation?: string;
   isTranslating?: boolean;
   onCopyTranslation?: (text: string) => void;
-  onClearTranslation?: () => void;
+//   onClearTranslation?: () => void;
+// }) => {
+ onClearTranslation?: () => void;
+  onCallBack?: (m: Message) => void;
+  onJumpToMessage?: (messageId: string) => void;   
+    groupMessages?: Message[];
+
 }) => {
   const mine = m.sender === myId;
   const isMessageRead =
@@ -1335,11 +1374,15 @@ export const MessageItem = ({
     (Array.isArray((m as any).seenBy) && (m as any).seenBy.length > 0);
   const isThird = (index + 1) % 2 === 0;
   const mediaUrl = useMediaUrl(m.media ?? (m as any).fileData);
+  const groupUrls = useGroupUrls(groupMessages);
 
-  const [showMenu, setShowMenu] = useState(false);
+  // const [showMenu, setShowMenu] = useState(false);
+  // const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  // const [isEditing, setIsEditing] = useState(false);
+  // const [editText, setEditText] = useState(m.message || '');
+  // const messageRef = useRef<HTMLDivElement>(null);
+    const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(m.message || '');
   const messageRef = useRef<HTMLDivElement>(null);
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -1430,12 +1473,14 @@ export const MessageItem = ({
       clientY = e.clientY;
     }
 
-    if (isEditing) return;
+  //   if (isEditing) return;
 
+  //   setMenuPosition({ x: clientX, y: clientY });
+  //   setShowMenu(true);
+  // }, [isEditing]);
     setMenuPosition({ x: clientX, y: clientY });
     setShowMenu(true);
-  }, [isEditing]);
-
+  }, []);
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
     touchTimerRef.current = setTimeout(() => {
@@ -1461,16 +1506,16 @@ export const MessageItem = ({
     navigator.clipboard.writeText(text).catch(console.error);
   };
 
-  const handleEdit = async () => {
-    if (!editText.trim() || !onEdit) return;
-    await onEdit({ ...m, message: editText });
-    setIsEditing(false);
-  };
+  // const handleEdit = async () => {
+  //   if (!editText.trim() || !onEdit) return;
+  //   await onEdit({ ...m, message: editText });
+  //   setIsEditing(false);
+  // };
 
-  const cancelEdit = () => {
-    setIsEditing(false);
-    setEditText(m.message || '');
-  };
+  // const cancelEdit = () => {
+  //   setIsEditing(false);
+  //   setEditText(m.message || '');
+  // };
 
   const isSameDay = (d1: Date, d2: Date) =>
     d1.getFullYear() === d2.getFullYear() &&
@@ -1721,6 +1766,229 @@ export const MessageItem = ({
     );
   };
 
+
+  // ================= عرض مجموعة صور (ستاك) =================
+// const renderImageStack = () => {
+//   const urls = groupUrls.slice(0, 3);
+//   const extra = groupUrls.length - urls.length;
+
+//   // const layers = [
+//   //   { rotate: 0, x: 0, y: 0 },
+//   //   { rotate: 8, x: 10, y: -6 },
+//   //   { rotate: -8, x: -10, y: -10 },
+//   // ];
+//   const layers = [
+//   { rotate: 0, x: 0, y: 0 },
+//   { rotate: 9, x: 16, y: -4 },
+//   { rotate: -9, x: -16, y: -8 },
+// ];
+
+//   const uploading = (groupMessages || []).filter(
+//     (g) => typeof g.uploadProgress === "number"
+//   );
+//   const avgProgress = uploading.length
+//     ? Math.round(
+//         uploading.reduce((s, g) => s + (g.uploadProgress || 0), 0) / uploading.length
+//       )
+//     : null;
+
+//   return (
+//     <div className={`flex flex-row items-center gap-1 ${mine ? "" : "flex-row-reverse"}`}>
+//       <div
+//         style={{ position: "relative", width: 170, height: 190, margin: "8px 14px" }}
+//         className="cursor-pointer"
+//         // onClick={() => onImageClick?.(urls[0])}
+//         onClick={() => onImageClick?.(groupUrls[0], groupUrls)}
+//         onDoubleClick={() => handleLike()}
+//       >
+//         {urls.map((url, i) => (
+//           <div
+//             key={url + i}
+//             className="absolute overflow-hidden shadow-md"
+//             style={{
+//               width: 138,
+//               height: 156,
+//               top: "50%",
+//               left: "50%",
+//               marginTop: -78,
+//               marginLeft: -69,
+//               borderRadius: 18,
+//               border: "2px solid #fff",
+//               transform: `translate(${layers[i].x}px, ${layers[i].y}px) rotate(${layers[i].rotate}deg)`,
+//               zIndex: urls.length - i,
+//               opacity: avgProgress !== null ? 0.6 : 1,
+//             }}
+//           >
+//             <img
+//               src={url}
+//               alt={`image ${i + 1}`}
+//               className="w-full h-full object-cover"
+//               loading="lazy"
+//               referrerPolicy="no-referrer"
+//             />
+//             {i === 0 && extra > 0 && (
+//               <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+//                 +{extra}
+//               </div>
+//             )}
+//           </div>
+//         ))}
+
+//         {avgProgress !== null && (
+//           <div
+//             style={{
+//               position: "absolute",
+//               top: "50%",
+//               left: "50%",
+//               transform: "translate(-50%, -50%)",
+//               zIndex: 10,
+//             }}
+//           >
+//             <ProgressCircle value={avgProgress} />
+//           </div>
+//         )}
+//       </div>
+
+//       {likesCount > 0 && showReactions && (
+//         <div style={{ fontSize: 14 }}>
+//           <img
+//             src="/icons/like.svg"
+//             style={{
+//               filter: mine
+//                 ? "brightness(0) saturate(100%) invert(1)"
+//                 : "brightness(0) saturate(100%) invert(24%) sepia(91%) saturate(4251%) hue-rotate(350deg)",
+//             }}
+//             alt="like-icon"
+//           />
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+// ================= عرض مجموعة صور (ستاك مروحة) =================
+const renderImageStack = () => {
+  // نعرض حد أقصى 7 صور في الستاك عشان الشكل ما يزدحمش
+  const MAX_VISIBLE = 7;
+  const urls = groupUrls.slice(0, MAX_VISIBLE);
+  const extra = groupUrls.length - urls.length;
+
+  // الصورة الأولى في النص، والباقي بالتناوب يمين/شمال بزاوية وإزاحة متزايدة
+  // const getLayer = (i: number) => {
+  //   if (i === 0) return { rotate: 0, x: 0, y: 0 };
+  //   const step = Math.ceil(i / 2);          // 1,1,2,2,3,3...
+  //   const side = i % 2 === 1 ? 1 : -1;      // يمين ثم شمال
+  //   return {
+  //     rotate: side * (6 + step * 4),        // 10°, 14°, 18°...
+  //     x: side * step * 14,                  // إزاحة أفقية
+  //     y: -step * 3,                         // رفع بسيط للخلف
+  //   };
+  // };
+const getLayer = (i: number) => {
+  if (i === 0) return { rotate: 0, x: 0, y: 0 };   // الأولى مظبوطة
+  // if (i === 1) return { rotate: 5, x: 6, y: -4 };  // التانية: ميل بسيط يمين
+  // if (i === 2) return { rotate: -5, x: -6, y: -6 }; // التالتة: ميل بسيط شمال
+  if (i === 1)  return  { rotate: 8, x: 10, y: -6 };
+  if (i === 2) return { rotate: -8, x: -10, y: -10 };
+  // الرابعة وما بعدها: من غير ميل، وبتبان حافتها من فوق
+  return { rotate: 0, x: 0, y: -6 - (i - 2) * 7 };
+};
+  // const maxStep = Math.ceil((urls.length - 1) / 2);
+  // const containerWidth = 150 + maxStep * 30 + 24;
+ const extraTop = Math.max(0, urls.length - 3) * 7;
+  const containerWidth = 170;
+
+
+  const uploading = (groupMessages || []).filter(
+    (g) => typeof g.uploadProgress === "number"
+  );
+  const avgProgress = uploading.length
+    ? Math.round(
+        uploading.reduce((s, g) => s + (g.uploadProgress || 0), 0) / uploading.length
+      )
+    : null;
+
+  return (
+    <div className={`flex flex-row items-center gap-1 ${mine ? "" : "flex-row-reverse"}`}>
+      <div
+        style={{
+          position: "relative",
+          width: containerWidth,
+          // height: 190,
+          height: 190 + extraTop,
+          margin: "8px 14px",
+        }}
+        className="cursor-pointer"
+        onClick={() => onImageClick?.(groupUrls[0], groupUrls)}
+        onDoubleClick={() => handleLike()}
+      >
+        {urls.map((url, i) => {
+          const { rotate, x, y } = getLayer(i);
+          return (
+            <div
+              key={url + i}
+              className="absolute overflow-hidden shadow-md"
+              style={{
+                width: 138,
+                height: 156,
+                top: "50%",
+                left: "50%",
+                marginTop: -78,
+                marginLeft: -69,
+                borderRadius: 18,
+                border: "2px solid #fff",
+                transform: `translate(${x}px, ${y}px) rotate(${rotate}deg)`,
+                zIndex: urls.length - i,   // الأولى فوق، والباقي ورا
+                opacity: avgProgress !== null ? 0.6 : 1,
+              }}
+            >
+              <img
+                src={url}
+                alt={`image ${i + 1}`}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+              {i === 0 && extra > 0 && (
+                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+                  +{extra}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {avgProgress !== null && (
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 50,
+            }}
+          >
+            <ProgressCircle value={avgProgress} />
+          </div>
+        )}
+      </div>
+
+      {likesCount > 0 && showReactions && (
+        <div style={{ fontSize: 14 }}>
+          <img
+            src="/icons/like.svg"
+            style={{
+              filter: mine
+                ? "brightness(0) saturate(100%) invert(1)"
+                : "brightness(0) saturate(100%) invert(24%) sepia(91%) saturate(4251%) hue-rotate(350deg)",
+            }}
+            alt="like-icon"
+          />
+        </div>
+      )}
+    </div>
+  );
+};
   // ================= عرض الفيديو =================
   const renderVideoMessage = () => {
     if (!mediaUrl) return null;
@@ -1770,7 +2038,8 @@ export const MessageItem = ({
             ${m._sendFailed ? "opacity-60" : ""}`}
         >
           {renderTail(mine ? '#D72229' : '#F3F5FF')}
-          <VoicePlayer media={mediaUrl} isMe={mine} peaks={(m as any).waveData} />
+          {/* <VoicePlayer media={mediaUrl} isMe={mine} peaks={(m as any).waveData} /> */}
+          <VoicePlayer media={mediaUrl} isMe={mine} peaks={m.waveData} />
         </div>
 
         {likesCount > 0 && showReactions && (
@@ -1899,7 +2168,8 @@ export const MessageItem = ({
   // };
   // ================= عرض الرسالة النصية =================
   const renderTextMessage = () => {
-    const reply = (m as any).replyTo;
+    // const reply = (m as any).replyTo;
+    const reply = m.replyTo;
     const hasReply = !!(reply && (reply.message || reply.type));
 
     // نص مختصر للرد
@@ -1922,7 +2192,7 @@ export const MessageItem = ({
         style={{ maxWidth: '100%' }}
       >
         {/* ✅ Pill الرد — فوق الرسالة */}
-        {hasReply && (
+        {/* {hasReply && (
           <div
             dir="rtl"
             style={{
@@ -1948,11 +2218,44 @@ export const MessageItem = ({
           >
             <span className="truncate">{fullReplyText}</span>
           </div>
+        )} */}
+           {hasReply && (
+          <div
+            dir="rtl"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onJumpToMessage && reply?._id) {
+                onJumpToMessage(reply._id);
+              }
+            }}
+            className="cursor-pointer hover:opacity-80 active:scale-[0.98] transition-all"
+            title="انتقل إلى الرسالة الأصلية"
+            style={{
+              minWidth: '187px',
+              minHeight: '50px',
+              borderRadius: '25px',
+              border: '1px solid #D72229',
+              background: '#ffffff',
+              padding: '12px 20px',
+              fontFamily: 'Cairo, sans-serif',
+              fontWeight: 600,
+              fontSize: '14px',
+              lineHeight: '1',
+              color: '#D72229',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              wordBreak: 'break-word',
+              maxWidth: '100%',
+            }}
+          >
+            <span className="truncate">{fullReplyText}</span>
+          </div>
         )}
-
         {/* ✅ فقاعة الرسالة + اللايك */}
         <div className={`flex flex-row items-center gap-1 ${mine ? "" : "flex-row-reverse"}`}>
-          <div
+          {/* <div
             style={{ position: 'relative' }}
             className={`
               ${mine ? "text-white bg-[#D72229]" : "text-[#D72229] bg-[#F3F5FF]"}
@@ -1996,6 +2299,26 @@ export const MessageItem = ({
             ) : (
               <span className="block whitespace-pre-wrap break-words">{m.message}</span>
             )}
+          </div> */}
+
+                    <div
+            style={{ position: 'relative' }}
+            className={`
+              ${mine ? "text-white bg-[#D72229]" : "text-[#D72229] bg-[#F3F5FF]"}
+              ${isThird ? (mine ? "message-mine" : "message-other") : ""}
+              flex items-center justify-center px-5 py-2.5
+              text-[18px] !rounded-[25px]
+              ${m._sendFailed ? 'opacity-60' : ''}
+            `}
+            onDoubleClick={() => handleLike()}
+          >
+            {renderTail(mine ? '#D72229' : '#F3F5FF')}
+            <span className="block whitespace-pre-wrap break-words">
+              {m.message}
+              {m.edited && (
+                <span className="text-[10px] opacity-60 mr-2 inline-block">(تم التعديل)</span>
+              )}
+            </span>
           </div>
 
           {likesCount > 0 && showReactions && (
@@ -2161,8 +2484,10 @@ export const MessageItem = ({
   // ================= اختيار نوع العرض حسب نوع الرسالة =================
   const renderContent = () => {
     // if (m.type === 'text' || !m.type) return renderTextMessage();
-     if ((m as any)._deleted) return renderDeletedMessage();
+    //  if ((m as any)._deleted) return renderDeletedMessage();
+    if (m._deleted) return renderDeletedMessage();
     if (m.type === 'text' || !m.type) return renderTextMessage();
+    if (m.type === 'image' && groupUrls.length > 1) return renderImageStack();
     if (m.type === 'image') return renderImageMessage();
     if (m.type === 'video') return renderVideoMessage();
     if (m.type === 'audio') return renderAudioMessage();
@@ -2190,6 +2515,7 @@ export const MessageItem = ({
         //     ? 'items-center'
         //     : 'items-end'
         // }`}
+         data-message-id={m._id}
          className={`flex-row flex relative ${
           !(m as any)._deleted &&
           (m.type === 'image' || m.type === 'audio' || m.type === 'sticker' || m.type === 'video' || m.type === 'call')
@@ -2305,9 +2631,12 @@ export const MessageItem = ({
           isGroupAdmin={isGroupAdmin}
           onReact={handleReact}
           onCopy={onCopy || handleCopy}
+          // onEdit={(msg) => {
+          //   setIsEditing(true);
+          //   setEditText(msg.message || '');
+          // }}
           onEdit={(msg) => {
-            setIsEditing(true);
-            setEditText(msg.message || '');
+            if (onEdit) onEdit(msg);
           }}
           onReply={onReply || (() => {})}
           onTranslate={onTranslate || ((msg) => {

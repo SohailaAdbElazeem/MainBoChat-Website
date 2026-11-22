@@ -1,4 +1,6 @@
+// // types/types.ts
 // /* eslint-disable @typescript-eslint/no-explicit-any */
+
 // export type UserPersonalData = {
 //   _id: string;
 //   name?: string;
@@ -8,8 +10,7 @@
 //   visit?: number;
 //   vip?: boolean;
 //   rate?: number;
-//   private:boolean
-
+//   private: boolean;
 // };
 
 // export type FollowEntry = {
@@ -43,8 +44,6 @@
 //   requestedFollow?: boolean;
 // };
 
-
-
 // export type ChatItem = {
 //   chatId: string;
 //   userinfo: any;
@@ -52,25 +51,35 @@
 //   unreadCount: number;
 //   typing: boolean;
 // };
-// // export type Message = {
-// //   fileData: string | Blob | MediaStream | MediaSource | undefined;
-// //   _id: string;
-// //   message: string;
-// //   sender: string;
-// //   receiver: string;
-// //   timestamp: string;
-// //   type?: string;
-// //   _sendFailed?: boolean;
-// //   media: string | Blob | MediaStream | MediaSource | undefined;
-// //   waveData: string | Blob | MediaStream | MediaSource | undefined;
-// //   waveUrl: string | Blob | MediaStream | MediaSource | undefined;
-// //   waveBlob: string | Blob | MediaStream | MediaSource | undefined;
-// //   waveBlobUrl: string | Blob | MediaStream | MediaSource | undefined;
-// //   delivered?: boolean;
-// //   seenBy?: boolean;
-// //   _optimistic?: boolean;
-// // };
 
+// // ================= Message Type with Reply Support =================
+// export interface Message {
+//   _id: string;
+//   message?: string;
+//   sender: string;
+//   receiver: string;
+//   timestamp: string;
+//   type: string;
+//   media?: any;
+//   fileData?: any;
+//   likes?: string[];
+//   _sendFailed?: boolean;
+//   uploadProgress?: number;
+//   _optimistic?: boolean;
+//   fileName?: string;
+//   fileSize?: number;
+//   fileType?: string;
+//   fileExtension?: string;
+//   // ========== Reply Support ==========
+//   replyTo?: {
+//     _id: string;
+//     message?: string;
+//     sender: string;
+//     senderName?: string;
+//     type: string;
+//     fileName?: string;
+//   };
+// }
 
 // export type Post = {
 //   _id: string;
@@ -91,8 +100,6 @@
 //   shares?: any[];
 //   shareCount?: number;
 // };
-
-
 
 
 // types/types.ts
@@ -163,10 +170,19 @@ export interface Message {
   _sendFailed?: boolean;
   uploadProgress?: number;
   _optimistic?: boolean;
+
+  // ================= Edit & Delete flags =================
+  edited?: boolean;          // ✅ جديد — لعرض "(تم التعديل)"
+  _deleted?: boolean;        // ✅ جديد — للرسائل المحذوفة (placeholder)
+
   fileName?: string;
   fileSize?: number;
   fileType?: string;
   fileExtension?: string;
+
+  // ✅ موجودة في الكود لكن مش في الـ type
+  waveData?: number[];       // للرسائل الصوتية
+
   // ========== Reply Support ==========
   replyTo?: {
     _id: string;

@@ -79,3 +79,21 @@
 .scroll-down-btn.show {
   opacity: 1;
 }
+
+
+/* ================= Jump-to-message highlight ================= */
+.message-jump-highlight {
+  animation: messageHighlight 2s ease-out;
+  border-radius: 25px;
+}
+
+@keyframes messageHighlight {
+  0%, 100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  15%, 50% {
+    background-color: rgba(215, 34, 41, 0.08);
+    box-shadow: 0 0 12px rgba(215, 34, 41, 0.35);
+  }
+}
