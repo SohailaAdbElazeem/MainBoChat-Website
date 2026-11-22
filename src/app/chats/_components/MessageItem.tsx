@@ -1873,28 +1873,14 @@ const renderImageStack = () => {
   const urls = groupUrls.slice(0, MAX_VISIBLE);
   const extra = groupUrls.length - urls.length;
 
-  // الصورة الأولى في النص، والباقي بالتناوب يمين/شمال بزاوية وإزاحة متزايدة
-  // const getLayer = (i: number) => {
-  //   if (i === 0) return { rotate: 0, x: 0, y: 0 };
-  //   const step = Math.ceil(i / 2);          // 1,1,2,2,3,3...
-  //   const side = i % 2 === 1 ? 1 : -1;      // يمين ثم شمال
-  //   return {
-  //     rotate: side * (6 + step * 4),        // 10°, 14°, 18°...
-  //     x: side * step * 14,                  // إزاحة أفقية
-  //     y: -step * 3,                         // رفع بسيط للخلف
-  //   };
-  // };
+  
 const getLayer = (i: number) => {
   if (i === 0) return { rotate: 0, x: 0, y: 0 };   // الأولى مظبوطة
-  // if (i === 1) return { rotate: 5, x: 6, y: -4 };  // التانية: ميل بسيط يمين
-  // if (i === 2) return { rotate: -5, x: -6, y: -6 }; // التالتة: ميل بسيط شمال
   if (i === 1)  return  { rotate: 8, x: 10, y: -6 };
   if (i === 2) return { rotate: -8, x: -10, y: -10 };
-  // الرابعة وما بعدها: من غير ميل، وبتبان حافتها من فوق
-  return { rotate: 0, x: 0, y: -6 - (i - 2) * 7 };
+   return { rotate: 0, x: 0, y: -6 - (i - 2) * 7 };
 };
-  // const maxStep = Math.ceil((urls.length - 1) / 2);
-  // const containerWidth = 150 + maxStep * 30 + 24;
+  
  const extraTop = Math.max(0, urls.length - 3) * 7;
   const containerWidth = 170;
 
@@ -2571,58 +2557,145 @@ const getLayer = (i: number) => {
           </button>
         )}
       </div>
-
-      {(isTranslating || translation) && (
-        <div
-          dir="rtl"
-          style={{ alignSelf: mine ? "flex-start" : "flex-end", maxWidth: "70%", paddingLeft: 48, paddingRight: 48 }}
+ {(isTranslating || translation) && (
+  <div
+    dir="rtl"
+    style={{
+      alignSelf: mine ? "flex-start" : "flex-end",
+      maxWidth: "70%",
+      paddingLeft: 48,
+      paddingRight: 48,
+      marginTop: 8,
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+    }}
+  >
+    {/* ============ النص المترجم + أيقونة الترجمة ============ */}
+    {translation && (
+      <div className="flex items-center gap-2" dir="rtl">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClearTranslation?.();
+          }}
+          title="إخفاء الترجمة"
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
         >
-          {isTranslating && !translation && (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#F3F5FF] text-[#6B7280] text-xs">
-              <span className="w-3 h-3 border-2 border-[#B4B4B9] border-t-transparent rounded-full animate-spin" />
-              جاري الترجمة...
-            </div>
-          )}
+          <img
+            src="/imgs/translateMsg.svg"
+            alt="translate"
+            style={{ width: 20, height: 17, display: "block" }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </button>
 
-          {translation && (
-            <div className="flex items-center gap-2" dir="rtl">
-              <div
-                style={{
-                  minWidth: '187px',
-                  minHeight: '50px',
-                  borderRadius: '25px',
-                  border: '1px solid #D72229',
-                  background: '#D72229',
-                  padding: '12px 20px',
-                  fontFamily: 'Cairo, sans-serif',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  lineHeight: '1',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {translation}
-              </div>
+        <span
+          dir="ltr"
+          style={{
+            fontFamily: "Cairo, sans-serif",
+            fontWeight: 600,
+            fontSize: 16,
+            lineHeight: 1.3,
+            color: "#000000",
+            wordBreak: "break-word",
+          }}
+        >
+          {translation}
+        </span>
+      </div>
+    )}
 
-              <button
-                type="button"
-                onClick={onClearTranslation}
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-[#D72229] hover:bg-[#D72229]/10 transition shrink-0"
-                title="إخفاء الترجمة"
-              >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                  <path d="M4 4L12 12M12 4L4 12" stroke="#D72229" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+    {/* ============ جاري الترجمة + إعادة المحاولة (ظاهرين دايمًا) ============ */}
+    <div className="flex items-center" dir="rtl" style={{ gap: 28 }}>
+      {/* جاري الترجمة + سبينر منقط */}
+      <div className="flex items-center gap-2">
+        <svg
+          className={isTranslating ? "animate-spin" : ""}
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          style={{ flexShrink: 0 }}
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="#B4B4B9"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray="0.1 4.2"
+          />
+        </svg>
+        <span
+          style={{
+            fontFamily: "Cairo, sans-serif",
+            fontWeight: 600,
+            fontSize: 14,
+            lineHeight: 1,
+            color: "#B4B4B9",
+          }}
+        >
+          جاري الترجمة
+        </span>
+      </div>
+
+      {/* أيقونة إعادة المحاولة + النص */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onTranslate?.(m);
+        }}
+        className="flex items-center gap-2"
+        style={{
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+        }}
+      >
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#000"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 12a9 9 0 1 1-3-6.7" />
+          <path d="M21 3v6h-6" />
+        </svg>
+        <span
+          style={{
+            fontFamily: "Cairo, sans-serif",
+            fontWeight: 600,
+            fontSize: 14,
+            lineHeight: 1,
+            color: "#D72229",
+          }}
+        >
+          اعادة المحاولة
+        </span>
+      </button>
+    </div>
+  </div>
+)}
+  
 
       {showMenu && (
         <MessageMenu
