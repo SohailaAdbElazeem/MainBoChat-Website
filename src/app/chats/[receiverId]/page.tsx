@@ -22,6 +22,8 @@ import BlockConfirmModal from '../_components/BlockConfirmModal';
 import BlockSuccessModal from '../_components/BlockSuccessModal';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
+import DocumentModal from '../_components/DocumentModal';
+import MediaModal from '../_components/MediaModal';
 
 // ================= Wrappers لأن react-hot-toast مفيهاش .info/.warning =================
 const toastInfo = (msg: string, opts?: any) => toast(msg, opts);
@@ -518,6 +520,17 @@ export default function ChatPage() {
 
   // State
   const [messages, setMessages] = useState<Message[]>([]);
+    // ================= State for Document Modal =================
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [docFiles, setDocFiles] = useState<File[]>([]);
+  const [docCaption, setDocCaption] = useState("");
+  const [isSendingDocs, setIsSendingDocs] = useState(false);
+  // ================= State for Media (Gallery) Modal =================
+  const [showMediaModal, setShowMediaModal] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [mediaCaption, setMediaCaption] = useState("");
+  const [isSendingMedia, setIsSendingMedia] = useState(false);
+
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -602,6 +615,11 @@ export default function ChatPage() {
   // ================= Translation states =================
 const [translations, setTranslations] = useState<Record<string, string>>({});
 const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
+ // ================= Edit Message states =================
+const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+const [editText, setEditText] = useState('');
+const [isSavingEdit, setIsSavingEdit] = useState(false); 
+
 
   const router = useRouter();
 
@@ -710,38 +728,177 @@ const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
     }
   }, [token, receiverId, myId]);
 
-  const handleEditMessage = useCallback(async (updatedMessage: Message) => {
-    if (!token || !receiverId) return;
+  // const handleEditMessage = useCallback(async (updatedMessage: Message) => {
+  //   if (!token || !receiverId) return;
 
-    try {
-      const res = await fetch(`${API_BASE}/message/edit`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messageId: updatedMessage._id,
-          message: updatedMessage.message,
-          receiver: receiverId,
-        }),
-      });
+  //   try {
+  //     const res = await fetch(`${API_BASE}/message/edit`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         messageId: updatedMessage._id,
+  //         message: updatedMessage.message,
+  //         receiver: receiverId,
+  //       }),
+  //     });
 
-      if (res.ok) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === updatedMessage._id ? updatedMessage : msg
-          )
-        );
-        toast.success('تم تعديل الرسالة بنجاح');
-      } else {
-        toast.error('فشل تعديل الرسالة');
+  //     if (res.ok) {
+  //       setMessages((prev) =>
+  //         prev.map((msg) =>
+  //           msg._id === updatedMessage._id ? updatedMessage : msg
+  //         )
+  //       );
+  //       toast.success('تم تعديل الرسالة بنجاح');
+  //     } else {
+  //       toast.error('فشل تعديل الرسالة');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error editing message:', error);
+  //     toast.error('فشل تعديل الرسالة');
+  //   }
+  // }, [token, receiverId]);
+const handleEditMessage = useCallback(async (messageId: string, newText: string) => {
+  if (!token) return;
+
+  const trimmed = newText.trim();
+  if (!trimmed) {
+    toast.error('الرسالة لا يمكن أن تكون فارغة');
+    return;
+  }
+
+  if (editingMessage && trimmed === (editingMessage.message || '').trim()) {
+    setEditingMessage(null);
+    setEditText('');
+    return;
+  }
+
+  setIsSavingEdit(true);
+
+  try {
+    const res = await fetch(`${API_BASE}/chats/groups/EditGroupMessage`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messageid: messageId,
+        text: trimmed,
+      }),
+    });
+
+    console.log('✏️ Edit response status:', res.status);
+
+    if (res.ok) {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId
+            ? ({ ...msg, message: trimmed, edited: true } as any)
+            : msg
+        )
+      );
+
+      if (myId && receiverId) {
+        try {
+          wsService.send({
+            event: 'message_edited',
+            metadata: {
+              sender: myId,
+              receiver: receiverId,
+              messageId,
+              newText: trimmed,
+            },
+          });
+        } catch (e) {
+          console.warn('WS notify failed:', e);
+        }
       }
-    } catch (error) {
-      console.error('Error editing message:', error);
-      toast.error('فشل تعديل الرسالة');
+
+      toast.success('تم تعديل الرسالة بنجاح');
+      setEditingMessage(null);
+      setEditText('');
+    } else {
+      let errMsg = 'فشل تعديل الرسالة';
+      try {
+        const errData = await res.json();
+        console.error('❌ Edit failed:', errData);
+        if (errData?.message || errData?.response) {
+          errMsg += `: ${errData.message || errData.response}`;
+        }
+      } catch {}
+      toast.error(errMsg);
     }
-  }, [token, receiverId]);
+  } catch (error) {
+    console.error('❌ Error editing message:', error);
+    toast.error('فشل تعديل الرسالة');
+  } finally {
+    setIsSavingEdit(false);
+  }
+}, [token, receiverId, myId, editingMessage]);
+
+// ================= بدء / إلغاء وضع التعديل =================
+const startEditingMessage = useCallback((message: Message) => {
+  if (message.type !== 'text') {
+    toast.error('لا يمكن تعديل هذا النوع من الرسائل');
+    return;
+  }
+  if ((message as any)._deleted) {
+    toast.error('لا يمكن تعديل رسالة محذوفة');
+    return;
+  }
+
+  setEditingMessage(message);
+  setEditText(message.message || '');
+
+  setTimeout(() => {
+    document.getElementById('edit-message-input')?.focus();
+  }, 100);
+}, []);
+
+const cancelEditingMessage = useCallback(() => {
+  if (isSavingEdit) return;
+  setEditingMessage(null);
+  setEditText('');
+}, [isSavingEdit]);
+
+
+// ================= Jump to replied message =================
+const jumpToMessage = useCallback((messageId: string) => {
+  if (!messageId) return;
+
+  // لو الرسالة الأصلية مش موجودة (اتحذفت لي، أو مش محمّلة)
+  const el = document.querySelector(
+    `[data-message-id="${messageId}"]`
+  ) as HTMLElement | null;
+
+  if (!el) {
+    toast.error('الرسالة الأصلية غير موجودة في هذه المحادثة');
+    return;
+  }
+
+  // سكرول ناعم لنص الشاشة
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+ 
+  // فلاش تنبيهي لمدة 2 ثانية
+  // el.classList.add('message-jump-highlight');
+  // window.setTimeout(() => {
+  //   el.classList.remove('message-jump-highlight');
+  // }, 2000);
+   // ✨ flash زي واتساب
+  const targetMsg = messages.find(m => m._id === messageId);
+  if (targetMsg?.sender === myId) {
+    el.classList.add('mine');
+  }
+   el.classList.add('message-jump-highlight');
+
+  window.setTimeout(() => {
+    el.classList.remove('message-jump-highlight', 'mine');
+  }, 1800);
+}, [messages, myId]);
+
 
   const handleReply = useCallback((message: Message) => {
     setReplyTo(message);
@@ -2249,7 +2406,21 @@ const fetchReceiverData = useCallback(async () => {
     };
 
     const handler = async (payload: any) => {
-         // ✅ استقبال حذف رسالة من الطرف التاني
+      if (payload.event === 'message_edited') {
+  const { messageId, newText } = payload.metadata || {};
+  if (!messageId || !newText) return;
+
+  console.log('📩 WS message_edited received:', { messageId, newText });
+
+  setMessages((prev) =>
+    prev.map((m) =>
+      m._id === messageId
+        ? ({ ...m, message: newText, edited: true } as any)
+        : m
+    )
+  );
+  return;
+}
       if (payload.event === "message_deleted") {
         const { messageId, scope } = payload.metadata || {};
         console.log('📩 WS message_deleted received:', { messageId, scope });
@@ -2591,7 +2762,97 @@ const fetchReceiverData = useCallback(async () => {
   }, [token]);
 
   // ================= Send File =================
-  const sendFile = useCallback(async (file: File) => {
+  // const sendFile = useCallback(async (file: File) => {
+  //   const effMy = myIdRef.current;
+  //   const effRec = receiverIdRef.current;
+  //   if (!effMy || !effRec || !token) return;
+
+  //   const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+  //   let fileType = 'file';
+  //   if (['pdf'].includes(fileExtension)) fileType = 'pdf';
+  //   else if (['doc', 'docx'].includes(fileExtension)) fileType = 'word';
+  //   else if (['xls', 'xlsx'].includes(fileExtension)) fileType = 'excel';
+  //   else if (['ppt', 'pptx'].includes(fileExtension)) fileType = 'powerpoint';
+  //   else if (['txt'].includes(fileExtension)) fileType = 'text';
+  //   else if (['zip', 'rar', '7z'].includes(fileExtension)) fileType = 'archive';
+
+  //   const tempId = `tmp-file-${Date.now()}-${Math.random()}`;
+  //   const tempMsg: Message = {
+  //     _id: tempId,
+  //     sender: effMy,
+  //     receiver: effRec,
+  //     timestamp: new Date().toISOString(),
+  //     type: fileType,
+  //     message: file.name,
+  //     media: file,
+  //     fileName: file.name,
+  //     fileSize: file.size,
+  //     fileType: file.type,
+  //     uploadProgress: 0,
+  //     _optimistic: true,
+  //   };
+
+  //   setMessages((prev) => [...prev, tempMsg]);
+
+  //   const xhr = new XMLHttpRequest();
+  //   xhr.open("POST", `${API_BASE}/message/send_media`);
+  //   xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+  //   xhr.setRequestHeader("Content-Type", "application/json");
+
+  //   xhr.upload.onprogress = (ev) => {
+  //     if (ev.lengthComputable) {
+  //       const percent = Math.round((ev.loaded / ev.total) * 100);
+  //       setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, uploadProgress: percent } : m)));
+  //     }
+  //   };
+
+  //   xhr.onload = () => {
+  //     if (xhr.status >= 200 && xhr.status < 300) {
+  //       const data = JSON.parse(xhr.responseText);
+  //       sentMessageIdsRef.current.add(data.data._id);
+  //       setMessages((prev) =>
+  //         prev.map((m) =>
+  //           m._id === tempId
+  //             ? { ...m, _id: data.data._id, media: data.data.message[0], uploadProgress: undefined, _sendFailed: false }
+  //             : m
+  //         )
+  //       );
+  //       setPendingImages(prev => prev.filter(img => img.file.name !== file.name || img.file.size !== file.size));
+  //       toast.success(`تم إرسال الملف: ${file.name}`);
+  //     } else {
+  //       setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
+  //       toast.error(`فشل إرسال الملف: ${file.name}`);
+  //     }
+  //   };
+
+  //   xhr.onerror = () => {
+  //     setMessages((prev) => prev.map((m) => (m._id === tempId ? { ...m, _sendFailed: true } : m)));
+  //     toast.error(`فشل إرسال الملف: ${file.name}`);
+  //   };
+
+  //   const base64 = await blobToPureBase64(file);
+  //   xhr.send(
+  //     JSON.stringify({
+  //       metadata: {
+  //         sender: effMy,
+  //         reicever: effRec,
+  //         type: fileType,
+  //         fileName: file.name,
+  //         fileSize: file.size,
+  //         fileMimeType: file.type,
+  //         clientTempId: tempId
+  //       },
+  //       fileData: [{
+  //         fileName: file.name,
+  //         fileContent: `data:${file.type};base64,${base64}`,
+  //         mimetype: file.type
+  //       }],
+  //     })
+  //   );
+  // }, [token]);
+    // ================= Send File =================
+   // ================= Send File =================
+  const sendFile = useCallback(async (file: File, caption: string = '') => {
     const effMy = myIdRef.current;
     const effRec = receiverIdRef.current;
     if (!effMy || !effRec || !token) return;
@@ -2612,7 +2873,7 @@ const fetchReceiverData = useCallback(async () => {
       receiver: effRec,
       timestamp: new Date().toISOString(),
       type: fileType,
-      message: file.name,
+      message: caption || file.name,
       media: file,
       fileName: file.name,
       fileSize: file.size,
@@ -2680,6 +2941,129 @@ const fetchReceiverData = useCallback(async () => {
     );
   }, [token]);
 
+    // ================= Document Modal Handlers =================
+// ================= Document Modal Handlers =================
+  const handleOpenDocModal = () => {
+    setDocFiles([]); // تصفير الملفات القديمة
+    setDocCaption(""); // تصفير الوصف القديم
+    setShowDocModal(true); // فتح المودال
+    setShowAttachMenu(false); // إغلاق قائمة المرفقات
+  };
+
+
+  //   const handleAddMoreDocs = (newFiles: FileList) => {
+  //   // إضافة الملفات الجديدة للقائمة اللي موجودة
+  //   setDocFiles((prev) => [...prev, ...Array.from(newFiles)]);
+  // };
+
+//   const handleAddMoreDocs = (newFiles: FileList | File[]) => {
+//   const added = Array.from(newFiles); // ننسخ الملفات فوراً
+//   setDocFiles((prev) => [...prev, ...added]);
+// };
+const handleAddMoreDocs = (newFiles: File[]) => {
+  setDocFiles((prev) => {
+    const existing = new Set(prev.map((f) => `${f.name}-${f.size}-${f.lastModified}`));
+    const unique = newFiles.filter(
+      (f) => !existing.has(`${f.name}-${f.size}-${f.lastModified}`)
+    );
+    return [...prev, ...unique];
+  });
+};
+   const handleRemoveDoc = (index: number) => {
+    // مسح ملف معين من القائمة
+    setDocFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // const handleSendDocuments = async () => {
+  //   if (docFiles.length === 0) return;
+  //   setIsSendingDocs(true);
+    
+  //   // بنلف على كل ملف ونبعته مع الوصف
+  //   for (const file of docFiles) {
+  //     await sendFile(file, docCaption);
+  //   }
+    
+  //   setIsSendingDocs(false);
+  //   setShowDocModal(false); // نقفل المودال بعد الإرسال
+  //   setDocFiles([]); // نفضي القائمة
+  //   setDocCaption(""); // نفضي الوصف
+  // };
+  const handleSendDocuments = async () => {
+  if (docFiles.length === 0) return;
+  setIsSendingDocs(true);
+
+  try {
+    for (let i = 0; i < docFiles.length; i++) {
+      await sendFile(docFiles[i], i === 0 ? docCaption : "");
+    }
+  } finally {
+    setIsSendingDocs(false);
+    setShowDocModal(false);
+    setDocFiles([]);
+    setDocCaption("");
+  }
+};
+
+// ================= Media Modal Handlers =================
+const handleOpenMediaModal = () => {
+  setMediaFiles([]);
+  setMediaCaption("");
+  setShowMediaModal(true);
+  setShowAttachMenu(false);
+};
+
+const handleAddMoreMedia = (newFiles: File[]) => {
+  setMediaFiles((prev) => {
+    const existing = new Set(prev.map((f) => `${f.name}-${f.size}-${f.lastModified}`));
+    const unique = newFiles.filter(
+      (f) => !existing.has(`${f.name}-${f.size}-${f.lastModified}`)
+    );
+    return [...prev, ...unique];
+  });
+};
+
+const handleRemoveMedia = (index: number) => {
+  setMediaFiles((prev) => prev.filter((_, i) => i !== index));
+};
+
+const handleSendMedia = async () => {
+  if (mediaFiles.length === 0) return;
+  setIsSendingMedia(true);
+
+  try {
+    for (const file of mediaFiles) {
+      if (file.type.startsWith("image/")) {
+        await sendImageFile(file);
+      } else {
+        // الفيديو بيتبعت بنفس دالة الملفات (type: file)
+        await sendFile(file, "");
+      }
+    }
+
+    // الوصف: يتبعت كرسالة نصية لو اتكتب
+    const cap = mediaCaption.trim();
+    if (cap && token && myIdRef.current && receiverIdRef.current) {
+      try {
+        await fetch(REST_SEND, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            message: cap,
+            receiver: receiverIdRef.current,
+            sender: myIdRef.current,
+          }),
+        });
+      } catch (e) {
+        console.warn("caption send failed", e);
+      }
+    }
+  } finally {
+    setIsSendingMedia(false);
+    setShowMediaModal(false);
+    setMediaFiles([]);
+    setMediaCaption("");
+  }
+};
   // ================= Handle multiple media selection =================
   const handleSelectMedia = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -2986,6 +3370,34 @@ const handleCancelBlock = useCallback(() => {
 
     return list;
   }, [contactsList, groupMembers, contactsSearchQuery]);
+
+  // ================= تجميع الصور المتتالية (ستاك) =================
+const groupedMessages = useMemo(() => {
+  const GROUP_WINDOW_MS = 15000;
+  const out: { main: Message; group: Message[] }[] = [];
+
+  for (const msg of messages) {
+    const last = out[out.length - 1];
+    const lastMsg = last?.group[last.group.length - 1];
+
+    const canGroup =
+      !!last &&
+      !!lastMsg &&
+      msg.type === 'image' &&
+      lastMsg.type === 'image' &&
+      !(msg as any)._deleted &&
+      !(lastMsg as any)._deleted &&
+      msg.sender === lastMsg.sender &&
+      Math.abs(
+        new Date(msg.timestamp).getTime() - new Date(lastMsg.timestamp).getTime()
+      ) < GROUP_WINDOW_MS;
+
+    if (canGroup) last.group.push(msg);
+    else out.push({ main: msg, group: [msg] });
+  }
+
+  return out;
+}, [messages]);
    
   // ================= فتح مودال الخروج =================
   const handleLeaveGroup = useCallback(() => {
@@ -4377,7 +4789,8 @@ const handleRemoveMember = useCallback((member: any) => {
           onScroll={handleScroll}
         >
           {loading && messages.length === 0 && <Loader />}
-          {messages.map((m, idx) => (
+          {/* {messages.map((m, idx) => ( */}
+          {groupedMessages.map(({ main: m, group }, idx) => (
             // <MessageItem
             //   key={m._id}
             //   m={m}
@@ -4423,13 +4836,17 @@ const handleRemoveMember = useCallback((member: any) => {
   onRetry={retrySend}
   index={idx}
   recieverImg={receiverData?.img || '/imgs/user.png'}
-  prevMessage={messages[idx - 1]}
+  // prevMessage={messages[idx - 1]}
+  prevMessage={groupedMessages[idx - 1]?.group.slice(-1)[0]}
+groupMessages={group.length > 1 ? group : undefined}
   isGroupAdmin={isGroupAdmin}
   onReact={handleReact}
-  onEdit={handleEditMessage}
+  // onEdit={handleEditMessage}
+  onEdit={startEditingMessage}
   onReply={handleReply}
   onTranslate={handleTranslate}
   onDelete={handleDeleteMessage}
+  onJumpToMessage={jumpToMessage}
   onCopy={(text) => {
     navigator.clipboard.writeText(text);
     toast.success('تم نسخ النص');
@@ -4453,24 +4870,46 @@ const handleRemoveMember = useCallback((member: any) => {
   }
 
   showReactions={true}
-  onImageClick={(imageUrl) => {
-    const allImages = messages
-      .filter(msg => msg.type === 'image' && msg.media)
-      .map(msg => {
-        if (typeof msg.media === 'string') {
-          return msg.media.startsWith('http') ? msg.media : `${API_BASE}${msg.media}`;
-        } else if (msg.media && typeof msg.media === 'object') {
-          return (msg.media as any).url || (msg.media as any).fileContent || '';
-        }
-        return '';
-      })
-      .filter(url => url && url.length > 0);
+  // onImageClick={(imageUrl) => {
+  //   const allImages = messages
+  //     .filter(msg => msg.type === 'image' && msg.media)
+  //     .map(msg => {
+  //       if (typeof msg.media === 'string') {
+  //         return msg.media.startsWith('http') ? msg.media : `${API_BASE}${msg.media}`;
+  //       } else if (msg.media && typeof msg.media === 'object') {
+  //         return (msg.media as any).url || (msg.media as any).fileContent || '';
+  //       }
+  //       return '';
+  //     })
+  //     .filter(url => url && url.length > 0);
 
-    const pendingImageUrls = pendingImages.map(img => img.url);
-    const allImagesWithPending = [...allImages, ...pendingImageUrls];
+  //   const pendingImageUrls = pendingImages.map(img => img.url);
+  //   const allImagesWithPending = [...allImages, ...pendingImageUrls];
 
-    openImageViewer(imageUrl, allImagesWithPending);
-  }}
+  //   openImageViewer(imageUrl, allImagesWithPending);
+  // }}
+  onImageClick={(imageUrl, groupImages) => {
+  // لو الضغط جاي من ستاك → اعرضي صور المجموعة كلها
+  if (groupImages && groupImages.length > 0) {
+    openImageViewer(imageUrl, groupImages);
+    return;
+  }
+
+  const allImages = messages
+    .filter(msg => msg.type === 'image' && msg.media)
+    .map(msg => {
+      if (typeof msg.media === 'string') {
+        return msg.media.startsWith('http') ? msg.media : `${API_BASE}${msg.media}`;
+      } else if (msg.media && typeof msg.media === 'object') {
+        return (msg.media as any).url || (msg.media as any).fileContent || '';
+      }
+      return '';
+    })
+    .filter(url => url && url.length > 0);
+
+  const pendingImageUrls = pendingImages.map(img => img.url);
+  openImageViewer(imageUrl, [...allImages, ...pendingImageUrls]);
+}}
 />
           ))}
           {remoteTyping && <TypingBubble mine={false} />}
@@ -4704,7 +5143,7 @@ const handleRemoveMember = useCallback((member: any) => {
           <div className="flex items-center gap-1 relative">
             <button
               type="button"
-              onClick={() => galleryInputRef.current?.click()}
+               onClick={handleOpenMediaModal}
               className="p-2 hover:bg-gray-200 rounded-full transition flex items-center justify-center"
               title="اختيار من المعرض"
             >
@@ -4748,15 +5187,12 @@ const handleRemoveMember = useCallback((member: any) => {
                     </div>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      galleryInputRef.current?.click();
-                      setShowAttachMenu(false);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/50 transition-all duration-200"
-                    style={{ borderBottom: '1px solid rgba(60,60,67,0.1)' }}
-                  >
+                 <button
+                        type="button"
+                        onClick={handleOpenMediaModal}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/50 transition-all duration-200"
+                        style={{ borderBottom: '1px solid rgba(60,60,67,0.1)' }}
+                      >
                     <span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 600, fontSize: '15px', color: '#000000', textAlign: 'right' }}>
                       المعرض
                     </span>
@@ -4765,21 +5201,20 @@ const handleRemoveMember = useCallback((member: any) => {
                     </div>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      documentInputRef.current?.click();
-                      setShowAttachMenu(false);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/50 transition-all*/ duration-200"
-                  >
-                    <span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 600, fontSize: '15px', color: '#000000', textAlign: 'right' }}>
-                      مستند
-                    </span>
-                    <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                      <img src="/imgs/document.svg" alt="مستند" style={{ width: '20px', height: '20px' }} />
-                    </div>
-                  </button>
+             
+
+<button
+  type="button"
+  onClick={handleOpenDocModal}
+  className="flex items-center justify-between w-full px-4 py-3 hover:bg-white/50 transition"
+>
+  <span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 600, fontSize: '15px', color: '#000' }}>
+    مستند
+  </span>
+  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+    <img src="/imgs/document.svg" alt="مستند" style={{ width: 20, height: 20 }} />
+  </div>
+</button>
                 </div>
               )}
             </div>
@@ -6166,6 +6601,90 @@ const handleRemoveMember = useCallback((member: any) => {
           </div>
         </div>
       )}
+
+      {/* ================= Edit Message Modal ================= */}
+{editingMessage && (
+  <div
+    className="fixed inset-0 z-[999999] bg-black/40 flex items-center justify-center p-4"
+    onClick={cancelEditingMessage}
+    dir="rtl"
+  >
+    <div
+      className="bg-white rounded-2xl p-5 w-full max-w-md shadow-xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h3
+        className="text-lg font-bold mb-3 text-right text-gray-800"
+        style={{ fontFamily: 'Cairo, sans-serif' }}
+      >
+        تعديل الرسالة
+      </h3>
+
+      <textarea
+        id="edit-message-input"
+        value={editText}
+        onChange={(e) => setEditText(e.target.value)}
+        rows={4}
+        className="w-full border border-gray-200 rounded-xl p-3 text-right focus:outline-none focus:border-[#D72229] resize-none"
+        style={{ fontFamily: 'Cairo, sans-serif' }}
+        placeholder="اكتب الرسالة الجديدة..."
+        disabled={isSavingEdit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            handleEditMessage(editingMessage._id, editText);
+          }
+          if (e.key === 'Escape') cancelEditingMessage();
+        }}
+      />
+
+      <div className="flex gap-3 mt-4">
+        <button
+          onClick={() => handleEditMessage(editingMessage._id, editText)}
+          disabled={
+            isSavingEdit ||
+            !editText.trim() ||
+            editText.trim() === (editingMessage.message || '').trim()
+          }
+          className="flex-1 py-2.5 bg-[#D72229] text-white rounded-xl font-semibold disabled:opacity-50 transition"
+        >
+          {isSavingEdit ? 'جارٍ الحفظ...' : 'حفظ'}
+        </button>
+        <button
+          onClick={cancelEditingMessage}
+          disabled={isSavingEdit}
+          className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-semibold disabled:opacity-50 transition"
+        >
+          إلغاء
+        </button>
+      </div>
     </div>
+  </div>
+)}
+
+      <DocumentModal
+        isOpen={showDocModal}
+        onClose={() => setShowDocModal(false)}
+        files={docFiles}
+        onAddFiles={handleAddMoreDocs}
+        onRemoveFile={handleRemoveDoc}
+        caption={docCaption}
+        setCaption={setDocCaption}
+        onSend={handleSendDocuments}
+        isSending={isSendingDocs}
+      />
+
+      <MediaModal
+  isOpen={showMediaModal}
+  onClose={() => setShowMediaModal(false)}
+  files={mediaFiles}
+  onAddFiles={handleAddMoreMedia}
+  onRemoveFile={handleRemoveMedia}
+  caption={mediaCaption}
+  setCaption={setMediaCaption}
+  onSend={handleSendMedia}
+  isSending={isSendingMedia}
+/>
+      
+          </div>
   );
 }
